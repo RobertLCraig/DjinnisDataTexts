@@ -1,0 +1,31 @@
+## Interface: 120001
+## Title: Djinni's Data Texts
+## Author: Djinni
+## Version: 0.1.0
+## Notes: LDB data brokers for a unified suite of DataTexts with rich tooltips. Works with any LDB display.
+## Category: Data Brokers
+## X-Category: Data Broker
+## IconTexture: Interface\Icons\INV_Misc_Gear_01
+## SavedVariables: DjinnisDataTextsDB
+## OptionalDeps: ElvUI, DjinnisGuildFriends
+
+# Libraries
+Libs\LibStub\LibStub.lua
+Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
+
+# Core
+Core.lua
+Settings.lua
+
+# Modules — Social (ported from DjinnisGuildFriends)
+Modules\Friends.lua
+Modules\Guild.lua
+Modules\Communities.lua
+
+# Modules — Phase 2
+Modules\SpecSwitch.lua
+Modules\SavedInstances.lua
+
+# Demo mode — uncomment to inject fake data, comment out for live use:
+# DemoMode.lua
