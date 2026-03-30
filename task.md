@@ -43,12 +43,22 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - LDB text: "Lockouts: 2R 1D" format
   - Events: UPDATE_INSTANCE_INFO, BOSS_KILL, INSTANCE_LOCK_START/STOP
 
-## Phase 3: Time/Date + Coordinates — PENDING
-- [ ] Modules/TimeDate.lua (Phase 1)
-  - Server time, local time
-  - Weekly reset countdown
-  - Basic Djinni tooltip
-- [ ] Modules/Coordinates.lua
+## Phase 3: Time/Date + Coordinates — COMPLETE
+- [x] Modules/TimeDate.lua (Phase 1)
+  - Server time, local time, daily/weekly reset countdowns
+  - Date display (weekday, month, day, year)
+  - 12h/24h toggle, seconds toggle, server/local toggle
+  - Left-click: calendar, right-click: toggle server/local on LDB
+  - OnUpdate at 1s interval
+  - Events: PLAYER_ENTERING_WORLD
+- [x] Modules/Coordinates.lua
+  - Player map coordinates via C_Map.GetBestMapForUnit/GetPlayerMapPosition
+  - Zone, subzone, map name, map ID in tooltip
+  - Configurable decimal precision (default 2)
+  - Optional zone name in LDB text
+  - Left-click: world map, right-click: copy coords to chat
+  - OnUpdate at 0.1s interval
+  - Events: ZONE_CHANGED, ZONE_CHANGED_INDOORS, ZONE_CHANGED_NEW_AREA, LOADING_SCREEN_DISABLED
 
 ## Phase 4: System + Played + Mail — PENDING
 - [ ] Modules/SystemPerformance.lua
@@ -74,11 +84,13 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 - Tooltip: dark bg (0.05, 0.05, 0.05, 0.92), gold headers, class-colored names, gray hint bar
 
 ## Current State
-Phase 2 complete. Addon has 5 modules:
+Phase 3 complete. Addon has 7 modules:
 - Guild, Friends, Communities (ported from DGF)
 - SpecSwitch (new — talent/loadout/loot spec switching)
 - SavedInstances (new — lockout summary with boss details and alt integration)
-Ready to begin Phase 3 (Time/Date, Coordinates).
+- TimeDate (new — server/local time, reset countdowns)
+- Coordinates (new — player map coordinates with zone info)
+Ready to begin Phase 4 (System Performance, Played Time, Mail).
 
 ## Blockers
 None.

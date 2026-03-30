@@ -27,5 +27,9 @@ Modules\Communities.lua
 Modules\SpecSwitch.lua
 Modules\SavedInstances.lua
 
+# Modules — Phase 3
+Modules\TimeDate.lua
+Modules\Coordinates.lua
+
 # Demo mode — uncomment to inject fake data, comment out for live use:
 # DemoMode.lua
