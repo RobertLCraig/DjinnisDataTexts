@@ -173,6 +173,47 @@ local DEMO_CLUBS = {
 }
 
 ---------------------------------------------------------------------------
+-- SpecSwitch demo data (Druid — 4 specs, multiple loadouts)
+---------------------------------------------------------------------------
+
+local DEMO_SPEC_CACHE = {
+    [1] = { id = 102, name = "Balance",      icon = "Interface\\Icons\\Spell_Nature_StarFall",       role = "DAMAGER" },
+    [2] = { id = 103, name = "Feral",        icon = "Interface\\Icons\\Ability_Druid_CatForm",       role = "DAMAGER" },
+    [3] = { id = 104, name = "Guardian",     icon = "Interface\\Icons\\Ability_Racial_BearForm",     role = "TANK" },
+    [4] = { id = 105, name = "Restoration",  icon = "Interface\\Icons\\Spell_Nature_HealingTouch",   role = "HEALER" },
+}
+
+local DEMO_LOADOUT_CACHE = {
+    [102] = {
+        { configID = 9001, name = "ST Boomkin" },
+        { configID = 9002, name = "AoE Boomkin" },
+        { configID = 9003, name = "M+ Balance" },
+    },
+    [103] = {
+        { configID = 9010, name = "Raid Feral" },
+        { configID = 9011, name = "M+ Feral" },
+    },
+    [104] = {
+        { configID = 9020, name = "Raid Tank" },
+        { configID = 9021, name = "M+ Bear" },
+        { configID = 9022, name = "Solo Bear" },
+    },
+    [105] = {
+        { configID = 9030, name = "Raid Resto" },
+        { configID = 9031, name = "M+ Resto" },
+    },
+}
+
+local DEMO_SPEC_INDEX   = 3    -- Guardian is active
+local DEMO_SPEC_ID      = 104
+local DEMO_SPEC_NAME    = "Guardian"
+local DEMO_SPEC_ICON    = "Interface\\Icons\\Ability_Racial_BearForm"
+local DEMO_SPEC_ROLE    = "TANK"
+local DEMO_LOOT_SPEC_ID = 0     -- Current Spec (Default)
+local DEMO_LOADOUT_ID   = 9021  -- M+ Bear
+local DEMO_LOADOUT_NAME = "M+ Bear"
+
+---------------------------------------------------------------------------
 -- Demo injection
 ---------------------------------------------------------------------------
 
@@ -182,6 +223,7 @@ local function InjectDemoData()
     local FB = ns.FriendsBroker
     local GB = ns.GuildBroker
     local CB = ns.CommunitiesBroker
+    local SS = ns.SpecSwitch
 
     -- Friends
     FB.friendsCache = DEMO_FRIENDS
@@ -204,36 +246,62 @@ local function InjectDemoData()
     CB.clubsCache = DEMO_CLUBS
     CB.totalOnline = communityOnline
     CB.dataobj.text = DDT:FormatLabel(ns.db.communities.labelFormat, communityOnline, communityOnline)
+
+    -- SpecSwitch
+    SS.specCache        = DEMO_SPEC_CACHE
+    SS.loadoutCache     = DEMO_LOADOUT_CACHE
+    SS.currentSpecIndex = DEMO_SPEC_INDEX
+    SS.currentSpecID    = DEMO_SPEC_ID
+    SS.currentSpecName  = DEMO_SPEC_NAME
+    SS.currentSpecIcon  = DEMO_SPEC_ICON
+    SS.currentRole      = DEMO_SPEC_ROLE
+    SS.lootSpecID       = DEMO_LOOT_SPEC_ID
+    SS.activeLoadoutID  = DEMO_LOADOUT_ID
+    SS.activeLoadoutName = DEMO_LOADOUT_NAME
+
+    local db = ns.db and ns.db.specswitch
+    local template = db and db.labelTemplate or "<spec>"
+    SS.dataobj.text = template:gsub("<spec>", DEMO_SPEC_NAME)
+                              :gsub("<loadout>", DEMO_LOADOUT_NAME)
+                              :gsub("<lootspec>", "Current Spec")
+                              :gsub("<role>", "")
+    SS.dataobj.icon = DEMO_SPEC_ICON
 end
 
 local function FreezeUpdates()
     -- Replace UpdateData with no-ops while demo is active
-    ns.FriendsBroker.UpdateData = function() end
-    ns.GuildBroker.UpdateData   = function() end
+    ns.FriendsBroker.UpdateData    = function() end
+    ns.GuildBroker.UpdateData      = function() end
     ns.CommunitiesBroker.UpdateData = function() end
+    ns.SpecSwitch.UpdateData       = function() end
 end
 
-local originalFBUpdate, originalGBUpdate, originalCBUpdate
+local originalFBUpdate, originalGBUpdate, originalCBUpdate, originalSSUpdate
 
 local function EnableDemo()
     originalFBUpdate = ns.FriendsBroker.UpdateData
     originalGBUpdate = ns.GuildBroker.UpdateData
     originalCBUpdate = ns.CommunitiesBroker.UpdateData
+    originalSSUpdate = ns.SpecSwitch.UpdateData
     FreezeUpdates()
     InjectDemoData()
+    ns.SpecSwitch.demoMode = true
     demoActive = true
     DDT:Print("|cff00ff00Demo mode ON|r — fake data injected. /reload or /ddt demo to toggle.")
 end
 
 local function DisableDemo()
     -- Restore original UpdateData functions
-    if originalFBUpdate then ns.FriendsBroker.UpdateData   = originalFBUpdate end
-    if originalGBUpdate then ns.GuildBroker.UpdateData     = originalGBUpdate end
+    if originalFBUpdate then ns.FriendsBroker.UpdateData    = originalFBUpdate end
+    if originalGBUpdate then ns.GuildBroker.UpdateData      = originalGBUpdate end
     if originalCBUpdate then ns.CommunitiesBroker.UpdateData = originalCBUpdate end
+    if originalSSUpdate then ns.SpecSwitch.UpdateData       = originalSSUpdate end
+    ns.SpecSwitch.demoMode = false
     -- Trigger real refresh
     ns.FriendsBroker:UpdateData()
     ns.GuildBroker:UpdateData()
     ns.CommunitiesBroker:UpdateData()
+    ns.SpecSwitch:UpdateData()
     demoActive = false
     DDT:Print("|cffff4444Demo mode OFF|r — live data restored.")
 end

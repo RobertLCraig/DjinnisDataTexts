@@ -11,15 +11,20 @@ local LDB = LibStub("LibDataBroker-1.1")
 local SpecSwitch = {}
 ns.SpecSwitch = SpecSwitch
 
--- State
-local specCache = {}        -- { [index] = { id, name, icon, role } }
-local loadoutCache = {}     -- { [specID] = { { configID, name } } }
-local currentSpecIndex = 0
-local currentSpecID = 0
-local currentSpecName = ""
-local currentSpecIcon = nil
-local lootSpecID = 0        -- 0 = "Current Spec (Default)"
-local activeLoadoutID = nil
+-- State (module fields — accessible by DemoMode)
+SpecSwitch.specCache      = {}   -- { [index] = { id, name, icon, role } }
+SpecSwitch.loadoutCache   = {}   -- { [specID] = { { configID, name } } }
+SpecSwitch.currentSpecIndex = 0
+SpecSwitch.currentSpecID    = 0
+SpecSwitch.currentSpecName  = ""
+SpecSwitch.currentSpecIcon  = nil
+SpecSwitch.currentRole      = nil
+SpecSwitch.lootSpecID       = 0  -- 0 = "Current Spec (Default)"
+SpecSwitch.activeLoadoutID   = nil
+SpecSwitch.activeLoadoutName = nil
+
+-- Demo mode flag (set by DemoMode.lua)
+SpecSwitch.demoMode = false
 
 -- Tooltip
 local tooltipFrame = nil
@@ -37,6 +42,241 @@ local ICON_SIZE      = 18
 local HINT_HEIGHT    = 18
 
 ---------------------------------------------------------------------------
+-- Defaults
+---------------------------------------------------------------------------
+
+local DEFAULTS = {
+    labelTemplate = "<spec>",
+    clickActions = {
+        leftClick      = "opentalents",
+        rightClick     = "none",
+        shiftLeftClick = "nextspec",
+        shiftRightClick = "none",
+        ctrlLeftClick  = "none",
+        ctrlRightClick = "none",
+        altLeftClick   = "none",
+        altRightClick  = "none",
+    },
+}
+
+---------------------------------------------------------------------------
+-- Action definitions
+---------------------------------------------------------------------------
+
+local SPEC_ACTION_VALUES = {
+    opentalents  = "Open Talents",
+    nextspec     = "Next Spec",
+    nextloadout  = "Next Loadout",
+    none         = "None",
+}
+ns.SPEC_ACTION_VALUES = SPEC_ACTION_VALUES
+
+---------------------------------------------------------------------------
+-- Click action resolver (supports shift / ctrl / alt modifiers)
+---------------------------------------------------------------------------
+
+local function ResolveSpecClick(button, clickActions)
+    if IsAltKeyDown() then
+        if button == "LeftButton" then return clickActions.altLeftClick end
+        if button == "RightButton" then return clickActions.altRightClick end
+    elseif IsControlKeyDown() then
+        if button == "LeftButton" then return clickActions.ctrlLeftClick end
+        if button == "RightButton" then return clickActions.ctrlRightClick end
+    elseif IsShiftKeyDown() then
+        if button == "LeftButton" then return clickActions.shiftLeftClick end
+        if button == "RightButton" then return clickActions.shiftRightClick end
+    else
+        if button == "LeftButton" then return clickActions.leftClick end
+        if button == "RightButton" then return clickActions.rightClick end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Djinni-style combat message
+---------------------------------------------------------------------------
+
+local function DjinniMsg(msg)
+    DDT:Print("|cff33ff99Djinni:|r " .. msg)
+end
+
+---------------------------------------------------------------------------
+-- Action executor
+---------------------------------------------------------------------------
+
+local function ExecuteSpecAction(action)
+    if not action or action == "none" then return end
+
+    if action == "opentalents" then
+        if InCombatLockdown() then
+            DjinniMsg("Cannot open talents in combat.")
+            return
+        end
+        if not PlayerSpellsFrame then
+            PlayerSpellsFrame_LoadUI()
+        end
+        if PlayerSpellsFrame then
+            if PlayerSpellsFrame:IsShown() then
+                HideUIPanel(PlayerSpellsFrame)
+            else
+                ShowUIPanel(PlayerSpellsFrame)
+            end
+        end
+
+    elseif action == "nextspec" then
+        local numSpecs = #SpecSwitch.specCache
+        if numSpecs == 0 then return end
+        local nextIndex = (SpecSwitch.currentSpecIndex % numSpecs) + 1
+        if SpecSwitch.demoMode then
+            DemoSwitchSpec(nextIndex)
+            return
+        end
+        if InCombatLockdown() then
+            DjinniMsg("Cannot change specialization in combat.")
+            return
+        end
+        SetSpecialization(nextIndex)
+
+    elseif action == "nextloadout" then
+        local loadouts = SpecSwitch.currentSpecID > 0 and SpecSwitch.loadoutCache[SpecSwitch.currentSpecID]
+        if not loadouts or #loadouts == 0 then return end
+        -- Find current index and advance
+        local curIdx = 0
+        for i, lo in ipairs(loadouts) do
+            if lo.configID == SpecSwitch.activeLoadoutID then
+                curIdx = i
+                break
+            end
+        end
+        local nextIdx = (curIdx % #loadouts) + 1
+        if SpecSwitch.demoMode then
+            DemoSwitchLoadout(loadouts[nextIdx].configID)
+            return
+        end
+        if InCombatLockdown() then
+            DjinniMsg("Cannot change loadout in combat.")
+            return
+        end
+        if C_ClassTalents.LoadConfig then
+            C_ClassTalents.LoadConfig(loadouts[nextIdx].configID, true)
+        end
+    end
+end
+
+---------------------------------------------------------------------------
+-- Label template expansion
+---------------------------------------------------------------------------
+
+local ROLE_ICONS = {
+    TANK    = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:0:19:22:41|t",
+    HEALER  = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:20:39:1:20|t",
+    DAMAGER = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:20:39:22:41|t",
+}
+
+local function ExpandLabel(template)
+    local result = template
+    result = result:gsub("<spec>", SpecSwitch.currentSpecName or "")
+    result = result:gsub("<loadout>", SpecSwitch.activeLoadoutName or "")
+
+    -- Loot spec name
+    local lootName = "Current Spec"
+    if SpecSwitch.lootSpecID > 0 then
+        for _, spec in ipairs(SpecSwitch.specCache) do
+            if spec.id == SpecSwitch.lootSpecID then
+                lootName = spec.name
+                break
+            end
+        end
+    end
+    result = result:gsub("<lootspec>", lootName)
+    result = result:gsub("<role>", ROLE_ICONS[SpecSwitch.currentRole] or "")
+    return result
+end
+
+---------------------------------------------------------------------------
+-- Demo mode simulation
+---------------------------------------------------------------------------
+
+local function DemoSwitchSpec(specIndex)
+    local spec = SpecSwitch.specCache[specIndex]
+    if not spec then return end
+    SpecSwitch.currentSpecIndex = specIndex
+    SpecSwitch.currentSpecID = spec.id
+    SpecSwitch.currentSpecName = spec.name
+    SpecSwitch.currentSpecIcon = spec.icon
+    SpecSwitch.currentRole = spec.role
+    -- Reset loadout to first available for the new spec
+    local loadouts = SpecSwitch.loadoutCache[spec.id]
+    if loadouts and #loadouts > 0 then
+        SpecSwitch.activeLoadoutID = loadouts[1].configID
+        SpecSwitch.activeLoadoutName = loadouts[1].name
+    else
+        SpecSwitch.activeLoadoutID = nil
+        SpecSwitch.activeLoadoutName = nil
+    end
+    local db = SpecSwitch:GetDB()
+    SpecSwitch.dataobj.text = ExpandLabel(db.labelTemplate)
+    SpecSwitch.dataobj.icon = spec.icon
+    DjinniMsg("(Demo) Switched to " .. spec.name)
+    SpecSwitch:BuildTooltipContent()
+end
+
+local function DemoSwitchLoadout(configID)
+    local loadouts = SpecSwitch.loadoutCache[SpecSwitch.currentSpecID]
+    if not loadouts then return end
+    for _, lo in ipairs(loadouts) do
+        if lo.configID == configID then
+            SpecSwitch.activeLoadoutID = configID
+            SpecSwitch.activeLoadoutName = lo.name
+            local db = SpecSwitch:GetDB()
+            SpecSwitch.dataobj.text = ExpandLabel(db.labelTemplate)
+            DjinniMsg("(Demo) Loaded " .. lo.name)
+            SpecSwitch:BuildTooltipContent()
+            return
+        end
+    end
+end
+
+local function DemoSetLootSpec(specID)
+    SpecSwitch.lootSpecID = specID
+    local name = "Current Spec"
+    if specID > 0 then
+        for _, spec in ipairs(SpecSwitch.specCache) do
+            if spec.id == specID then name = spec.name; break end
+        end
+    end
+    local db = SpecSwitch:GetDB()
+    SpecSwitch.dataobj.text = ExpandLabel(db.labelTemplate)
+    DjinniMsg("(Demo) Loot spec set to " .. name)
+    SpecSwitch:BuildTooltipContent()
+end
+
+---------------------------------------------------------------------------
+-- Hint bar builder
+---------------------------------------------------------------------------
+
+local function BuildSpecHintText(clickActions)
+    local labels = {
+        { key = "leftClick",       prefix = "LClick" },
+        { key = "rightClick",      prefix = "RClick" },
+        { key = "shiftLeftClick",  prefix = "Shift+L" },
+        { key = "shiftRightClick", prefix = "Shift+R" },
+        { key = "ctrlLeftClick",   prefix = "Ctrl+L" },
+        { key = "ctrlRightClick",  prefix = "Ctrl+R" },
+        { key = "altLeftClick",    prefix = "Alt+L" },
+        { key = "altRightClick",   prefix = "Alt+R" },
+    }
+    local hints = {}
+    for _, entry in ipairs(labels) do
+        local action = clickActions[entry.key]
+        if action and action ~= "none" then
+            table.insert(hints, entry.prefix .. ": " .. (SPEC_ACTION_VALUES[action] or ""))
+        end
+    end
+    if #hints == 0 then return "|cff888888Click a row to switch|r" end
+    return "|cff888888" .. table.concat(hints, "  |  ") .. "|r"
+end
+
+---------------------------------------------------------------------------
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
@@ -52,22 +292,9 @@ local dataobj = LDB:NewDataObject("DDT-SpecSwitch", {
         SpecSwitch:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
-            if InCombatLockdown() then
-                DDT:Print("Cannot open talents in combat.")
-                return
-            end
-            if not PlayerSpellsFrame then
-                PlayerSpellsFrame_LoadUI()
-            end
-            if PlayerSpellsFrame then
-                if PlayerSpellsFrame:IsShown() then
-                    HideUIPanel(PlayerSpellsFrame)
-                else
-                    ShowUIPanel(PlayerSpellsFrame)
-                end
-            end
-        end
+        local db = SpecSwitch:GetDB()
+        local action = ResolveSpecClick(button, db.clickActions)
+        ExecuteSpecAction(action)
     end,
 })
 
@@ -95,47 +322,52 @@ end
 -- Data collection
 ---------------------------------------------------------------------------
 
+function SpecSwitch:GetDB()
+    return ns.db and ns.db.specswitch or DEFAULTS
+end
+
 function SpecSwitch:UpdateData()
-    currentSpecIndex = GetSpecialization() or 0
+    self.currentSpecIndex = GetSpecialization() or 0
     local numSpecs = GetNumSpecializations() or 0
 
-    wipe(specCache)
+    wipe(self.specCache)
     for i = 1, numSpecs do
         local id, name, _, icon, role = GetSpecializationInfo(i)
         if id then
-            specCache[i] = { id = id, name = name, icon = icon, role = role }
+            self.specCache[i] = { id = id, name = name, icon = icon, role = role }
         end
     end
 
-    if currentSpecIndex > 0 and specCache[currentSpecIndex] then
-        local spec = specCache[currentSpecIndex]
-        currentSpecID = spec.id
-        currentSpecName = spec.name
-        currentSpecIcon = spec.icon
-        dataobj.text = currentSpecName
-        dataobj.icon = currentSpecIcon
+    if self.currentSpecIndex > 0 and self.specCache[self.currentSpecIndex] then
+        local spec = self.specCache[self.currentSpecIndex]
+        self.currentSpecID = spec.id
+        self.currentSpecName = spec.name
+        self.currentSpecIcon = spec.icon
+        self.currentRole = spec.role
     else
-        currentSpecID = 0
-        currentSpecName = "No Spec"
-        currentSpecIcon = "Interface\\Icons\\INV_Misc_QuestionMark"
-        dataobj.text = currentSpecName
-        dataobj.icon = currentSpecIcon
+        self.currentSpecID = 0
+        self.currentSpecName = "No Spec"
+        self.currentSpecIcon = "Interface\\Icons\\INV_Misc_QuestionMark"
+        self.currentRole = nil
     end
 
     -- Loot spec
-    lootSpecID = GetLootSpecialization() or 0
+    self.lootSpecID = GetLootSpecialization() or 0
 
     -- Loadouts (Mainline talent system)
-    wipe(loadoutCache)
+    wipe(self.loadoutCache)
+    self.activeLoadoutID = nil
+    self.activeLoadoutName = nil
+
     if C_ClassTalents and PlayerUtil and PlayerUtil.CanUseClassTalents and PlayerUtil.CanUseClassTalents() then
-        for i, spec in pairs(specCache) do
+        for i, spec in pairs(self.specCache) do
             local configIDs = C_ClassTalents.GetConfigIDsBySpecID(spec.id)
             if configIDs then
-                loadoutCache[spec.id] = {}
+                self.loadoutCache[spec.id] = {}
                 for _, configID in ipairs(configIDs) do
                     local configInfo = C_Traits and C_Traits.GetConfigInfo(configID)
                     if configInfo and configInfo.name then
-                        table.insert(loadoutCache[spec.id], {
+                        table.insert(self.loadoutCache[spec.id], {
                             configID = configID,
                             name = configInfo.name,
                         })
@@ -144,12 +376,24 @@ function SpecSwitch:UpdateData()
             end
         end
         -- Active loadout for current spec
-        if currentSpecID > 0 and C_ClassTalents.GetLastSelectedSavedConfigID then
-            activeLoadoutID = C_ClassTalents.GetLastSelectedSavedConfigID(currentSpecID)
-        else
-            activeLoadoutID = nil
+        if self.currentSpecID > 0 and C_ClassTalents.GetLastSelectedSavedConfigID then
+            self.activeLoadoutID = C_ClassTalents.GetLastSelectedSavedConfigID(self.currentSpecID)
+            -- Resolve name
+            if self.activeLoadoutID and self.loadoutCache[self.currentSpecID] then
+                for _, lo in ipairs(self.loadoutCache[self.currentSpecID]) do
+                    if lo.configID == self.activeLoadoutID then
+                        self.activeLoadoutName = lo.name
+                        break
+                    end
+                end
+            end
         end
     end
+
+    -- Update LDB text from label template
+    local db = self:GetDB()
+    dataobj.text = ExpandLabel(db.labelTemplate)
+    dataobj.icon = self.currentSpecIcon
 
     -- Refresh tooltip if visible
     if tooltipFrame and tooltipFrame:IsShown() then
@@ -287,16 +531,6 @@ local function HideAllPooled()
 end
 
 ---------------------------------------------------------------------------
--- Role icons
----------------------------------------------------------------------------
-
-local ROLE_ICONS = {
-    TANK    = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:0:19:22:41|t",
-    HEALER  = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:20:39:1:20|t",
-    DAMAGER = "|TInterface\\LFGFrame\\UI-LFG-ICON-PORTRAITROLES:14:14:0:0:64:64:20:39:22:41|t",
-}
-
----------------------------------------------------------------------------
 -- Tooltip content building
 ---------------------------------------------------------------------------
 
@@ -304,6 +538,7 @@ function SpecSwitch:BuildTooltipContent()
     HideAllPooled()
 
     local f = tooltipFrame
+    local db = self:GetDB()
     f.title:SetText("Specialization")
 
     local rowIndex = 0
@@ -318,7 +553,7 @@ function SpecSwitch:BuildTooltipContent()
     specHdr:SetText("Specializations")
     y = y - HEADER_HEIGHT
 
-    for i, spec in ipairs(specCache) do
+    for i, spec in ipairs(self.specCache) do
         rowIndex = rowIndex + 1
         local row = GetRow(f, rowIndex)
         row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
@@ -332,7 +567,7 @@ function SpecSwitch:BuildTooltipContent()
         row.text:SetText(nameText)
         row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
 
-        local isActive = (i == currentSpecIndex)
+        local isActive = (i == self.currentSpecIndex)
         if isActive then
             row.status:SetText("|cff00cc00Active|r")
             row.activeBar:Show()
@@ -345,11 +580,15 @@ function SpecSwitch:BuildTooltipContent()
 
         local specIndex = i
         row:SetScript("OnClick", function()
-            if InCombatLockdown() then
-                DDT:Print("Cannot switch specs in combat.")
+            if self.demoMode then
+                DemoSwitchSpec(specIndex)
                 return
             end
-            if specIndex ~= currentSpecIndex then
+            if InCombatLockdown() then
+                DjinniMsg("Cannot change specialization in combat.")
+                return
+            end
+            if specIndex ~= self.currentSpecIndex then
                 SetSpecialization(specIndex)
             end
         end)
@@ -358,7 +597,7 @@ function SpecSwitch:BuildTooltipContent()
     end
 
     -- ── Talent Loadouts ──────────────────────────────────────
-    local currentLoadouts = currentSpecID > 0 and loadoutCache[currentSpecID]
+    local currentLoadouts = self.currentSpecID > 0 and self.loadoutCache[self.currentSpecID]
     if currentLoadouts and #currentLoadouts > 0 then
         y = y - 4
 
@@ -374,8 +613,8 @@ function SpecSwitch:BuildTooltipContent()
         loadHdr:SetText("Talent Loadouts")
         y = y - HEADER_HEIGHT
 
-        -- Check starter build
-        local hasStarter = C_ClassTalents and C_ClassTalents.GetHasStarterBuild and C_ClassTalents.GetHasStarterBuild()
+        -- Check starter build (skip in demo mode)
+        local hasStarter = (not self.demoMode) and C_ClassTalents and C_ClassTalents.GetHasStarterBuild and C_ClassTalents.GetHasStarterBuild()
         local starterActive = hasStarter and C_ClassTalents.GetStarterBuildActive and C_ClassTalents.GetStarterBuildActive()
 
         if hasStarter then
@@ -412,7 +651,7 @@ function SpecSwitch:BuildTooltipContent()
             row.text:SetText("  " .. loadout.name)
             row.text:SetPoint("LEFT", row, "LEFT", ICON_SIZE + 10, 0)
 
-            local isActive = (not starterActive) and (loadout.configID == activeLoadoutID)
+            local isActive = (not starterActive) and (loadout.configID == self.activeLoadoutID)
             if isActive then
                 row.status:SetText("|cff00cc00Active|r")
                 row.activeBar:Show()
@@ -425,8 +664,12 @@ function SpecSwitch:BuildTooltipContent()
 
             local configID = loadout.configID
             row:SetScript("OnClick", function()
+                if self.demoMode then
+                    DemoSwitchLoadout(configID)
+                    return
+                end
                 if InCombatLockdown() then
-                    DDT:Print("Cannot switch loadouts in combat.")
+                    DjinniMsg("Cannot change loadout in combat.")
                     return
                 end
                 if C_ClassTalents.LoadConfig then
@@ -459,8 +702,8 @@ function SpecSwitch:BuildTooltipContent()
     defaultRow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
     defaultRow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
 
-    if currentSpecIcon then
-        defaultRow.icon:SetTexture(currentSpecIcon)
+    if self.currentSpecIcon then
+        defaultRow.icon:SetTexture(self.currentSpecIcon)
         defaultRow.icon:Show()
     else
         defaultRow.icon:Hide()
@@ -468,7 +711,7 @@ function SpecSwitch:BuildTooltipContent()
     defaultRow.text:SetText("Current Spec (Default)")
     defaultRow.text:SetPoint("LEFT", defaultRow.icon, "RIGHT", 6, 0)
 
-    local isDefaultLoot = (lootSpecID == 0)
+    local isDefaultLoot = (self.lootSpecID == 0)
     if isDefaultLoot then
         defaultRow.status:SetText("|cff00cc00Active|r")
         defaultRow.activeBar:Show()
@@ -479,12 +722,16 @@ function SpecSwitch:BuildTooltipContent()
         defaultRow.text:SetTextColor(0.7, 0.7, 0.7)
     end
     defaultRow:SetScript("OnClick", function()
+        if self.demoMode then
+            DemoSetLootSpec(0)
+            return
+        end
         SetLootSpecialization(0)
     end)
     y = y - ROW_HEIGHT
 
     -- Per-spec loot options
-    for i, spec in ipairs(specCache) do
+    for i, spec in ipairs(self.specCache) do
         rowIndex = rowIndex + 1
         local row = GetRow(f, rowIndex)
         row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
@@ -495,7 +742,7 @@ function SpecSwitch:BuildTooltipContent()
         row.text:SetText(spec.name)
         row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
 
-        local isLootActive = (lootSpecID == spec.id)
+        local isLootActive = (self.lootSpecID == spec.id)
         if isLootActive then
             row.status:SetText("|cff00cc00Active|r")
             row.activeBar:Show()
@@ -508,13 +755,17 @@ function SpecSwitch:BuildTooltipContent()
 
         local specID = spec.id
         row:SetScript("OnClick", function()
+            if self.demoMode then
+                DemoSetLootSpec(specID)
+                return
+            end
             SetLootSpecialization(specID)
         end)
         y = y - ROW_HEIGHT
     end
 
     -- Hint bar
-    f.hint:SetText("|cff888888LClick: Open Talents|r")
+    f.hint:SetText(BuildSpecHintText(db.clickActions))
 
     -- Size the frame
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
@@ -562,4 +813,4 @@ end
 -- Module registration
 ---------------------------------------------------------------------------
 
-ns:RegisterModule("specswitch", SpecSwitch)
+ns:RegisterModule("specswitch", SpecSwitch, DEFAULTS)
