@@ -24,7 +24,7 @@ if (-not (Test-Path $ReleaseNotesFile)) {
     Write-Err "RELEASE_NOTES.md not found. Create it with a '## Version: x.y.z' line."
 }
 
-$rnContent     = Get-Content $ReleaseNotesFile -Raw
+$rnContent     = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
 $versionMatch  = [regex]::Match($rnContent, '##\s+Version:\s*(\S+)')
 if (-not $versionMatch.Success) {
     Write-Err "No '## Version: x.y.z' line found in RELEASE_NOTES.md."
@@ -41,7 +41,7 @@ Write-Info ""
 # 2. Validate TOC version matches
 # ---------------------------------------------------------------------------
 
-$tocContent      = Get-Content $TocFile -Raw
+$tocContent      = Get-Content $TocFile -Raw -Encoding UTF8
 $tocVersionMatch = [regex]::Match($tocContent, '##\s+Version:\s*(\S+)')
 if (-not $tocVersionMatch.Success) { Write-Err "No '## Version:' in $AddonName.toc." }
 $tocVersion = $tocVersionMatch.Groups[1].Value.TrimStart('v')
@@ -96,7 +96,7 @@ if ($tagExists -contains $Tag) {
     Write-Success "  Updated $AddonName.toc"
 
     # Re-read release notes for changelog extraction
-    $rnContent = Get-Content $ReleaseNotesFile -Raw
+    $rnContent = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
 }
 
 # ---------------------------------------------------------------------------
@@ -118,7 +118,7 @@ $changelogEntry = "## [$Version] - $today`r`n`r`n$notesBody`r`n"
 
 if (-not $DryRun) {
     $existing  = ""
-    if (Test-Path $ChangelogFile) { $existing = Get-Content $ChangelogFile -Raw }
+    if (Test-Path $ChangelogFile) { $existing = Get-Content $ChangelogFile -Raw -Encoding UTF8 }
 
     $separator = "`r`n---`r`n"
     $sepIndex  = $existing.IndexOf($separator)

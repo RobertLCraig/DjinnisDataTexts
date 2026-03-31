@@ -18,40 +18,40 @@ Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Core.lua
 Settings.lua
 
-# Modules â€” Social (ported from DjinnisGuildFriends)
+# Modules - Social (ported from DjinnisGuildFriends)
 Modules\Friends.lua
 Modules\Guild.lua
 Modules\Communities.lua
 
-# Modules â€” Phase 2
+# Modules - Phase 2
 Modules\SpecSwitch.lua
 Modules\SavedInstances.lua
 
-# Modules â€” Phase 3
+# Modules - Phase 3
 Modules\TimeDate.lua
 Modules\Coordinates.lua
 
-# Modules â€” Phase 4
+# Modules - Phase 4
 Modules\SystemPerformance.lua
 Modules\PlayedTime.lua
 Modules\Mail.lua
 
-# Modules â€” Phase 5
+# Modules - Phase 5
 Modules\MicroMenu.lua
 Modules\Experience.lua
 
-# Modules â€” Phase 6
+# Modules - Phase 6
 Modules\Currency.lua
 
-# Modules â€” Phase 7
+# Modules - Phase 7
 Modules\CharacterInfo.lua
 Modules\MovementSpeed.lua
 Modules\BagValue.lua
 Modules\PetInfo.lua
 
-# Modules â€” Phase 8
+# Modules - Phase 8
 Modules\AccountStatus.lua
 Modules\LFGStatus.lua
 
-# Demo mode â€” uncomment to inject fake data, comment out for live use:
+# Demo mode - uncomment to inject fake data, comment out for live use:
 # DemoMode.lua
