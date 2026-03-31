@@ -75,6 +75,7 @@ local DEFAULTS = {
     tooltipWidth    = 380,
     -- Alt lockout display
     showAlts        = true,
+    altColumns      = false,        -- show alt progress as columns next to current char
     altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
     altManualList   = {},           -- { ["Name - Realm"] = true } — used when altFilter == "manual"
     clickActions    = {
@@ -665,6 +666,182 @@ local function RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
 end
 
 ---------------------------------------------------------------------------
+-- Alt column display (side-by-side in main tooltip)
+---------------------------------------------------------------------------
+
+local ALT_COL_WIDTH = 44
+local activeAltCols = {}  -- { { key, name, class }, ... } — rebuilt each tooltip render
+local altLockoutMap = {}  -- altLockoutMap[altKey]["InstanceName|DiffTag"] = { progress, total }
+local altMPlusMap   = {}  -- altMPlusMap[altKey]["DungeonName"] = highestLevel
+
+-- Populate alt column state. Same filter logic as BuildAltSection.
+local function BuildAltColumnData(db, currentKey)
+    wipe(activeAltCols)
+    wipe(altLockoutMap)
+    wipe(altMPlusMap)
+
+    if not db.altColumns or not db.showAlts then return end
+    if not ns.db or not ns.db.altLockouts then return end
+
+    local now = time()
+    local maxLevel = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 90
+    local filter = db.altFilter or "all"
+
+    local alts = {}
+    for key, altData in pairs(ns.db.altLockouts) do
+        if key ~= currentKey and type(altData) == "table" then
+            local hasLockouts = altData.lockouts and #altData.lockouts > 0
+            local hasMPlus    = altData.mythicPlusRuns and #altData.mythicPlusRuns > 0
+            if hasLockouts or hasMPlus then
+                local pass = false
+                if     filter == "all"      then pass = true
+                elseif filter == "maxlevel" then pass = (altData.level or 0) >= maxLevel
+                elseif filter == "hasraids" then pass = altData.hasRaids == true
+                elseif filter == "mplus30"  then pass = (altData.mythicPlusLastActive or 0) > (now - 30  * 86400)
+                elseif filter == "mplus60"  then pass = (altData.mythicPlusLastActive or 0) > (now - 60  * 86400)
+                elseif filter == "mplus90"  then pass = (altData.mythicPlusLastActive or 0) > (now - 90  * 86400)
+                elseif filter == "mplus180" then pass = (altData.mythicPlusLastActive or 0) > (now - 180 * 86400)
+                elseif filter == "manual"   then pass = db.altManualList[key] == true
+                end
+                if pass then
+                    table.insert(alts, { key = key, data = altData })
+                end
+            end
+        end
+    end
+
+    if #alts == 0 then return end
+
+    table.sort(alts, function(a, b)
+        local la, lb = a.data.level or 0, b.data.level or 0
+        if la ~= lb then return la > lb end
+        return (a.data.name or a.key) < (b.data.name or b.key)
+    end)
+
+    -- Build lookup maps
+    for _, alt in ipairs(alts) do
+        local altData = alt.data
+        table.insert(activeAltCols, { key = alt.key, name = altData.name or alt.key, class = altData.class or "" })
+
+        altLockoutMap[alt.key] = {}
+        if altData.lockouts then
+            for _, lo in ipairs(altData.lockouts) do
+                altLockoutMap[alt.key][lo.name .. "|" .. lo.difficultyTag] = { progress = lo.progress, total = lo.total }
+            end
+        end
+
+        altMPlusMap[alt.key] = {}
+        if altData.mythicPlusRuns then
+            for _, run in ipairs(altData.mythicPlusRuns) do
+                local existing = altMPlusMap[alt.key][run.name]
+                if not existing or run.level > existing then
+                    altMPlusMap[alt.key][run.name] = run.level
+                end
+            end
+        end
+    end
+end
+
+-- Ensure a row has the right number of alt-column FontStrings, positioned and visible.
+local function EnsureAltColumns(row, count)
+    if not row.altTexts then row.altTexts = {} end
+    for i = 1, count do
+        if not row.altTexts[i] then
+            local at = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+            at:SetJustifyH("CENTER")
+            at:SetWidth(ALT_COL_WIDTH)
+            row.altTexts[i] = at
+        end
+        row.altTexts[i]:Show()
+    end
+    for i = count + 1, #row.altTexts do
+        row.altTexts[i]:Hide()
+    end
+
+    if count > 0 then
+        -- Chain right-to-left: altTexts[n] → resetText, altTexts[n-1] → altTexts[n], ...
+        row.altTexts[count]:SetPoint("RIGHT", row.resetText, "LEFT", -2, 0)
+        for i = count - 1, 1, -1 do
+            row.altTexts[i]:SetPoint("RIGHT", row.altTexts[i + 1], "LEFT", -2, 0)
+        end
+        -- Re-anchor progressText to end at first alt column
+        row.progressText:SetPoint("RIGHT", row.altTexts[1], "LEFT", -4, 0)
+    else
+        row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
+    end
+end
+
+-- Set alt column data for an instance row (full view: show progress/total per alt).
+local function SetAltColumnsForInstance(row, instanceName, diffTag)
+    local count = #activeAltCols
+    EnsureAltColumns(row, count)
+    for i, alt in ipairs(activeAltCols) do
+        local data = altLockoutMap[alt.key] and altLockoutMap[alt.key][instanceName .. "|" .. diffTag]
+        if data then
+            row.altTexts[i]:SetText(data.progress .. "/" .. data.total)
+            local ratio = data.total > 0 and (data.progress / data.total) or 0
+            if ratio >= 1 then
+                row.altTexts[i]:SetTextColor(0.0, 1.0, 0.0)
+            elseif ratio > 0 then
+                row.altTexts[i]:SetTextColor(1.0, 0.82, 0.0)
+            else
+                row.altTexts[i]:SetTextColor(0.5, 0.5, 0.5)
+            end
+        else
+            row.altTexts[i]:SetText("-")
+            row.altTexts[i]:SetTextColor(0.3, 0.3, 0.3)
+        end
+    end
+end
+
+-- Set alt column data for a condensed raid row (show count of lockouts for that instance).
+local function SetAltColumnsForCondensedRaid(row, instanceName)
+    local count = #activeAltCols
+    EnsureAltColumns(row, count)
+    for i, alt in ipairs(activeAltCols) do
+        local lockCount = 0
+        for mapKey, _ in pairs(altLockoutMap[alt.key] or {}) do
+            local instName = mapKey:match("^(.+)|")
+            if instName == instanceName then
+                lockCount = lockCount + 1
+            end
+        end
+        if lockCount > 0 then
+            row.altTexts[i]:SetText("x" .. lockCount)
+            row.altTexts[i]:SetTextColor(0.7, 0.7, 0.7)
+        else
+            row.altTexts[i]:SetText("-")
+            row.altTexts[i]:SetTextColor(0.3, 0.3, 0.3)
+        end
+    end
+end
+
+-- Set alt column data for an M+ row (show highest key level for that dungeon).
+local function SetAltColumnsForMPlus(row, dungeonName)
+    local count = #activeAltCols
+    EnsureAltColumns(row, count)
+    for i, alt in ipairs(activeAltCols) do
+        local level = altMPlusMap[alt.key] and altMPlusMap[alt.key][dungeonName]
+        if level then
+            row.altTexts[i]:SetText("+" .. level)
+            local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+            row.altTexts[i]:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+        else
+            row.altTexts[i]:SetText("-")
+            row.altTexts[i]:SetTextColor(0.3, 0.3, 0.3)
+        end
+    end
+end
+
+-- Clear alt columns on a row (e.g. boss sub-rows, headers).
+local function ClearAltColumns(row)
+    if row.altTexts then
+        for _, at in ipairs(row.altTexts) do at:Hide() end
+    end
+    row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
+end
+
+---------------------------------------------------------------------------
 -- Tooltip content building
 ---------------------------------------------------------------------------
 
@@ -758,6 +935,11 @@ function SavedInst:BuildTooltipContent()
     local db = self:GetDB()
     f.title:SetText("Saved Instances")
 
+    -- Build alt column lookup for side-by-side display
+    local playerKey = UnitName("player") .. " - " .. GetRealmName()
+    BuildAltColumnData(db, playerKey)
+    local numAltCols = #activeAltCols
+
     local rowIndex = 0
     local headerIndex = 0
     local sepIndex = 0
@@ -778,6 +960,21 @@ function SavedInst:BuildTooltipContent()
         colHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
         colHdr:SetText("|cff888888Instance|r")
         colHdr:SetTextColor(0.53, 0.53, 0.53)
+
+        -- Alt name column headers (aligned with data columns)
+        if numAltCols > 0 then
+            for i, alt in ipairs(activeAltCols) do
+                headerIndex = headerIndex + 1
+                local altNameHdr = GetHeader(f, headerIndex)
+                altNameHdr:ClearAllPoints()
+                local rightOff = -(PADDING + 56 + 2 + (numAltCols - i) * (ALT_COL_WIDTH + 2))
+                altNameHdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altNameHdr:SetWidth(ALT_COL_WIDTH)
+                altNameHdr:SetJustifyH("CENTER")
+                altNameHdr:SetText(DDT:ClassColorText(alt.name:sub(1, 5), alt.class:upper()))
+            end
+        end
+
         y = y - (HEADER_HEIGHT - 4)
 
         -- Separate raids and dungeons, then sort per user setting
@@ -842,6 +1039,7 @@ function SavedInst:BuildTooltipContent()
                     row.resetText:SetText("")
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
+                    if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName) end
 
                     y = y - ROW_HEIGHT
                 end
@@ -850,10 +1048,12 @@ function SavedInst:BuildTooltipContent()
                 for _, entry in ipairs(raids) do
                     rowIndex = rowIndex + 1
                     rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                    if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag) end
                     if entry.expanded and #entry.bosses > 0 then
                         for _, boss in ipairs(entry.bosses) do
                             rowIndex = rowIndex + 1
                             rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                            if numAltCols > 0 then ClearAltColumns(rowPool[rowIndex]) end
                         end
                     end
                 end
@@ -879,10 +1079,12 @@ function SavedInst:BuildTooltipContent()
             for _, entry in ipairs(dungeons) do
                 rowIndex = rowIndex + 1
                 rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag) end
                 if entry.expanded and #entry.bosses > 0 then
                     for _, boss in ipairs(entry.bosses) do
                         rowIndex = rowIndex + 1
                         rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                        if numAltCols > 0 then ClearAltColumns(rowPool[rowIndex]) end
                     end
                 end
             end
@@ -959,6 +1161,7 @@ function SavedInst:BuildTooltipContent()
                 row.resetText:SetText("")
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
+                if numAltCols > 0 then SetAltColumnsForMPlus(row, dungeonName) end
 
                 y = y - ROW_HEIGHT
             end
@@ -987,13 +1190,14 @@ function SavedInst:BuildTooltipContent()
                 row.resetText:SetText("")
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
+                if numAltCols > 0 then SetAltColumnsForMPlus(row, run.name) end
 
                 y = y - ROW_HEIGHT
             end
         end
     end
 
-    -- Alt lockouts from SavedInstances addon (if available)
+    -- Alt lockouts section (expandable per-alt detail below main data)
     local altSection = self:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
     if altSection then
         y = altSection.y
@@ -1007,8 +1211,11 @@ function SavedInst:BuildTooltipContent()
         f.hint:SetText("|cff888888Row: Bosses|r")
     end
 
-    -- Size
+    -- Size (expand width for alt columns)
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
+    if numAltCols > 0 then
+        ttWidth = ttWidth + numAltCols * (ALT_COL_WIDTH + 2)
+    end
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
     f:SetSize(ttWidth, totalHeight)
 end
@@ -1272,6 +1479,9 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Show alt lockout data in tooltip",
         function() return db().showAlts end,
         function(v) db().showAlts = v; refreshTT() end, r)
+    y = W.AddCheckbox(c, y, "Show alt progress columns alongside current character",
+        function() return db().altColumns end,
+        function(v) db().altColumns = v; refreshTT() end, r)
     y = W.AddDropdown(c, y, "Show alts matching", ALT_FILTER_VALUES,
         function() return db().altFilter end,
         function(v) db().altFilter = v; refreshTT() end, r)
