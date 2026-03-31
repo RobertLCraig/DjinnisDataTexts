@@ -77,6 +77,10 @@ local DEFAULTS = {
     showAlts        = true,
     altColumns      = false,        -- show alt progress as columns next to current char
     altNameLength   = 0,            -- 0 = full name; >0 = truncate column headers to N chars
+    altHoverRealm   = true,
+    altHoverClass   = true,
+    altHoverSpec    = true,
+    altHoverRole    = true,
     altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
     altManualList   = {},           -- { ["Name - Realm"] = true } — used when altFilter == "manual"
     clickActions    = {
@@ -314,11 +318,20 @@ function SavedInst:SaveCurrentCharData()
         table.insert(mpRuns, { name = run.name, level = run.level, completed = run.completed })
     end
 
+    -- Current spec and role
+    local specName, specRole
+    local specID = GetSpecialization and GetSpecialization()
+    if specID then
+        _, specName, _, _, specRole = GetSpecializationInfo(specID)
+    end
+
     ns.db.altLockouts[key] = {
         name                 = playerName,
         realm                = playerRealm,
         class                = select(2, UnitClass("player")):upper(),
         level                = UnitLevel("player"),
+        specName             = specName or "",
+        role                 = specRole or "",   -- TANK, HEALER, DAMAGER
         lastSeen             = now,
         lockouts             = lockouts,
         hasRaids             = raidCount > 0,
@@ -843,6 +856,56 @@ local function ClearAltColumns(row)
 end
 
 ---------------------------------------------------------------------------
+-- Column header hover overlays
+---------------------------------------------------------------------------
+
+local colHdrOverlayPool = {}
+
+local function GetColHdrOverlay(parent, index)
+    if colHdrOverlayPool[index] then
+        colHdrOverlayPool[index]:Show()
+        return colHdrOverlayPool[index]
+    end
+    local ov = CreateFrame("Frame", nil, parent)
+    ov:EnableMouse(true)
+    colHdrOverlayPool[index] = ov
+    return ov
+end
+
+local function HideColHdrOverlays()
+    for _, ov in pairs(colHdrOverlayPool) do ov:Hide() end
+end
+
+local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
+
+function SavedInst:ShowCharTooltip(anchor, charInfo)
+    local db = self:GetDB()
+    GameTooltip:SetOwner(anchor, "ANCHOR_BOTTOM")
+    GameTooltip:AddLine(charInfo.name, 1, 0.82, 0)
+
+    if db.altHoverRealm and charInfo.realm and charInfo.realm ~= "" then
+        GameTooltip:AddLine("Realm: " .. charInfo.realm, 0.7, 0.7, 0.7)
+    end
+    if db.altHoverClass and charInfo.class and charInfo.class ~= "" then
+        local cc = RAID_CLASS_COLORS[charInfo.class]
+        local className = charInfo.class:sub(1, 1) .. charInfo.class:sub(2):lower():gsub("_(%l)", function(c) return " " .. c:upper() end)
+        if cc then
+            GameTooltip:AddLine("Class: " .. className, cc.r, cc.g, cc.b)
+        else
+            GameTooltip:AddLine("Class: " .. className, 0.7, 0.7, 0.7)
+        end
+    end
+    if db.altHoverSpec and charInfo.specName and charInfo.specName ~= "" then
+        GameTooltip:AddLine("Spec: " .. charInfo.specName, 0.7, 0.7, 0.7)
+    end
+    if db.altHoverRole and charInfo.role and charInfo.role ~= "" then
+        GameTooltip:AddLine("Role: " .. (ROLE_LABELS[charInfo.role] or charInfo.role), 0.7, 0.7, 0.7)
+    end
+
+    GameTooltip:Show()
+end
+
+---------------------------------------------------------------------------
 -- Tooltip content building
 ---------------------------------------------------------------------------
 
@@ -931,6 +994,7 @@ end
 
 function SavedInst:BuildTooltipContent()
     HideAllPooled()
+    HideColHdrOverlays()
 
     local f = tooltipFrame
     local db = self:GetDB()
@@ -962,8 +1026,47 @@ function SavedInst:BuildTooltipContent()
         colHdr:SetText("|cff888888Instance|r")
         colHdr:SetTextColor(0.53, 0.53, 0.53)
 
-        -- Alt name column headers (aligned with data columns)
+        -- Character column headers: current character + alts (when alt columns active)
         if numAltCols > 0 then
+            local nameLen = db.altNameLength or 0
+            local ovIdx = 0
+
+            -- Current character header (positioned just left of alt columns)
+            headerIndex = headerIndex + 1
+            local youHdr = GetHeader(f, headerIndex)
+            youHdr:ClearAllPoints()
+            local youRightOff = -(PADDING + 56 + 2 + numAltCols * (ALT_COL_WIDTH + 2))
+            youHdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youHdr:SetWidth(ALT_COL_WIDTH)
+            youHdr:SetJustifyH("CENTER")
+            local youName = UnitName("player")
+            local youClass = select(2, UnitClass("player")):upper()
+            local youDisplay = youName
+            if nameLen > 0 then youDisplay = youDisplay:sub(1, nameLen) end
+            youHdr:SetText(DDT:ClassColorText(youDisplay, youClass))
+
+            -- Hover overlay for current character
+            ovIdx = ovIdx + 1
+            local youOv = GetColHdrOverlay(f, ovIdx)
+            youOv:ClearAllPoints()
+            youOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
+            youOv:SetScript("OnEnter", function(self)
+                SavedInst:CancelHideTimer()
+                local specID = GetSpecialization and GetSpecialization()
+                local specName, specRole
+                if specID then _, specName, _, _, specRole = GetSpecializationInfo(specID) end
+                SavedInst:ShowCharTooltip(self, {
+                    name = youName, realm = GetRealmName(), class = youClass,
+                    specName = specName or "", role = specRole or "",
+                })
+            end)
+            youOv:SetScript("OnLeave", function()
+                GameTooltip:Hide()
+                SavedInst:StartHideTimer()
+            end)
+
+            -- Alt column headers
             for i, alt in ipairs(activeAltCols) do
                 headerIndex = headerIndex + 1
                 local altNameHdr = GetHeader(f, headerIndex)
@@ -973,9 +1076,31 @@ function SavedInst:BuildTooltipContent()
                 altNameHdr:SetWidth(ALT_COL_WIDTH)
                 altNameHdr:SetJustifyH("CENTER")
                 local displayName = alt.name
-                local nameLen = db.altNameLength or 0
                 if nameLen > 0 then displayName = displayName:sub(1, nameLen) end
                 altNameHdr:SetText(DDT:ClassColorText(displayName, alt.class:upper()))
+
+                -- Hover overlay for this alt
+                ovIdx = ovIdx + 1
+                local altOv = GetColHdrOverlay(f, ovIdx)
+                altOv:ClearAllPoints()
+                altOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
+                local capturedAlt = alt
+                altOv:SetScript("OnEnter", function(self)
+                    SavedInst:CancelHideTimer()
+                    local altData = ns.db.altLockouts and ns.db.altLockouts[capturedAlt.key] or {}
+                    SavedInst:ShowCharTooltip(self, {
+                        name = altData.name or capturedAlt.name,
+                        realm = altData.realm or "",
+                        class = altData.class or capturedAlt.class,
+                        specName = altData.specName or "",
+                        role = altData.role or "",
+                    })
+                end)
+                altOv:SetScript("OnLeave", function()
+                    GameTooltip:Hide()
+                    SavedInst:StartHideTimer()
+                end)
             end
         end
 
@@ -1217,10 +1342,10 @@ function SavedInst:BuildTooltipContent()
         f.hint:SetText("|cff888888Row: Bosses|r")
     end
 
-    -- Size (expand width for alt columns)
+    -- Size (expand width for character columns: current + alts)
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     if numAltCols > 0 then
-        ttWidth = ttWidth + numAltCols * (ALT_COL_WIDTH + 2)
+        ttWidth = ttWidth + (numAltCols + 1) * (ALT_COL_WIDTH + 2) -- +1 for current char column
     end
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
     f:SetSize(ttWidth, totalHeight)
@@ -1489,6 +1614,21 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddSlider(c, y, "Column name length (0 = full name)", 0, 12, 1,
         function() return db().altNameLength end,
         function(v) db().altNameLength = v; refreshTT() end, r)
+
+    y = W.AddDescription(c, y, "Column header hover details:")
+    y = W.AddCheckbox(c, y, "Show realm",
+        function() return db().altHoverRealm end,
+        function(v) db().altHoverRealm = v end, r)
+    y = W.AddCheckbox(c, y, "Show class",
+        function() return db().altHoverClass end,
+        function(v) db().altHoverClass = v end, r)
+    y = W.AddCheckbox(c, y, "Show specialization",
+        function() return db().altHoverSpec end,
+        function(v) db().altHoverSpec = v end, r)
+    y = W.AddCheckbox(c, y, "Show role",
+        function() return db().altHoverRole end,
+        function(v) db().altHoverRole = v end, r)
+
     y = W.AddDropdown(c, y, "Show alts matching", ALT_FILTER_VALUES,
         function() return db().altFilter end,
         function(v) db().altFilter = v; refreshTT() end, r)
