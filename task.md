@@ -249,8 +249,29 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 - [x] README.md with full module documentation
 - [x] ARTWORK_PROMPTS.md with logo/banner generation prompts
 
+## Phase 9: Settings UI Refactor — COMPLETE
+- [x] Collapsible sections infrastructure
+  - AddSection/EndSection functions with anchor-chain frame support
+  - Section headers with +/- toggle indicators
+  - Automatic height recalculation when sections collapse/expand
+  - RecalcHeight() method on scroll panels to sum all section heights
+- [x] Space-efficient widgets
+  - AddCheckboxPair: Two checkboxes side-by-side (x=14, x=270)
+  - AddSliderPair: Two compact sliders (155px each) with spec table API
+- [x] Converted all 17 Settings.lua builder functions to section-based layout
+  - General panel: 2 sections (Number Formatting collapsed, Tooltip Font expanded)
+  - Friends/Guild/Communities: 6 sections (Label Template, Tooltip collapsed, Display, Grouping & Sorting, Click Actions collapsed, Social Settings collapsed)
+  - Currency, BagValue, SavedInstances, etc.: 5-8 sections with paired widgets
+- [x] Visual improvements
+  - Organized logical groupings (Label Template, Display, Tooltip, Click Actions, etc.)
+  - Collapsed tooltip and click action sections by default
+  - Two-column layouts for efficient space usage
+  - Better visual hierarchy with section headers
+- [x] Bug fixes
+  - Fixed SetBackdrop nil errors in Currency and BagValue row frames (BackdropTemplate)
+
 ## Current State
-Phase 8 complete. Addon has 19 modules:
+Phase 9 complete. Addon has 19 modules with refactored settings UI:
 - Guild, Friends, Communities (ported from DGF, visuals standardized)
 - SpecSwitch (talent/loadout/loot spec switching)
 - SavedInstances (lockout summary, boss details, M+ runs, Great Vault click, alt integration)

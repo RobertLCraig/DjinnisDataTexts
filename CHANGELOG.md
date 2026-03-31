@@ -4,6 +4,24 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [0.3.1-beta] - 2026-03-31
+
+### Settings UI Refactor: Collapsible Sections & Improved Layout
+
+**Beta release** with significant usability overhaul of the addon settings system.
+
+#### Settings UI Improvements
+- **Collapsible sections** - Organized settings into logical groups (Label Template, Display, Tooltip, Click Actions, etc.). Tooltip and Click Actions sections collapse by default to reduce clutter
+- **Space-efficient two-column layouts** - Paired checkboxes and sliders now display side-by-side (e.g., "Show free slots" + "Show top items" on one row)
+- **Better visual hierarchy** - Section headers with expand/collapse indicators, grouped content, improved readability
+- **Dynamic section sizing** - Sections automatically adjust height as they expand/collapse; panel height recalculates in real-time
+- **Improved settings panel appearance** - Leverages WoW Blizzard API for consistent look, better organized module configuration
+
+#### Bug Fixes
+- Fixed `SetBackdrop` nil errors in Currency and BagValue row frames by adding BackdropTemplate to frame creation
+
+---
+
 ## [0.1.1] - 2026-03-31
 
 ### Initial Release - 17-Module LDB DataText Suite
