@@ -4,6 +4,13 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [0.3.3] - 2026-03-31
+
+### [Placeholder for next release]
+
+Add release notes here as features are completed.
+
+
 ## [0.3.2] - 2026-03-31
 
 ### Separated Label & Row Click Actions, API Fixes
