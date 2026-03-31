@@ -58,6 +58,7 @@ local questXPCount = 0
 
 local DEFAULTS = {
     labelTemplate = "<xp>",
+    barWidth      = 20,
     tooltipScale  = 1.0,
     tooltipWidth  = 300,
     clickActions  = {
@@ -128,29 +129,90 @@ local function FormatDuration(seconds)
 end
 
 ---------------------------------------------------------------------------
+-- ASCII progress bar
+---------------------------------------------------------------------------
+
+local CHAR_FILLED = "#"
+local CHAR_EMPTY  = "-"
+
+local function BuildBar(percent, restedPct, width)
+    width = width or 20
+    local filled = math.floor(percent / 100 * width + 0.5)
+    filled = math.min(filled, width)
+
+    -- Rested portion overlaps the filled section (shown in blue after XP)
+    local restedChars = 0
+    if restedPct and restedPct > 0 then
+        restedChars = math.floor(restedPct / 100 * width + 0.5)
+        restedChars = math.min(restedChars, width - filled)
+    end
+
+    local empty = width - filled - restedChars
+
+    local bar = ""
+    -- XP filled (purple)
+    if filled > 0 then
+        bar = bar .. "|cff8800ff" .. string.rep(CHAR_FILLED, filled) .. "|r"
+    end
+    -- Rested overlay (blue)
+    if restedChars > 0 then
+        bar = bar .. "|cff4488ff" .. string.rep(CHAR_FILLED, restedChars) .. "|r"
+    end
+    -- Empty (dark gray)
+    if empty > 0 then
+        bar = bar .. "|cff333333" .. string.rep(CHAR_EMPTY, empty) .. "|r"
+    end
+
+    return "[" .. bar .. "]"
+end
+
+local function BuildRepBar(percent, width)
+    width = width or 20
+    local filled = math.floor(percent / 100 * width + 0.5)
+    filled = math.min(filled, width)
+    local empty = width - filled
+
+    local bar = ""
+    if filled > 0 then
+        bar = bar .. "|cff00cc00" .. string.rep(CHAR_FILLED, filled) .. "|r"
+    end
+    if empty > 0 then
+        bar = bar .. "|cff333333" .. string.rep(CHAR_EMPTY, empty) .. "|r"
+    end
+    return "[" .. bar .. "]"
+end
+
+---------------------------------------------------------------------------
 -- Label template expansion
 ---------------------------------------------------------------------------
 
 local function ExpandLabel(template)
     local result = template
+    local db = ns.db and ns.db.experience or DEFAULTS
+    local barW = db.barWidth or 20
 
     if isMaxLevel then
+        local repPct = 0
+        if watchedFaction and watchedFaction.barMax > 0 then
+            repPct = (watchedFaction.barValue - watchedFaction.barMin) / (watchedFaction.barMax - watchedFaction.barMin) * 100
+        end
         result = result:gsub("<xp>", watchedFaction and watchedFaction.name or "Max Level")
-        result = result:gsub("<percent>", watchedFaction and
-            string.format("%.1f%%", watchedFaction.barMax > 0 and
-                ((watchedFaction.barValue - watchedFaction.barMin) / (watchedFaction.barMax - watchedFaction.barMin) * 100) or 0)
-            or "")
+        result = result:gsub("<percent>", watchedFaction and string.format("%.1f%%", repPct) or "")
+        result = result:gsub("<bar>", watchedFaction and BuildRepBar(repPct, barW) or "")
         result = result:gsub("<level>", tostring(playerLevel))
         result = result:gsub("<remaining>", "")
         result = result:gsub("<rested>", "")
         result = result:gsub("<xphr>", "")
         result = result:gsub("<questxp>", "")
     else
-        result = result:gsub("<xp>", string.format("%.1f%%", GetXPPercent()))
-        result = result:gsub("<percent>", string.format("%.1f%%", GetXPPercent()))
+        local pct = GetXPPercent()
+        local restPct = GetRestedPercent()
+        result = result:gsub("<xp>", string.format("%.1f%%", pct))
+        result = result:gsub("<percent>", string.format("%.1f%%", pct))
+        result = result:gsub("<bar>", BuildBar(pct, restPct, barW))
         result = result:gsub("<level>", tostring(playerLevel))
         result = result:gsub("<remaining>", FormatNumber(maxXP - currentXP))
-        result = result:gsub("<rested>", restedXP > 0 and string.format("+%.0f%%", GetRestedPercent()) or "")
+        result = result:gsub("<rested>", restedXP > 0 and string.format("+%.0f%%", restPct) or "")
         result = result:gsub("<xphr>", xpPerHour > 0 and FormatNumber(math.floor(xpPerHour)) .. "/hr" or "")
         result = result:gsub("<questxp>", questXPTotal > 0 and FormatNumber(questXPTotal) or "")
     end
@@ -610,9 +672,17 @@ function Experience:BuildSettingsPanel(panel)
     local db = function() return ns.db.experience end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "xp percent level remaining rested xphr questxp",
+    y = W.AddLabelEditBox(c, y, "xp percent bar level remaining rested xphr questxp",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
+
+    y = W.AddHeader(c, y, "Progress Bar")
+    y = W.AddSlider(c, y, "Bar width (characters)", 10, 40, 1,
+        function() return db().barWidth end,
+        function(v) db().barWidth = v; self:UpdateData() end, r)
+    y = W.AddDescription(c, y,
+        "The <bar> tag renders an ASCII progress bar in the label.\n" ..
+        "Purple = XP, Blue = Rested, Green = Reputation (at max level).")
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
