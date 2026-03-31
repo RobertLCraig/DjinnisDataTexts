@@ -77,6 +77,7 @@ local DEFAULTS = {
     showAlts        = true,
     altColumns      = false,        -- show alt progress as columns next to current char
     altNameLength   = 0,            -- 0 = full name; >0 = truncate column headers to N chars
+    altHoverAnchor  = "ANCHOR_BOTTOM",  -- GameTooltip anchor direction
     altHoverRealm   = true,
     altHoverClass   = true,
     altHoverSpec    = true,
@@ -880,7 +881,7 @@ local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
 
 function SavedInst:ShowCharTooltip(anchor, charInfo)
     local db = self:GetDB()
-    GameTooltip:SetOwner(anchor, "ANCHOR_BOTTOM")
+    GameTooltip:SetOwner(anchor, db.altHoverAnchor or "ANCHOR_BOTTOM")
     GameTooltip:AddLine(charInfo.name, 1, 0.82, 0)
 
     if db.altHoverRealm and charInfo.realm and charInfo.realm ~= "" then
@@ -1615,7 +1616,20 @@ function SavedInst:BuildSettingsPanel(panel)
         function() return db().altNameLength end,
         function(v) db().altNameLength = v; refreshTT() end, r)
 
+    local HOVER_ANCHOR_VALUES = {
+        ANCHOR_TOP         = "Above",
+        ANCHOR_BOTTOM      = "Below",
+        ANCHOR_LEFT        = "Left",
+        ANCHOR_RIGHT       = "Right",
+        ANCHOR_TOPRIGHT    = "Top-Right",
+        ANCHOR_TOPLEFT     = "Top-Left",
+        ANCHOR_BOTTOMRIGHT = "Bottom-Right",
+        ANCHOR_BOTTOMLEFT  = "Bottom-Left",
+    }
     y = W.AddDescription(c, y, "Column header hover details:")
+    y = W.AddDropdown(c, y, "Hover tooltip direction", HOVER_ANCHOR_VALUES,
+        function() return db().altHoverAnchor end,
+        function(v) db().altHoverAnchor = v end, r)
     y = W.AddCheckbox(c, y, "Show realm",
         function() return db().altHoverRealm end,
         function(v) db().altHoverRealm = v end, r)
