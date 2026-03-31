@@ -145,7 +145,7 @@ local function CreateTooltipFrame()
     f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
     f.title:SetTextColor(1, 0.82, 0)
 
@@ -155,7 +155,7 @@ local function CreateTooltipFrame()
     f.titleSep:SetHeight(1)
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
     f.hint:SetJustifyH("CENTER")
@@ -186,7 +186,7 @@ local function GetRow(parent, index)
     row.icon:SetSize(ICON_SIZE, ICON_SIZE)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.text:SetJustifyH("LEFT")
 

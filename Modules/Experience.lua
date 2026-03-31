@@ -42,6 +42,16 @@ local STANDING_COLORS = {
     { 0.00, 0.60, 0.00 }, -- Exalted
 }
 
+-- XP/hr tracking
+local sessionStartTime = 0
+local sessionStartXP = 0
+local xpPerHour = 0
+local totalXPGained = 0
+
+-- Quest XP
+local questXPTotal = 0
+local questXPCount = 0
+
 ---------------------------------------------------------------------------
 -- Defaults
 ---------------------------------------------------------------------------
@@ -75,6 +85,39 @@ local function GetRestedPercent()
     return math.floor((restedXP / maxXP) * 1000) / 10
 end
 
+local function CalcXPPerHour()
+    local elapsed = GetTime() - sessionStartTime
+    if elapsed < 1 then return 0 end
+    return totalXPGained / (elapsed / 3600)
+end
+
+local function ScanQuestXP()
+    questXPTotal = 0
+    questXPCount = 0
+    local numEntries = C_QuestLog.GetNumQuestLogEntries()
+    for i = 1, numEntries do
+        local info = C_QuestLog.GetInfo(i)
+        if info and not info.isHidden and not info.isHeader then
+            if C_QuestLog.ReadyForTurnIn(info.questID) then
+                local xp = GetQuestLogRewardXP(info.questID)
+                if xp and xp > 0 then
+                    questXPTotal = questXPTotal + xp
+                    questXPCount = questXPCount + 1
+                end
+            end
+        end
+    end
+end
+
+local function FormatDuration(seconds)
+    local h = math.floor(seconds / 3600)
+    local m = math.floor((seconds % 3600) / 60)
+    if h > 0 then
+        return string.format("%dh %dm", h, m)
+    end
+    return string.format("%dm", m)
+end
+
 ---------------------------------------------------------------------------
 -- Label template expansion
 ---------------------------------------------------------------------------
@@ -83,7 +126,6 @@ local function ExpandLabel(template)
     local result = template
 
     if isMaxLevel then
-        -- At max level, show rep if watched, otherwise "Max Level"
         result = result:gsub("<xp>", watchedFaction and watchedFaction.name or "Max Level")
         result = result:gsub("<percent>", watchedFaction and
             string.format("%.1f%%", watchedFaction.barMax > 0 and
@@ -92,12 +134,16 @@ local function ExpandLabel(template)
         result = result:gsub("<level>", tostring(playerLevel))
         result = result:gsub("<remaining>", "")
         result = result:gsub("<rested>", "")
+        result = result:gsub("<xphr>", "")
+        result = result:gsub("<questxp>", "")
     else
         result = result:gsub("<xp>", string.format("%.1f%%", GetXPPercent()))
         result = result:gsub("<percent>", string.format("%.1f%%", GetXPPercent()))
         result = result:gsub("<level>", tostring(playerLevel))
         result = result:gsub("<remaining>", FormatNumber(maxXP - currentXP))
         result = result:gsub("<rested>", restedXP > 0 and string.format("+%.0f%%", GetRestedPercent()) or "")
+        result = result:gsub("<xphr>", xpPerHour > 0 and FormatNumber(math.floor(xpPerHour)) .. "/hr" or "")
+        result = result:gsub("<questxp>", questXPTotal > 0 and FormatNumber(questXPTotal) or "")
     end
     return result
 end
@@ -133,7 +179,16 @@ Experience.dataobj = dataobj
 local eventFrame = CreateFrame("Frame")
 
 function Experience:Init()
+    sessionStartTime = GetTime()
+    sessionStartXP = UnitXP("player") or 0
+
     eventFrame:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_XP_UPDATE" then
+            local newXP = UnitXP("player") or 0
+            if newXP > currentXP then
+                totalXPGained = totalXPGained + (newXP - currentXP)
+            end
+        end
         Experience:UpdateData()
     end)
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
@@ -141,6 +196,8 @@ function Experience:Init()
     eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
     eventFrame:RegisterEvent("UPDATE_EXHAUSTION")
     eventFrame:RegisterEvent("UPDATE_FACTION")
+    eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
+    eventFrame:RegisterEvent("QUEST_TURNED_IN")
 end
 
 function Experience:GetDB()
@@ -160,11 +217,14 @@ function Experience:UpdateData()
         currentXP = 0
         maxXP = 1
         restedXP = 0
+        xpPerHour = 0
     else
         isMaxLevel = false
         currentXP = UnitXP("player") or 0
         maxXP = UnitXPMax("player") or 1
         restedXP = GetXPExhaustion() or 0
+        xpPerHour = CalcXPPerHour()
+        ScanQuestXP()
     end
 
     -- Watched faction
@@ -209,7 +269,7 @@ local function CreateTooltipFrame()
     f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
     f.title:SetTextColor(1, 0.82, 0)
 
@@ -219,7 +279,7 @@ local function CreateTooltipFrame()
     f.titleSep:SetHeight(1)
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
     f.hint:SetJustifyH("CENTER")
@@ -266,10 +326,10 @@ local function GetLine(f, index)
         return f.lines[index]
     end
 
-    local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local label = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local value = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
     f.lines[index] = { label = label, value = value }
@@ -360,10 +420,64 @@ function Experience:BuildTooltipContent()
             lineIdx = lineIdx + 1
             local restLine = GetLine(f, lineIdx)
             restLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            restLine.label:SetText("|cffffffffRested|r")
+            restLine.label:SetText("|cffffffffRested XP|r")
             restLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             restLine.value:SetText(string.format("%s (%.0f%%)", FormatNumber(restedXP), GetRestedPercent()))
             restLine.value:SetTextColor(0.0, 0.39, 0.88)
+            y = y - ROW_HEIGHT
+        end
+
+        -- XP per hour
+        lineIdx = lineIdx + 1
+        local xphrLine = GetLine(f, lineIdx)
+        xphrLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        xphrLine.label:SetText("|cffffffffXP / Hour|r")
+        xphrLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        if xpPerHour > 0 then
+            xphrLine.value:SetText(FormatNumber(math.floor(xpPerHour)))
+            xphrLine.value:SetTextColor(0.0, 1.0, 0.0)
+        else
+            xphrLine.value:SetText("--")
+            xphrLine.value:SetTextColor(0.5, 0.5, 0.5)
+        end
+        y = y - ROW_HEIGHT
+
+        -- Time to level (at current XP/hr rate)
+        if xpPerHour > 0 then
+            local remaining = maxXP - currentXP
+            local secondsToLevel = remaining / xpPerHour * 3600
+            lineIdx = lineIdx + 1
+            local ttlLine = GetLine(f, lineIdx)
+            ttlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            ttlLine.label:SetText("|cffffffffTime to Level|r")
+            ttlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            ttlLine.value:SetText(FormatDuration(secondsToLevel))
+            ttlLine.value:SetTextColor(0.7, 0.7, 0.7)
+            y = y - ROW_HEIGHT
+        end
+
+        -- Quest XP (ready to turn in)
+        if questXPTotal > 0 then
+            lineIdx = lineIdx + 1
+            local qLine = GetLine(f, lineIdx)
+            qLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            qLine.label:SetText(string.format("|cffffffffQuest XP|r  |cff888888(%d quest%s)|r", questXPCount, questXPCount == 1 and "" or "s"))
+            qLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            qLine.value:SetText(string.format("%s (%.1f%%)", FormatNumber(questXPTotal), maxXP > 0 and (questXPTotal / maxXP * 100) or 0))
+            qLine.value:SetTextColor(1.0, 0.82, 0.0)
+            y = y - ROW_HEIGHT
+        end
+
+        -- Session stats
+        if totalXPGained > 0 then
+            y = y - 4
+            lineIdx = lineIdx + 1
+            local sessLine = GetLine(f, lineIdx)
+            sessLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            sessLine.label:SetText("|cffffd100Session|r")
+            sessLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            sessLine.value:SetText(string.format("%s XP in %s", FormatNumber(totalXPGained), FormatDuration(GetTime() - sessionStartTime)))
+            sessLine.value:SetTextColor(0.7, 0.7, 0.7)
             y = y - ROW_HEIGHT
         end
     else
@@ -481,7 +595,7 @@ function Experience:BuildSettingsPanel(panel)
     local db = function() return ns.db.experience end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <xp> <percent> <level> <remaining> <rested>")
+    y = W.AddDescription(c, y, "Tags: <xp> <percent> <level> <remaining> <rested> <xphr> <questxp>")
     y = W.AddEditBox(c, y, "Template",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
@@ -497,6 +611,8 @@ function Experience:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Interactions")
     y = W.AddDescription(c, y,
         "Left-click: Open Character Panel\n\n" ..
+        "XP/Hour tracks experience gained since login.\n" ..
+        "Quest XP shows total XP from quests ready to turn in.\n" ..
         "At max level, the DataText shows watched reputation if set.")
 
     c:SetHeight(math.abs(y) + 20)

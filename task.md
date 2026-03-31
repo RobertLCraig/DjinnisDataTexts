@@ -97,10 +97,14 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - Left-click DataText: Game Menu
 - [x] Modules/Experience.lua
   - XP progress with visual bar (purple fill + blue rested overlay)
-  - Rested XP display
+  - Rested XP display with percentage
+  - XP per hour tracking (session-based, resets on login)
+  - Time-to-level estimate based on current XP/hr rate
+  - Quest XP: total expected XP from quests ready to turn in
+  - Session stats (total XP gained, session duration)
   - Remaining XP to level
   - At max level: shows watched reputation with standing and progress bar
-  - Events: PLAYER_XP_UPDATE, PLAYER_LEVEL_UP, UPDATE_EXHAUSTION, UPDATE_FACTION
+  - Events: PLAYER_XP_UPDATE, PLAYER_LEVEL_UP, UPDATE_EXHAUSTION, UPDATE_FACTION, QUEST_LOG_UPDATE, QUEST_TURNED_IN
 - [x] TimeDate Phase 2 (calendar events, holidays)
   - Tooltip shows today's calendar events (holidays, raid resets)
   - C_Calendar.OpenCalendar() on login to populate data
@@ -118,6 +122,7 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 - SavedVariables: DjinnisDataTextsDB
 - Slash: /ddt
 - Tooltip: dark bg (0.05, 0.05, 0.05, 0.92), gold headers, class-colored names, gray hint bar
+- Font system: DDTFontHeader/DDTFontNormal/DDTFontSmall (global, configurable in General settings)
 
 ## Current State
 Phase 5 complete. Addon has 12 modules:
@@ -130,8 +135,9 @@ Phase 5 complete. Addon has 12 modules:
 - PlayedTime (session timer, total/level played)
 - Mail (unread mail indicator, mailbox contents)
 - MicroMenu (quick-access game panel launcher)
-- Experience (XP progress, rested XP, watched reputation)
-All modules have configurable label templates, tooltip sizing, and settings panels.
+- Experience (XP progress, XP/hr, quest XP, time-to-level, rested XP, watched reputation)
+All modules use unified DDT font system (configurable face/size in General settings).
+All modules have configurable label templates, tooltip sizing, sort order, and settings panels.
 
 ## Blockers
 None.

@@ -357,13 +357,35 @@ local function AddTooltipSection(c, r, y, header, labelTokens, dbKey, broker, co
     return y
 end
 
+local FONT_OPTIONS = {
+    ["Fonts\\FRIZQT__.TTF"]  = "Friz Quadrata (Default)",
+    ["Fonts\\ARIALN.TTF"]    = "Arial Narrow",
+    ["Fonts\\MORPHEUS.TTF"]  = "Morpheus",
+    ["Fonts\\skurri.TTF"]    = "Skurri",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\AtkinsonHyperlegibleNext.ttf"] = "Atkinson Hyperlegible Next",
+}
+
 local function BuildGeneralPanel(panel)
     local c = panel.content
     local r = panel.refreshCallbacks
     local y = -10
 
+    y = AddHeader(c, y, "Tooltip Font")
+    y = AddDescription(c, y, "Global font used by all module tooltips. Individual modules can override this in their own settings.")
+    y = AddDropdown(c, y, "Font Face", FONT_OPTIONS,
+        function() return ns.db.global.tooltipFont end,
+        function(v) ns.db.global.tooltipFont = v; ns:UpdateFonts() end, r)
+    y = AddSlider(c, y, "Font Size", 8, 20, 1,
+        function() return ns.db.global.tooltipFontSize end,
+        function(v) ns.db.global.tooltipFontSize = v; ns:UpdateFonts() end, r)
+
+    c:SetHeight(math.abs(y) + 20)
+end
+
+-- Shared social settings section (URL templates, tag grouping)
+local function AddSocialSettingsSection(c, r, y)
     y = AddHeader(c, y, "Custom URL Templates")
-    y = AddDescription(c, y, "Define URL templates for the \"Copy Custom URL\" click actions. Use <name>, <realm>, and <region> as placeholders.  Example: https://www.warcraftlogs.com/character/<region>/<realm>/<name>")
+    y = AddDescription(c, y, "Shared across Friends, Guild, and Communities. Use <name>, <realm>, <region> as placeholders.")
     y = AddEditBox(c, y, "Custom URL 1",
         function() return ns.db.global.customUrl1 end,
         function(v) ns.db.global.customUrl1 = v end, r)
@@ -372,16 +394,14 @@ local function BuildGeneralPanel(panel)
         function(v) ns.db.global.customUrl2 = v end, r)
 
     y = AddHeader(c, y, "Tag Grouping")
-    y = AddDescription(c, y, "Tags in player notes are used for note-based grouping. Configure the separator character and display behavior.")
+    y = AddDescription(c, y, "Tags in player notes are used for note-based grouping.")
     y = AddEditBox(c, y, "Tag Separator Character",
         function() return ns.db.global.tagSeparator end,
         function(v) if v ~= "" then ns.db.global.tagSeparator = v end end, r)
     y = AddCheckbox(c, y, "Show Members in All Matching Tag Groups",
         function() return ns.db.global.noteShowInAllGroups end,
         function(v) ns.db.global.noteShowInAllGroups = v end, r)
-    y = AddDescription(c, y, "When enabled, members with multiple tags appear in every matching group. When disabled, only the first tag is used.")
-
-    c:SetHeight(math.abs(y) + 20)
+    return y
 end
 
 ---------------------------------------------------------------------------
@@ -446,6 +466,8 @@ local function BuildFriendsPanel(panel)
 
     y = AddClickActionsSection(c, r, y, "friends")
 
+    y = AddSocialSettingsSection(c, r, y)
+
     c:SetHeight(math.abs(y) + 20)
 end
 
@@ -509,6 +531,8 @@ local function BuildGuildPanel(panel)
 
     y = AddClickActionsSection(c, r, y, "guild")
 
+    y = AddSocialSettingsSection(c, r, y)
+
     c:SetHeight(math.abs(y) + 20)
 end
 
@@ -567,6 +591,8 @@ local function BuildCommunitiesPanel(panel)
         function(v) ns.db.communities.sortAscending = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
 
     y = AddClickActionsSection(c, r, y, "communities")
+
+    y = AddSocialSettingsSection(c, r, y)
 
     -- Dynamic section: community checkboxes
     y = AddHeader(c, y, "Enabled Communities")

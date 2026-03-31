@@ -385,7 +385,7 @@ local function CreateTooltipFrame()
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
     f.title:SetTextColor(1, 0.82, 0)
 
@@ -397,7 +397,7 @@ local function CreateTooltipFrame()
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
     -- Hint bar
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
     f.hint:SetJustifyH("CENTER")
@@ -430,26 +430,26 @@ local function GetRow(parent, index)
     row.highlight:SetColorTexture(1, 1, 1, 0.06)
 
     -- Instance name (left side, ~35-40% of row)
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.nameText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.nameText:SetPoint("LEFT", row, "LEFT", 6, 0)
     row.nameText:SetPoint("RIGHT", row, "CENTER", -35, 0)
     row.nameText:SetJustifyH("LEFT")
     row.nameText:SetWordWrap(false)
 
     -- Reset timer (far right, fixed width) — created first so others can anchor to it
-    row.resetText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.resetText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.resetText:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.resetText:SetJustifyH("RIGHT")
     row.resetText:SetWidth(56)
 
     -- Difficulty tag (right of name)
-    row.diffText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.diffText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.diffText:SetPoint("LEFT", row, "CENTER", -35, 0)
     row.diffText:SetJustifyH("CENTER")
     row.diffText:SetWidth(36)
 
     -- Progress (e.g. "4/8" or condensed "N 4/8  H 2/8") — fills space between diff and reset
-    row.progressText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.progressText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.progressText:SetPoint("LEFT", row.diffText, "RIGHT", 4, 0)
     row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
     row.progressText:SetJustifyH("LEFT")
@@ -481,7 +481,7 @@ local function GetHeader(parent, index)
         return headerPool[index]
     end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetTextColor(1, 0.82, 0)
 
@@ -925,7 +925,7 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
     headerIndex = headerIndex + 1
     local altHdr = headerPool[headerIndex]
     if not altHdr then
-        altHdr = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        altHdr = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
         altHdr:SetJustifyH("LEFT")
         headerPool[headerIndex] = altHdr
     end

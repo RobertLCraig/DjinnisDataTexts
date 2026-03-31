@@ -458,7 +458,7 @@ local function CreateTooltipFrame()
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
     f.title:SetTextColor(1, 0.82, 0)
 
@@ -470,7 +470,7 @@ local function CreateTooltipFrame()
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
     -- Hint bar
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
     f.hint:SetJustifyH("CENTER")
@@ -509,12 +509,12 @@ local function GetRow(parent, index)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- Text
-    row.text = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.text = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.text:SetJustifyH("LEFT")
 
     -- Status text (right side)
-    row.status = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.status = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     row.status:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.status:SetJustifyH("RIGHT")
 
@@ -541,7 +541,7 @@ local function GetHeader(parent, index)
         return headerPool[index]
     end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetTextColor(1, 0.82, 0)
 

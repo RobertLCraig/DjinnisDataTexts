@@ -220,7 +220,7 @@ local function CreateTooltipFrame()
     f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
-    f.title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
     f.title:SetTextColor(1, 0.82, 0)
 
@@ -230,7 +230,7 @@ local function CreateTooltipFrame()
     f.titleSep:SetHeight(1)
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
     f.hint:SetJustifyH("CENTER")
@@ -251,10 +251,10 @@ local function GetLine(f, index)
         return f.lines[index]
     end
 
-    local label = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local label = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = f:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    local value = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
     f.lines[index] = { label = label, value = value }

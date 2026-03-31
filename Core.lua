@@ -66,6 +66,8 @@ ns.defaults = {
         },
     },
     global = {
+        tooltipFont = "Fonts\\FRIZQT__.TTF",
+        tooltipFontSize = 12,
         customUrl1 = "",
         customUrl2 = "",
         tagSeparator = "#",
@@ -134,6 +136,29 @@ ns.COMMUNITIES_GROUP_VALUES = {
     zone      = "Same Zone",
     note      = "Member Note (#tags)",
 }
+
+---------------------------------------------------------------------------
+-- DDT tooltip font objects
+---------------------------------------------------------------------------
+
+local DDTFontHeader = CreateFont("DDTFontHeader")
+DDTFontHeader:SetFont("Fonts\\FRIZQT__.TTF", 16, "")
+
+local DDTFontNormal = CreateFont("DDTFontNormal")
+DDTFontNormal:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+
+local DDTFontSmall = CreateFont("DDTFontSmall")
+DDTFontSmall:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
+
+function ns:UpdateFonts()
+    local db = self.db and self.db.global or {}
+    local fontPath = db.tooltipFont or "Fonts\\FRIZQT__.TTF"
+    local fontSize = db.tooltipFontSize or 12
+
+    DDTFontHeader:SetFont(fontPath, fontSize + 4, "")
+    DDTFontNormal:SetFont(fontPath, fontSize, "")
+    DDTFontSmall:SetFont(fontPath, fontSize - 2, "")
+end
 
 ---------------------------------------------------------------------------
 -- Shared tooltip constants
@@ -403,7 +428,7 @@ function DDT:GetOrCreateGroupHeader(parent, name)
     if not parent.groupHeaders then parent.groupHeaders = {} end
     if parent.groupHeaders[name] then return parent.groupHeaders[name] end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetHeight(14)
     hdr:SetPoint("RIGHT", parent, "RIGHT", 0, 0)
@@ -649,6 +674,9 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
     -- Merge defaults into saved vars
     MergeDefaults(DjinnisDataTextsDB, ns.defaults)
     ns.db = DjinnisDataTextsDB
+
+    -- Apply font settings
+    ns:UpdateFonts()
 
     if migrated then
         DDT:Print("Settings migrated from Djinni's Guild & Friends.")
