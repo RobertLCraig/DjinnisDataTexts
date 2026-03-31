@@ -22,6 +22,7 @@ SpecSwitch.currentRole      = nil
 SpecSwitch.lootSpecID       = 0  -- 0 = "Current Spec (Default)"
 SpecSwitch.activeLoadoutID   = nil
 SpecSwitch.activeLoadoutName = nil
+SpecSwitch.lastConfigBySpec  = {}  -- { [specID] = configID } for all specs
 
 -- Demo mode flag (set by DemoMode.lua)
 SpecSwitch.demoMode = false
@@ -100,6 +101,32 @@ local function DjinniMsg(msg)
 end
 
 ---------------------------------------------------------------------------
+-- Spec switching helper
+-- Routes through C_ClassTalents.LoadConfig (which works reliably in
+-- Midnight) instead of the often-broken SetSpecialization().
+---------------------------------------------------------------------------
+
+local function SwitchToSpec(specIndex)
+    if InCombatLockdown() then
+        DjinniMsg("Cannot change specialization in combat.")
+        return
+    end
+    local spec = SpecSwitch.specCache[specIndex]
+    if not spec then return end
+    if specIndex == SpecSwitch.currentSpecIndex then return end
+
+    -- Prefer LoadConfig: switching to a loadout from a different spec
+    -- implicitly switches the specialization.
+    local configID = SpecSwitch.lastConfigBySpec[spec.id]
+    if configID and C_ClassTalents and C_ClassTalents.LoadConfig then
+        C_ClassTalents.LoadConfig(configID, true)
+    else
+        -- Fallback for specs with no saved loadouts
+        SetSpecialization(specIndex)
+    end
+end
+
+---------------------------------------------------------------------------
 -- Action executor
 ---------------------------------------------------------------------------
 
@@ -130,11 +157,7 @@ local function ExecuteSpecAction(action)
             DemoSwitchSpec(nextIndex)
             return
         end
-        if InCombatLockdown() then
-            DjinniMsg("Cannot change specialization in combat.")
-            return
-        end
-        SetSpecialization(nextIndex)
+        SwitchToSpec(nextIndex)
 
     elseif action == "nextloadout" then
         local loadouts = SpecSwitch.currentSpecID > 0 and SpecSwitch.loadoutCache[SpecSwitch.currentSpecID]
@@ -375,9 +398,23 @@ function SpecSwitch:UpdateData()
                 end
             end
         end
+        -- Last-selected config for ALL specs (used for spec switching via LoadConfig)
+        wipe(self.lastConfigBySpec)
+        if C_ClassTalents.GetLastSelectedSavedConfigID then
+            for _, spec in ipairs(self.specCache) do
+                local lastConfig = C_ClassTalents.GetLastSelectedSavedConfigID(spec.id)
+                if lastConfig then
+                    self.lastConfigBySpec[spec.id] = lastConfig
+                elseif self.loadoutCache[spec.id] and #self.loadoutCache[spec.id] > 0 then
+                    -- Fallback: use first available loadout
+                    self.lastConfigBySpec[spec.id] = self.loadoutCache[spec.id][1].configID
+                end
+            end
+        end
+
         -- Active loadout for current spec
         if self.currentSpecID > 0 and C_ClassTalents.GetLastSelectedSavedConfigID then
-            self.activeLoadoutID = C_ClassTalents.GetLastSelectedSavedConfigID(self.currentSpecID)
+            self.activeLoadoutID = self.lastConfigBySpec[self.currentSpecID]
             -- Resolve name
             if self.activeLoadoutID and self.loadoutCache[self.currentSpecID] then
                 for _, lo in ipairs(self.loadoutCache[self.currentSpecID]) do
@@ -584,13 +621,7 @@ function SpecSwitch:BuildTooltipContent()
                 DemoSwitchSpec(specIndex)
                 return
             end
-            if InCombatLockdown() then
-                DjinniMsg("Cannot change specialization in combat.")
-                return
-            end
-            if specIndex ~= self.currentSpecIndex then
-                SetSpecialization(specIndex)
-            end
+            SwitchToSpec(specIndex)
         end)
 
         y = y - ROW_HEIGHT
