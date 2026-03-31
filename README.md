@@ -35,6 +35,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Friends** | Character and Battle.net friends with game info, status, broadcasts. Filterable by type. |
 | **Communities** | WoW Communities roster showing online members, role badges, M+ scores, and BNet App status. |
 
+![Friends](Docs/Friends.png) ![Guild](Docs/Guild.png) ![Communities](Docs/Communities.png)
+
 ### Character & Stats
 
 | Module | Description |
@@ -45,6 +47,10 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Spec Switch** | Active spec, talent loadout switching, loot spec selection. Shows all specs with role icons and loadouts. |
 | **Movement Speed** | Current/base speed as %, ground/fly/swim/skyriding speeds, active speed buff detection. Shopping list integration (Auctionator/TSM) for Midnight-era speed consumables. |
 
+![Spec Switch](Docs/SpecSwitch.png) ![Character Info](Docs/CharacterInfo.png) ![Experience](Docs/Experience.png) ![Movement Speed](Docs/MoveSpeed.png)
+
+![Account Status](Docs/AccountStatus.png) ![Account Status (tooltip)](Docs/AccountStatus2.png)
+
 ### Inventory & Economy
 
 | Module | Description |
@@ -52,6 +58,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Currency** | Character gold, alt gold totals, warband bank gold, WoW Token price, posted auction value. Expansion-grouped tracked currencies with icons and quality colors. |
 | **Bag Value** | Total bag value via TSM price sources (6 sources) with vendor fallback. Top items breakdown, free/total slot display. |
 | **Mail** | Unread mail indicator with full mailbox scan: sender, subject, money, attachments, expiry countdown. |
+
+![Currency](Docs/Currency.png) ![Bag Value](Docs/BagValue.png) ![Mail](Docs/Mail.png)
 
 ### Instances & Progress
 
@@ -61,12 +69,18 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 
+![Saved Instances](Docs/SavedInstances.png) ![Saved Instances (extended)](Docs/SavedInstances2.png) ![Saved Instances (condensed)](Docs/SavedInstances3.png)
+
+![LFG Status](Docs/LFGStatus.png) ![LFG Status (queued)](Docs/LFGStatus2.png) ![Pet Info](Docs/Pets.png)
+
 ### Time & Location
 
 | Module | Description |
 |--------|-------------|
 | **Time / Date** | Server and local time with 12h/24h toggle, seconds display. Daily and weekly reset countdowns. Calendar events and holidays. Configurable strftime date format with presets. |
 | **Coordinates** | Player map coordinates via C_Map API. Zone, subzone, map name, map ID in tooltip. Click actions for world/zone map, coord copy, TomTom waypoint paste. |
+
+![Time / Date](Docs/DateTime.png) ![Coordinates](Docs/Coords.png)
 
 ### System & Utility
 
@@ -75,6 +89,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **System Performance** | FPS, home/world latency, total addon memory with top consumers list. CPU profiler via C_AddOnProfiler API (per-addon CPU time, no scriptProfile cvar needed). |
 | **Played Time** | Session timer, total /played time, level /played time. Class-colored character display. |
 | **Micro Menu** | Quick-access clickable launcher for all game panels (character, spellbook, talents, achievements, collections, etc.). |
+
+![System Performance](Docs/SystemPerformance.png)
 
 ## Installation
 
@@ -95,6 +111,12 @@ All settings are accessible through the Blizzard Settings interface:
 ### Label Templates
 
 Every module supports customizable LDB text via `<tag>` template syntax. Tags are module-specific (e.g., `<fps>`, `<gold>`, `<coords>`). The settings panel for each module provides clickable tag buttons for easy template building and 2-5 preset suggestions showing common configurations.
+
+### Settings
+
+![Account Status Settings](Docs/Settings%20-%20AccountStatus.png) ![Friends Settings 1](Docs/Settings%20-%20Friends%201.png) ![Friends Settings 2](Docs/Settings%20-%20Friends%202.png)
+
+![Pet Info Settings](Docs/Settings%20-%20PetInfo.png) ![Saved Instances Settings](Docs/Settings%20-%20SavedInstances.png)
 
 ### Click Actions
 
