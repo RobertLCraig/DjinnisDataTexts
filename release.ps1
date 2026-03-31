@@ -68,7 +68,35 @@ if ($dirtyFiles) {
 
 $tagExists = & git -C $Root tag -l $Tag 2>&1
 if ($tagExists -contains $Tag) {
-    Write-Err "Tag '$Tag' already exists. Bump the version before releasing."
+    Write-Warn "  Tag '$Tag' already exists - auto-bumping patch version..."
+
+    # Parse version parts and increment patch until tag is free
+    $parts = $Version.Split('.')
+    $major = [int]$parts[0]
+    $minor = [int]$parts[1]
+    $patch = [int]$parts[2]
+
+    do {
+        $patch++
+        $Version = "$major.$minor.$patch"
+        $Tag     = "v$Version"
+        $tagCheck = & git -C $Root tag -l $Tag 2>&1
+    } while ($tagCheck -contains $Tag)
+
+    Write-Success "  Bumped to: $Tag"
+
+    # Update RELEASE_NOTES.md
+    $rnContent = $rnContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
+    [System.IO.File]::WriteAllText($ReleaseNotesFile, $rnContent, (New-Object System.Text.UTF8Encoding $false))
+    Write-Success "  Updated RELEASE_NOTES.md"
+
+    # Update .toc
+    $tocContent = $tocContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
+    [System.IO.File]::WriteAllText($TocFile, $tocContent, (New-Object System.Text.UTF8Encoding $false))
+    Write-Success "  Updated $AddonName.toc"
+
+    # Re-read release notes for changelog extraction
+    $rnContent = Get-Content $ReleaseNotesFile -Raw
 }
 
 # ---------------------------------------------------------------------------
@@ -122,6 +150,7 @@ $ExcludeNames = @(
     "CLAUDE.md"
     "Docs"
     "README.md"
+    "ARTWORK_PROMPTS.md"
     "deploy.ps1"
     "deploy.sh"
     "release.ps1"
@@ -177,7 +206,8 @@ if ($DryRun) {
     }
     $sizeKB = [math]::Round((Get-Item $ZipPath).Length / 1KB, 1)
     $count  = @($filesToZip).Count
-    Write-Success "  Zip created: $ZipName ($sizeKB KB, $count files)"
+    $zipMsg = "  Zip created: $ZipName ($sizeKB" + " KB, $count files)"
+    Write-Success $zipMsg
 }
 
 # ---------------------------------------------------------------------------
@@ -185,7 +215,7 @@ if ($DryRun) {
 # ---------------------------------------------------------------------------
 
 if (-not $DryRun) {
-    & git -C $Root add CHANGELOG.md | Out-Null
+    & git -C $Root add CHANGELOG.md RELEASE_NOTES.md "$TocFile" | Out-Null
     $commitMsg = "Release $Tag"
     & git -C $Root commit -m $commitMsg | Out-Null
     Write-Success "  Committed: $commitMsg"
