@@ -76,6 +76,7 @@ local DEFAULTS = {
     -- Alt lockout display
     showAlts        = true,
     altColumns      = false,        -- show alt progress as columns next to current char
+    altNameLength   = 0,            -- 0 = full name; >0 = truncate column headers to N chars
     altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
     altManualList   = {},           -- { ["Name - Realm"] = true } — used when altFilter == "manual"
     clickActions    = {
@@ -971,7 +972,10 @@ function SavedInst:BuildTooltipContent()
                 altNameHdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
                 altNameHdr:SetWidth(ALT_COL_WIDTH)
                 altNameHdr:SetJustifyH("CENTER")
-                altNameHdr:SetText(DDT:ClassColorText(alt.name:sub(1, 5), alt.class:upper()))
+                local displayName = alt.name
+                local nameLen = db.altNameLength or 0
+                if nameLen > 0 then displayName = displayName:sub(1, nameLen) end
+                altNameHdr:SetText(DDT:ClassColorText(displayName, alt.class:upper()))
             end
         end
 
@@ -1197,10 +1201,12 @@ function SavedInst:BuildTooltipContent()
         end
     end
 
-    -- Alt lockouts section (expandable per-alt detail below main data)
-    local altSection = self:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
-    if altSection then
-        y = altSection.y
+    -- Alt lockouts section (expandable per-alt detail — hidden when column view is active)
+    if not db.altColumns then
+        local altSection = self:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
+        if altSection then
+            y = altSection.y
+        end
     end
 
     -- Hint bar
@@ -1470,18 +1476,19 @@ function SavedInst:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v; refreshTT() end, r)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "savedinstances", CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
-        "Click a lockout row: Expand/collapse boss details")
-
-    -- Alt Lockouts
+    -- Alt Lockouts (before click actions so it's easier to find)
     y = W.AddHeader(c, y, "Alt Lockouts")
-    y = W.AddCheckbox(c, y, "Show alt lockout data in tooltip",
+    y = W.AddCheckbox(c, y, "Show alt lockout section in tooltip",
         function() return db().showAlts end,
         function(v) db().showAlts = v; refreshTT() end, r)
     y = W.AddCheckbox(c, y, "Show alt progress columns alongside current character",
         function() return db().altColumns end,
         function(v) db().altColumns = v; refreshTT() end, r)
+    y = W.AddDescription(c, y,
+        "|cff888888When column view is active, the expandable alt section is hidden.|r")
+    y = W.AddSlider(c, y, "Column name length (0 = full name)", 0, 12, 1,
+        function() return db().altNameLength end,
+        function(v) db().altNameLength = v; refreshTT() end, r)
     y = W.AddDropdown(c, y, "Show alts matching", ALT_FILTER_VALUES,
         function() return db().altFilter end,
         function(v) db().altFilter = v; refreshTT() end, r)
@@ -1495,7 +1502,6 @@ function SavedInst:BuildSettingsPanel(panel)
     local currentKey  = playerName .. " - " .. playerRealm
 
     if altDB then
-        -- Collect known alts sorted: level desc, then name
         local knownAlts = {}
         for key, altData in pairs(altDB) do
             if key ~= currentKey and type(altData) == "table" then
@@ -1523,6 +1529,10 @@ function SavedInst:BuildSettingsPanel(panel)
     else
         y = W.AddDescription(c, y, "|cff888888No alts recorded yet. Log in to each alt to populate.|r")
     end
+
+    y = ns.AddModuleClickActionsSection(c, r, y, "savedinstances", CLICK_ACTIONS)
+    y = W.AddDescription(c, y,
+        "Click a lockout row: Expand/collapse boss details")
 
     c:SetHeight(math.abs(y) + 20)
 end
