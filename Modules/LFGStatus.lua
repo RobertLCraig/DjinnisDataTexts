@@ -26,7 +26,8 @@ local HINT_HEIGHT    = 18
 local activeQueues = {}   -- { {category, categoryName, mode, instanceName, waitTime, queuedTime} }
 local pendingApps  = {}   -- { {resultID, groupName, activityName, role, status, duration, numMembers} }
 local activeEntry  = nil  -- { name, activityName, numApplicants } or nil
-local roleString   = ""   -- "Tank/Healer" etc.
+local roleString   = ""   -- "Tank/Healer" etc. (selected roles)
+local assignedRole = nil  -- "TANK"/"HEALER"/"DAMAGER" when assigned via proposal or group
 
 ---------------------------------------------------------------------------
 -- Defaults
@@ -147,6 +148,7 @@ end
 
 local function CollectQueues()
     wipe(activeQueues)
+    assignedRole = nil
 
     for _, cat in ipairs(LFG_CATEGORIES) do
         local mode = GetLFGMode(cat.id)
@@ -169,6 +171,22 @@ local function CollectQueues()
     end
 
     roleString = GetRoleString()
+
+    -- Check for assigned role from an active proposal
+    if GetLFGProposal then
+        local proposalExists, _, _, _, _, _, role = GetLFGProposal()
+        if proposalExists and role then
+            assignedRole = role
+        end
+    end
+
+    -- If in a group (post-accept), check group-assigned role
+    if not assignedRole then
+        local groupRole = UnitGroupRolesAssigned("player")
+        if groupRole and groupRole ~= "NONE" and groupRole ~= "" then
+            assignedRole = groupRole
+        end
+    end
 end
 
 local function CollectApplications()
@@ -254,7 +272,11 @@ end
 local function GetStatusText()
     local parts = {}
     if #activeQueues > 0 then
-        table.insert(parts, "Queued")
+        if assignedRole then
+            table.insert(parts, "Queued (" .. GetRoleLabel(assignedRole) .. ")")
+        else
+            table.insert(parts, "Queued")
+        end
     end
     local appCount = GetActiveAppCount()
     if appCount > 0 then
@@ -273,6 +295,7 @@ local function ExpandLabel(template, db)
     result = result:gsub("<queues>", tostring(#activeQueues))
     result = result:gsub("<apps>", tostring(GetActiveAppCount()))
     result = result:gsub("<role>", roleString)
+    result = result:gsub("<assigned>", assignedRole and GetRoleLabel(assignedRole) or "")
     -- Wait time for first queue
     local waitStr = "—"
     if #activeQueues > 0 and activeQueues[1].waitTime > 0 then
@@ -342,6 +365,7 @@ function LFGStatus:Init()
     eventFrame:RegisterEvent("LFG_LIST_APPLICATION_STATUS_UPDATED")
     eventFrame:RegisterEvent("LFG_LIST_ACTIVE_ENTRY_UPDATE")
     eventFrame:RegisterEvent("LFG_LIST_APPLICANT_LIST_UPDATED")
+    eventFrame:RegisterEvent("ROLE_CHANGED_INFORM")
 
     eventFrame:SetScript("OnEvent", function()
         LFGStatus:UpdateData()
@@ -478,9 +502,22 @@ function LFGStatus:BuildTooltipContent()
         hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
         hdr.label:SetText("|cff66c7ffActive Queues|r")
         hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
-        hdr.value:SetText(roleString)
+        hdr.value:SetText("Queued as: " .. roleString)
         hdr.value:SetTextColor(0.8, 0.8, 0.8)
         y = y - ROW_HEIGHT
+
+        -- Show assigned role prominently when known
+        if assignedRole then
+            lineIdx = lineIdx + 1
+            local assignLine = GetLine(f, lineIdx)
+            assignLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 8, y)
+            local roleIcon = GetRoleIcon(assignedRole)
+            local roleLabel = GetRoleLabel(assignedRole)
+            assignLine.label:SetText(roleIcon .. " |cff00ff00Assigned as: " .. roleLabel .. "|r")
+            assignLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            assignLine.value:SetText("")
+            y = y - ROW_HEIGHT
+        end
 
         for _, q in ipairs(activeQueues) do
             -- Row 1: category + mode indicator
@@ -660,9 +697,15 @@ function LFGStatus:BuildSettingsPanel(panel)
     local db = function() return ns.db.lfgstatus end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "status queues apps role wait elapsed",
+    y = W.AddLabelEditBox(c, y, "status queues apps role assigned wait elapsed",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<status>" },
+        { "With Role",  "<status> (<role>)" },
+        { "Queue Time", "<status> - <elapsed>" },
+        { "Compact",    "LFG: <queues>Q <apps>A" },
+        { "Assigned",   "<status> <assigned>" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Show active queues (Dungeon/Raid Finder)",
