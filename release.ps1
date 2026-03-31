@@ -51,7 +51,7 @@ if ($DryRun) { Write-Warn "  DRY RUN - no files will be written, committed, tagg
 Write-Info ""
 
 # ---------------------------------------------------------------------------
-# 2. Validate TOC version matches
+# 2. Sync TOC version (auto-update if it doesn't match)
 # ---------------------------------------------------------------------------
 
 $tocContent      = Get-Content $TocFile -Raw -Encoding UTF8
@@ -60,22 +60,35 @@ if (-not $tocVersionMatch.Success) { Write-Err "No '## Version:' in $AddonName.t
 $tocVersion = $tocVersionMatch.Groups[1].Value.TrimStart('v')
 
 if ($tocVersion -ne $Version) {
-    Write-Err ("Version mismatch: RELEASE_NOTES.md=$Version but $AddonName.toc=$tocVersion. Update the .toc file first.")
+    Write-Warn "  TOC version ($tocVersion) differs from RELEASE_NOTES.md ($Version) - auto-updating .toc"
+    $tocContent = $tocContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
+    if (-not $DryRun) {
+        [System.IO.File]::WriteAllText($TocFile, $tocContent, (New-Object System.Text.UTF8Encoding $false))
+        Write-Success "  Updated $AddonName.toc to $Version"
+    }
+} else {
+    Write-Info "  TOC version: $tocVersion  OK"
 }
-Write-Info "  TOC version: $tocVersion  OK"
 
 # ---------------------------------------------------------------------------
-# 3. Check git state
+# 3. Check git state (RELEASE_NOTES.md and .toc are managed by this script)
 # ---------------------------------------------------------------------------
 
 $gitStatus  = & git -C $Root status --porcelain 2>&1
-$dirtyFiles = $gitStatus | Where-Object { $_ -match '^\s*[MADRCU?]' -and $_ -notmatch '\.claude' }
+$rnFileName  = [System.IO.Path]::GetFileName($ReleaseNotesFile)
+$tocFileName = [System.IO.Path]::GetFileName($TocFile)
+$dirtyFiles = $gitStatus | Where-Object {
+    $_ -match '^\s*[MADRCU?]' -and
+    $_ -notmatch '\.claude' -and
+    $_ -notmatch ([regex]::Escape($rnFileName)) -and
+    $_ -notmatch ([regex]::Escape($tocFileName))
+}
 
 if ($dirtyFiles) {
     Write-Warn "  Uncommitted changes detected:"
     $dirtyFiles | ForEach-Object { Write-Warn "    $_" }
     if (-not $DryRun) {
-        Write-Err "Commit or stash all changes before releasing. Use -DryRun to preview without this check."
+        Write-Err "Commit or stash non-release changes before releasing. Use -DryRun to preview without this check."
     }
 }
 
@@ -127,22 +140,25 @@ $notesBody = $notesBody.Trim()
 # ---------------------------------------------------------------------------
 
 $today          = (Get-Date).ToString("yyyy-MM-dd")
-$typeLabel      = if ($ReleaseType -ne "release") { " [$ReleaseType]" } else { "" }
-$changelogEntry = "## [$Version]$typeLabel - $today`r`n`r`n$notesBody`r`n"
+# Beta/alpha: embed suffix in the version bracket (e.g. [0.3.1-beta]) to match the git tag
+$versionLabel   = if ($ReleaseType -ne "release") { "$Version-$ReleaseType" } else { $Version }
+$changelogEntry = "## [$versionLabel] - $today`r`n`r`n$notesBody`r`n"
 
 if (-not $DryRun) {
     $existing = ""
     if (Test-Path $ChangelogFile) { $existing = Get-Content $ChangelogFile -Raw -Encoding UTF8 }
 
-    $separator = "`r`n---`r`n"
+    # Detect the file's line-ending style so the separator search always matches
+    $nl        = if ($existing -match "`r`n") { "`r`n" } else { "`n" }
+    $separator = "${nl}---${nl}"
     $sepIndex  = $existing.IndexOf($separator)
 
     if ($sepIndex -ge 0) {
         $before       = $existing.Substring(0, $sepIndex + $separator.Length)
         $after        = $existing.Substring($sepIndex + $separator.Length)
-        $newChangelog = $before + "`r`n" + $changelogEntry + "`r`n" + $after
+        $newChangelog = $before + $nl + $changelogEntry + $nl + $after
     } else {
-        $newChangelog = $existing + "`r`n---`r`n`r`n" + $changelogEntry
+        $newChangelog = $existing + "${nl}---${nl}${nl}" + $changelogEntry
     }
 
     [System.IO.File]::WriteAllText($ChangelogFile, $newChangelog, (New-Object System.Text.UTF8Encoding $false))
