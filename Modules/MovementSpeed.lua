@@ -184,15 +184,15 @@ end
 local function ScanSpeedBuffs()
     wipe(activeBuffs)
     for i = 1, 40 do
-        local aura = C_UnitAuras.GetAuraDataByIndex("player", i, "HELPFUL")
-        if not aura then break end
-        local entry = SPEED_SPELL_SET[aura.spellId]
+        local name, _, icon, _, _, _, _, _, _, _, spellId = UnitBuff("player", i)
+        if not name then break end
+        local entry = SPEED_SPELL_SET[spellId]
         if entry then
             table.insert(activeBuffs, {
-                name = aura.name or entry.name,
-                icon = aura.icon,
+                name = name,
+                icon = icon,
                 cat = entry.cat,
-                spellId = aura.spellId,
+                spellId = spellId,
             })
         end
     end
