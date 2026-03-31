@@ -1,0 +1,22 @@
+## CurseForge / WoWInterface automatic packager configuration
+## https://support.curseforge.com/support/solutions/articles/9000197281
+
+package-as: DjinnisDataTexts
+
+ignore:
+  - .git
+  - .gitignore
+  - .claude
+  - ARTWORK_PROMPTS.md
+  - CHANGELOG.md
+  - CLAUDE.md
+  - DemoMode.lua
+  - deploy.ps1
+  - Docs
+  - pkgmeta.yaml
+  - release.ps1
+  - RELEASE_NOTES.md
+  - releases
+  - task.md
+
+changelog: CHANGELOG.md

@@ -1,7 +1,14 @@
 param(
-    [string]$OutputDir = (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "releases"),
+    [string]$OutputDir   = (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "releases"),
+    # release (default), beta, or alpha — controls git tag suffix so CurseForge sets the right file type
+    # Release: v1.2.3  →  CurseForge "Release"
+    # Beta:    v1.2.3-beta  →  CurseForge "Beta"
+    # Alpha:   v1.2.3-alpha  →  CurseForge "Alpha"
+    [ValidateSet("release","beta","alpha")]
+    [string]$ReleaseType = "release",
     [switch]$DryRun,
-    [switch]$SkipTag
+    [switch]$SkipTag,
+    [switch]$SkipPush
 )
 
 $ErrorActionPreference = "Stop"
@@ -16,6 +23,12 @@ function Write-Success { param($m) Write-Host $m -ForegroundColor Green   }
 function Write-Warn    { param($m) Write-Host $m -ForegroundColor Yellow  }
 function Write-Err     { param($m) Write-Host "ERROR: $m" -ForegroundColor Red; exit 1 }
 
+function Make-Tag {
+    param([string]$ver, [string]$type)
+    if ($type -eq "release") { return "v$ver" }
+    return "v$ver-$type"
+}
+
 # ---------------------------------------------------------------------------
 # 1. Read version from RELEASE_NOTES.md
 # ---------------------------------------------------------------------------
@@ -24,17 +37,17 @@ if (-not (Test-Path $ReleaseNotesFile)) {
     Write-Err "RELEASE_NOTES.md not found. Create it with a '## Version: x.y.z' line."
 }
 
-$rnContent     = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
-$versionMatch  = [regex]::Match($rnContent, '##\s+Version:\s*(\S+)')
+$rnContent    = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
+$versionMatch = [regex]::Match($rnContent, '##\s+Version:\s*(\S+)')
 if (-not $versionMatch.Success) {
     Write-Err "No '## Version: x.y.z' line found in RELEASE_NOTES.md."
 }
 $Version = $versionMatch.Groups[1].Value.TrimStart('v')
-$Tag     = "v$Version"
+$Tag     = Make-Tag $Version $ReleaseType
 
 Write-Info ""
-Write-Info "=== DjinnisDataTexts Release: $Tag ==="
-if ($DryRun) { Write-Warn "  DRY RUN - no files will be written, committed, or tagged" }
+Write-Info "=== DjinnisDataTexts Release: $Tag ($ReleaseType) ==="
+if ($DryRun) { Write-Warn "  DRY RUN - no files will be written, committed, tagged, or pushed" }
 Write-Info ""
 
 # ---------------------------------------------------------------------------
@@ -70,7 +83,7 @@ $tagExists = & git -C $Root tag -l $Tag 2>&1
 if ($tagExists -contains $Tag) {
     Write-Warn "  Tag '$Tag' already exists - auto-bumping patch version..."
 
-    # Parse version parts and increment patch until tag is free
+    # Parse numeric version and increment patch until a free tag is found
     $parts = $Version.Split('.')
     $major = [int]$parts[0]
     $minor = [int]$parts[1]
@@ -78,14 +91,14 @@ if ($tagExists -contains $Tag) {
 
     do {
         $patch++
-        $Version = "$major.$minor.$patch"
-        $Tag     = "v$Version"
+        $Version  = "$major.$minor.$patch"
+        $Tag      = Make-Tag $Version $ReleaseType
         $tagCheck = & git -C $Root tag -l $Tag 2>&1
     } while ($tagCheck -contains $Tag)
 
     Write-Success "  Bumped to: $Tag"
 
-    # Update RELEASE_NOTES.md
+    # Update RELEASE_NOTES.md (numeric version only, no suffix)
     $rnContent = $rnContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
     [System.IO.File]::WriteAllText($ReleaseNotesFile, $rnContent, (New-Object System.Text.UTF8Encoding $false))
     Write-Success "  Updated RELEASE_NOTES.md"
@@ -95,7 +108,7 @@ if ($tagExists -contains $Tag) {
     [System.IO.File]::WriteAllText($TocFile, $tocContent, (New-Object System.Text.UTF8Encoding $false))
     Write-Success "  Updated $AddonName.toc"
 
-    # Re-read release notes for changelog extraction
+    # Re-read for changelog extraction
     $rnContent = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
 }
 
@@ -103,7 +116,7 @@ if ($tagExists -contains $Tag) {
 # 4. Extract release notes body
 # ---------------------------------------------------------------------------
 
-# Strip the instruction comment block, the top-level heading, and the Version header line
+# Strip comment blocks, top-level heading, and Version header line
 $notesBody = $rnContent -replace '(?s)<!--.*?-->\s*', ''
 $notesBody = $notesBody -replace '(?m)^#\s+Release Notes\s*(\r?\n)?', ''
 $notesBody = $notesBody -replace '(?m)^##\s+Version:.*(\r?\n)?', ''
@@ -114,18 +127,19 @@ $notesBody = $notesBody.Trim()
 # ---------------------------------------------------------------------------
 
 $today          = (Get-Date).ToString("yyyy-MM-dd")
-$changelogEntry = "## [$Version] - $today`r`n`r`n$notesBody`r`n"
+$typeLabel      = if ($ReleaseType -ne "release") { " [$ReleaseType]" } else { "" }
+$changelogEntry = "## [$Version]$typeLabel - $today`r`n`r`n$notesBody`r`n"
 
 if (-not $DryRun) {
-    $existing  = ""
+    $existing = ""
     if (Test-Path $ChangelogFile) { $existing = Get-Content $ChangelogFile -Raw -Encoding UTF8 }
 
     $separator = "`r`n---`r`n"
     $sepIndex  = $existing.IndexOf($separator)
 
     if ($sepIndex -ge 0) {
-        $before      = $existing.Substring(0, $sepIndex + $separator.Length)
-        $after       = $existing.Substring($sepIndex + $separator.Length)
+        $before       = $existing.Substring(0, $sepIndex + $separator.Length)
+        $after        = $existing.Substring($sepIndex + $separator.Length)
         $newChangelog = $before + "`r`n" + $changelogEntry + "`r`n" + $after
     } else {
         $newChangelog = $existing + "`r`n---`r`n`r`n" + $changelogEntry
@@ -139,7 +153,7 @@ if (-not $DryRun) {
 }
 
 # ---------------------------------------------------------------------------
-# 6. Build the zip
+# 6. Build the local zip (for local testing; CurseForge builds its own from git)
 # ---------------------------------------------------------------------------
 
 $ExcludeNames = @(
@@ -147,17 +161,18 @@ $ExcludeNames = @(
     ".git"
     ".gitignore"
     ".claude"
-    "CLAUDE.md"
-    "Docs"
-    "README.md"
     "ARTWORK_PROMPTS.md"
+    "CHANGELOG.md"
+    "CLAUDE.md"
     "deploy.ps1"
     "deploy.sh"
+    "DemoMode.lua"
+    "Docs"
+    "pkgmeta.yaml"
+    "README.md"
     "release.ps1"
     "RELEASE_NOTES.md"
-    "CHANGELOG.md"
     "releases"
-    "DemoMode.lua"
     "task.md"
 )
 
@@ -206,12 +221,11 @@ if ($DryRun) {
     }
     $sizeKB = [math]::Round((Get-Item $ZipPath).Length / 1KB, 1)
     $count  = @($filesToZip).Count
-    $zipMsg = "  Zip created: $ZipName ($sizeKB" + " KB, $count files)"
-    Write-Success $zipMsg
+    Write-Success "  Zip created: $ZipName ($sizeKB KB, $count files)"
 }
 
 # ---------------------------------------------------------------------------
-# 7. Commit CHANGELOG.md and tag
+# 7. Commit, tag, and push
 # ---------------------------------------------------------------------------
 
 if (-not $DryRun) {
@@ -224,8 +238,20 @@ if (-not $DryRun) {
         & git -C $Root tag -a $Tag -m $commitMsg
         Write-Success "  Tagged:    $Tag"
     }
+
+    if (-not $SkipPush) {
+        Write-Info "  Pushing to origin..."
+        & git -C $Root push origin HEAD
+        Write-Success "  Pushed commits"
+        if (-not $SkipTag) {
+            & git -C $Root push origin $Tag
+            Write-Success "  Pushed tag $Tag  →  CurseForge webhook will trigger packaging as [$ReleaseType]"
+        }
+    } else {
+        Write-Warn "  SkipPush set - run manually: git push origin HEAD && git push origin $Tag"
+    }
 } else {
-    Write-Warn "  [DryRun] Would commit CHANGELOG.md with message 'Release $Tag' and tag '$Tag'"
+    Write-Warn "  [DryRun] Would commit, tag '$Tag', push commits, and push tag to trigger CurseForge"
 }
 
 # ---------------------------------------------------------------------------
@@ -235,12 +261,12 @@ if (-not $DryRun) {
 Write-Info ""
 Write-Success "=== Release $Tag complete! ==="
 Write-Info ""
-Write-Info "  Zip: $ZipPath"
+Write-Info "  Local zip:  $ZipPath"
+if (-not $DryRun -and -not $SkipPush -and -not $SkipTag) {
+    Write-Info "  CurseForge: packaging triggered by pushed tag (file type: $ReleaseType)"
+}
 Write-Info ""
 Write-Info "Next steps:"
-Write-Info "  1. Test the zip: extract and load in WoW to verify"
-Write-Info "  2. Upload to CurseForge / Wago.io / GitHub Releases"
-Write-Info "  3. Clear RELEASE_NOTES.md and set the next version placeholder"
-Write-Info "  4. git push"
-Write-Info "  5. git push --tags"
+Write-Info "  1. Verify the zip locally: extract and load in WoW"
+Write-Info "  2. Clear RELEASE_NOTES.md and set the next version placeholder"
 Write-Info ""
