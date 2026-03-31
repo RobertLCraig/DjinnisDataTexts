@@ -155,18 +155,17 @@ local function GetOverallPercent(metric)
     return (overall / app) * 100
 end
 
---- Get per-addon CPU% for a metric
-local function GetAddonPercent(addonNameOrIndex, metric)
-    local overall = C_AddOnProfiler.GetOverallMetric(metric)
-    local addon = C_AddOnProfiler.GetAddOnMetric(addonNameOrIndex, metric)
-    local relative = overall
-    if C_AddOnProfiler.GetApplicationMetric then
-        local app = C_AddOnProfiler.GetApplicationMetric(metric)
-        relative = app - overall + addon
-    end
+--- Get per-addon CPU% for a metric, using pre-fetched overall/app values
+local function GetAddonPercentFast(addonIndex, metric, appMetric, overallMetric)
+    local addon = C_AddOnProfiler.GetAddOnMetric(addonIndex, metric)
+    if addon <= 0 then return 0 end
+    local relative = appMetric - overallMetric + addon
     if relative <= 0 then return 0 end
     return (addon / relative) * 100
 end
+
+-- Metric key to Enum mapping
+local METRIC_ENUM_MAP -- populated on first use
 
 local function CollectCPU()
     profilerAvailable = IsProfilerEnabled()
@@ -181,26 +180,54 @@ local function CollectCPU()
     end
 
     local M = Enum.AddOnProfilerMetric
+    if not METRIC_ENUM_MAP then
+        METRIC_ENUM_MAP = {
+            current   = M.RecentAverageTime,
+            average   = M.SessionAverageTime,
+            encounter = M.EncounterAverageTime,
+            peak      = M.PeakTime,
+        }
+    end
+
+    -- Fetch overall percentages (4 calls each = 8 API calls total)
     overallCPU.current   = GetOverallPercent(M.RecentAverageTime)
     overallCPU.average   = GetOverallPercent(M.SessionAverageTime)
     overallCPU.encounter = GetOverallPercent(M.EncounterAverageTime)
     overallCPU.peak      = GetOverallPercent(M.PeakTime)
 
+    -- Only fetch the active sort metric for all addons (1 API call per addon)
+    local db = ns.db and ns.db.systemperformance or DEFAULTS
+    local sortKey = db.cpuSortMetric or "current"
+    local sortEnum = METRIC_ENUM_MAP[sortKey] or M.RecentAverageTime
+
+    -- Pre-fetch overall and app for the sort metric (avoid re-calling per addon)
+    local sortOverall = C_AddOnProfiler.GetOverallMetric(sortEnum)
+    local sortApp = C_AddOnProfiler.GetApplicationMetric
+        and C_AddOnProfiler.GetApplicationMetric(sortEnum) or sortOverall
+
     local numAddons = C_AddOns.GetNumAddOns()
     for i = 1, numAddons do
-        local cur  = GetAddonPercent(i, M.RecentAverageTime)
-        local avg  = GetAddonPercent(i, M.SessionAverageTime)
-        local enc  = GetAddonPercent(i, M.EncounterAverageTime)
-        local pk   = GetAddonPercent(i, M.PeakTime)
-        if cur > 0 or avg > 0 or pk > 0 then
+        local val = GetAddonPercentFast(i, sortEnum, sortApp, sortOverall)
+        if val > 0 then
             local name = C_AddOns.GetAddOnInfo(i)
-            table.insert(addonCPU, {
-                name      = name,
-                current   = cur,
-                average   = avg,
-                encounter = enc,
-                peak      = pk,
-            })
+            local entry = { name = name, index = i }
+            entry[sortKey] = val
+            table.insert(addonCPU, entry)
+        end
+    end
+
+    -- Sort by the active metric, then fill remaining metrics for top N only
+    SortAddonCPU(addonCPU, sortKey)
+    local topN = math.min(db.numTopCpuAddons or 10, #addonCPU)
+    for j = 1, topN do
+        local entry = addonCPU[j]
+        for key, enum in pairs(METRIC_ENUM_MAP) do
+            if not entry[key] then
+                local ov = C_AddOnProfiler.GetOverallMetric(enum)
+                local ap = C_AddOnProfiler.GetApplicationMetric
+                    and C_AddOnProfiler.GetApplicationMetric(enum) or ov
+                entry[key] = GetAddonPercentFast(entry.index, enum, ap, ov)
+            end
         end
     end
 end
