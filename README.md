@@ -12,10 +12,12 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 ## Features
 
 - **19 DataText modules** covering every major information category
-- **Configurable label templates** with `<tag>` syntax and clickable tag-insert buttons in settings
+- **Configurable label templates** with `<tag>` syntax, clickable tag-insert buttons, and preset suggestions in settings
+- **Global number formatting** with 8 locale presets (US, EU, French/SI, plain, custom) -- configurable thousands separator, decimal point, and abbreviation (k/m/b vs full numbers)
 - **Configurable click actions** per mouse button on every module
 - **Configurable tooltip sizing** (width, scale) per module
 - **Configurable sort orders** on all list-based data
+- **Optimized update loops** -- lightweight label-only updates when tooltip is hidden; heavy data collection gated behind tooltip visibility and dirty flags
 - **Unified font system** (DDTFontHeader / DDTFontNormal / DDTFontSmall) with face and size configurable in General settings
 - **Blizzard Settings API** integration with alphabetically sorted per-module subcategories
 - **Consistent tooltip style** across all modules (dark background, gold headers, class-colored names, gray hint bar)
@@ -54,7 +56,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 
 | Module | Description |
 |--------|-------------|
-| **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Live wait time and elapsed counters. Icon changes based on queue state. |
+| **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Assigned role tracking shows which role you were accepted as. Live wait time and elapsed counters. Icon changes based on queue state. |
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 
@@ -69,7 +71,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 
 | Module | Description |
 |--------|-------------|
-| **System Performance** | FPS, home/world latency, total addon memory with top consumers list. Optional CPU profiler support (per-addon CPU time when scriptProfile enabled). |
+| **System Performance** | FPS, home/world latency, total addon memory with top consumers list. CPU profiler via C_AddOnProfiler API (per-addon CPU time, no scriptProfile cvar needed). |
 | **Played Time** | Session timer, total /played time, level /played time. Class-colored character display. |
 | **Micro Menu** | Quick-access clickable launcher for all game panels (character, spellbook, talents, achievements, collections, etc.). |
 
@@ -86,12 +88,12 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 
 All settings are accessible through the Blizzard Settings interface:
 
-- **General** — Font face and size, global display settings
+- **General** — Font face and size, number formatting (locale presets or custom separators/decimals/abbreviation)
 - **Per-module subcategories** (alphabetically sorted) — Label template with tag buttons, tooltip scale/width, click actions, module-specific options
 
 ### Label Templates
 
-Every module supports customizable LDB text via `<tag>` template syntax. Tags are module-specific (e.g., `<fps>`, `<gold>`, `<coords>`). The settings panel for each module provides clickable tag buttons for easy template building.
+Every module supports customizable LDB text via `<tag>` template syntax. Tags are module-specific (e.g., `<fps>`, `<gold>`, `<coords>`). The settings panel for each module provides clickable tag buttons for easy template building and 2-5 preset suggestions showing common configurations.
 
 ### Click Actions
 
