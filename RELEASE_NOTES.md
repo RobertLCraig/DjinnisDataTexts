@@ -1,32 +1,46 @@
 # Release Notes
 
-## Version: 0.2.0
+## Version: 0.3.0
 
-### Performance, Formatting, and Quality-of-Life Update
+### Click Actions, Communities Enrichment, and Bug Fixes
 
 19-module LDB DataText suite for WoW Retail (Interface 120001 / Midnight).
 Works with any LDB display (ElvUI, Titan Panel, Bazooka, ChocolateBar, etc.).
 
-#### New Modules
-- **Account Status** - Warband bank access and pet journal unlock indicators for multiboxers
-- **LFG Status** - LFG queue tracking with assigned role detection, premade group applications, listed group status
+#### Extended Click Action System
+- **9 modifier combinations** - Left, Right, Middle, Shift+Left, Shift+Right, Ctrl+Left, Ctrl+Right, Alt+Left, Alt+Right (previously 5). All modules now expose all 9 slots in settings
+- **Per-row click actions** - Currency and Bag Value modules support configurable click actions on individual tooltip rows (link to chat, open currency tab, etc.)
+- **New click actions across all modules**:
+  - Account Status: Open Warband Bank, Open Pet Journal
+  - Character Info: Achievements, Spellbook, Collections
+  - Bag Value: Sort Bags; row click to link items
+  - Coordinates: Share Coords in Group, Set/Clear Map Pin
+  - Currency: Copy Gold to Chat; row click to link currencies
+  - Experience: Achievements
+  - LFG Status: Premade Groups
+  - Mail: Copy Mail Summary
+  - Micro Menu: Reload UI, Addon List
+  - Played Time: Toggle Stopwatch, Copy Session Time
+  - Saved Instances: Group Finder
+  - System Performance: Addon List, Copy Memory Report
+  - Time/Date: Toggle Stopwatch, Copy Time to Chat
+- **SpecSwitch unified** - Merged custom click resolver back into standard system; all modules now use the same `DDT:ResolveClickAction` with full modifier support
 
-#### New Features
-- **Global number formatting** - 8 locale presets (US, EU, French/SI, plain, custom) with configurable thousands separator, decimal point, and abbreviation (k/m/b). Applied to gold, currency quantities, memory, XP, and all numeric displays
-- **Label template presets** - Every module now shows 2-5 clickable preset suggestions below the label editor for common configurations
-- **LFG assigned role tracking** - `<assigned>` tag and tooltip display showing which role you were accepted as (via GetLFGProposal / UnitGroupRolesAssigned)
-- **ASCII XP progress bar** - `<bar>` tag in Experience module for visual XP display in the label
+#### Communities Module Enrichment
+- **Role badges** - Owner `[O]`, Leader `[L]`, Moderator `[M]` indicators next to member names
+- **M+ score column** - Conditional Mythic+ score display with Blizzard tier colors (hidden when no member has a score)
+- **Battle.net App indicator** - `[App]` badge and "Battle.net App" zone text for remote chat members in BNet communities
 
-#### Optimization Pass
-- **SystemPerformance** - Split into lightweight label updates (FPS/latency only) and heavy path (memory/CPU scan only when tooltip visible). ~1,700 API calls/sec reduced to ~2 when tooltip hidden
-- **Coordinates** - Update interval increased 5x (0.1s to 0.5s), position threshold skips redundant C_Map calls when stationary
-- **MovementSpeed** - Speed polling separated from buff scanning (UNIT_AURA event only), 0.5% change threshold
-- **Experience** - Dirty flag pattern: quest XP scan only runs on quest-related events, not every XP update
+#### Bug Fixes
+- **PlayedTime crash** - Fixed undefined `db` variable used before declaration in `BuildTooltipContent`
+- **Coordinates cleanup** - Removed redundant `local db` redeclaration in `BuildTooltipContent`
+- **gsub pattern injection** - All 16 module `ExpandLabel` functions and Core `FormatLabel`/`GetCustomURL` now use safe `ns.ExpandTag()` helper to prevent `%` characters in replacement values from being interpreted as Lua capture references
+- **SpecSwitch label** - Fixed `<icon>` tag not expanding in DemoMode by using shared `ExpandLabel` function
 
-#### Improvements
-- **CPU Profiler** - Rewritten to use C_AddOnProfiler API (no scriptProfile cvar needed), handles 140+ addons without script timeout
-- **Number formatting** - Centralized `ns.FormatNumber`, `ns.FormatGold`, `ns.FormatGoldShort`, `ns.FormatMemory`, `ns.FormatQuantity` replace per-module formatting functions
-- **Settings UI** - Number formatting section in General panel with preset dropdown, live preview, and custom separator/decimal/abbreviation controls
+#### Demo Mode Updates
+- Updated all demo data to Midnight expansion: level cap 90, Quel'Thalas zones (Silvermoon City, Eversong Woods, Ghostlands, The Dead Scar, etc.)
+- Added 4th demo community "BNet Gaming Group" with M+ scores and App-only members
+- Mix of max-level and leveling characters across demo data
 
 #### Full Module List (19)
 | Category | Modules |

@@ -50,13 +50,23 @@ local DEFAULTS = {
     tooltipScale    = 1.0,
     tooltipWidth    = 300,
     clickActions    = {
-        leftClick  = "character",
-        rightClick = "copyname",
+        leftClick       = "character",
+        rightClick      = "copyname",
+        middleClick     = "none",
+        shiftLeftClick  = "achievements",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "spellbook",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     character    = "Character Panel",
+    achievements = "Achievements",
+    spellbook    = "Spellbook",
+    collections  = "Collections",
     copyname     = "Copy Name to Chat",
     opensettings = "Open DDT Settings",
     none         = "None",
@@ -102,13 +112,14 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<name>", charName)
-    result = result:gsub("<realm>", charRealm)
-    result = result:gsub("<class>", charClass)
-    result = result:gsub("<level>", tostring(charLevel))
-    result = result:gsub("<ilvl>", string.format("%.1f", charIlvl))
-    result = result:gsub("<race>", charRace)
-    result = result:gsub("<shard>", shardID or "?")
+    local E = ns.ExpandTag
+    result = E(result, "name", charName)
+    result = E(result, "realm", charRealm)
+    result = E(result, "class", charClass)
+    result = E(result, "level", charLevel)
+    result = E(result, "ilvl", string.format("%.1f", charIlvl))
+    result = E(result, "race", charRace)
+    result = E(result, "shard", shardID or "?")
     return result
 end
 
@@ -132,6 +143,12 @@ local dataobj = LDB:NewDataObject("DDT-CharacterInfo", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "achievements" then
+            ToggleAchievementFrame()
+        elseif action == "spellbook" then
+            ToggleSpellBook(BOOKTYPE_SPELL)
+        elseif action == "collections" then
+            ToggleCollectionsJournal()
         elseif action == "copyname" then
             if charFullName ~= "" then
                 ChatFrameUtil.OpenChat(charFullName)

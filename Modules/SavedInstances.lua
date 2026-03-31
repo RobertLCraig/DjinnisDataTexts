@@ -73,7 +73,13 @@ local DEFAULTS = {
     clickActions    = {
         leftClick       = "refresh",
         rightClick      = "greatvault",
+        middleClick     = "none",
         shiftLeftClick  = "raidinfo",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "groupfinder",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
@@ -81,6 +87,7 @@ local CLICK_ACTIONS = {
     refresh      = "Refresh",
     greatvault   = "Great Vault",
     raidinfo     = "Raid Info",
+    groupfinder  = "Group Finder",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -207,6 +214,8 @@ local dataobj = LDB:NewDataObject("DDT-SavedInstances", {
             end
         elseif action == "raidinfo" then
             ToggleRaidFrame()
+        elseif action == "groupfinder" then
+            ToggleLFDParentFrame()
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
@@ -263,11 +272,12 @@ local function ExpandLabel(template)
     local summary = #parts > 0 and ("Lockouts: " .. table.concat(parts, " ")) or "No Lockouts"
 
     local result = template
-    result = result:gsub("<summary>", summary)
-    result = result:gsub("<raids>", tostring(raidCount))
-    result = result:gsub("<dungeons>", tostring(dungeonCount))
-    result = result:gsub("<mplus>", tostring(mythicPlusCount))
-    result = result:gsub("<total>", tostring(total))
+    local E = ns.ExpandTag
+    result = E(result, "summary", summary)
+    result = E(result, "raids", raidCount)
+    result = E(result, "dungeons", dungeonCount)
+    result = E(result, "mplus", mythicPlusCount)
+    result = E(result, "total", total)
     return result
 end
 

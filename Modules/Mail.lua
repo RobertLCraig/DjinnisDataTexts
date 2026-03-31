@@ -38,12 +38,21 @@ local DEFAULTS = {
     tooltipScale   = 1.0,
     tooltipWidth   = 300,
     clickActions   = {
-        leftClick  = "character",
+        leftClick       = "character",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "copysummary",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     character    = "Character Panel",
+    copysummary  = "Copy Mail Summary",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -97,9 +106,10 @@ local function ExpandLabel(template)
         status = "No Mail"
     end
 
-    result = result:gsub("<status>", status)
-    result = result:gsub("<count>", tostring(mailCount))
-    result = result:gsub("<new>", hasNewMail and "New" or "")
+    local E = ns.ExpandTag
+    result = E(result, "status", status)
+    result = E(result, "count", mailCount)
+    result = E(result, "new", hasNewMail and "New" or "")
     return result
 end
 
@@ -123,6 +133,9 @@ local dataobj = LDB:NewDataObject("DDT-Mail", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "copysummary" then
+            local msg = mailCount > 0 and (mailCount .. " mail") or "No mail"
+            ChatFrameUtil.OpenChat(msg)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

@@ -49,15 +49,39 @@ local DEFAULTS = {
     tooltipScale      = 1.0,
     tooltipWidth      = 340,
     clickActions      = {
-        leftClick  = "openbags",
-        rightClick = "rescan",
+        leftClick       = "openbags",
+        rightClick      = "rescan",
+        middleClick     = "none",
+        shiftLeftClick  = "sortbags",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
+    },
+    rowClickActions   = {
+        leftClick       = "linkitem",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     openbags     = "Open Bags",
+    sortbags     = "Sort Bags",
     rescan       = "Rescan Bags",
     opensettings = "Open DDT Settings",
+    none         = "None",
+}
+
+local ROW_CLICK_ACTIONS = {
+    linkitem     = "Link Item to Chat",
     none         = "None",
 }
 
@@ -136,11 +160,12 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<value>", FormatGoldShort(totalValue))
-    result = result:gsub("<vendor>", FormatGoldShort(vendorValue))
-    result = result:gsub("<free>", tostring(freeSlots))
-    result = result:gsub("<total>", tostring(totalSlots))
-    result = result:gsub("<used>", tostring(totalSlots - freeSlots))
+    local E = ns.ExpandTag
+    result = E(result, "value", FormatGoldShort(totalValue))
+    result = E(result, "vendor", FormatGoldShort(vendorValue))
+    result = E(result, "free", freeSlots)
+    result = E(result, "total", totalSlots)
+    result = E(result, "used", totalSlots - freeSlots)
     return result
 end
 
@@ -164,6 +189,12 @@ local dataobj = LDB:NewDataObject("DDT-BagValue", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "openbags" then
             ToggleAllBags()
+        elseif action == "sortbags" then
+            if C_Container and C_Container.SortBags then
+                C_Container.SortBags()
+            elseif SortBags then
+                SortBags()
+            end
         elseif action == "rescan" then
             BagVal:ScanBags()
         elseif action == "opensettings" then
@@ -270,6 +301,7 @@ function BagVal:ScanBags()
                             end
                             local itemIcon = containerInfo and containerInfo.iconFileID
                             itemAccum[itemID] = {
+                                itemID = itemID,
                                 name = itemName or ("Item " .. itemID),
                                 icon = itemIcon,
                                 value = 0,
@@ -339,6 +371,7 @@ local function CreateTooltipFrame()
     f:SetScript("OnLeave", function() BagVal:StartHideTimer() end)
 
     f.lines = {}
+    f.rowFrames = {}
     return f
 end
 
@@ -359,6 +392,58 @@ local function GetLine(f, index)
     return f.lines[index]
 end
 
+local function GetRowFrame(f, index)
+    if f.rowFrames[index] then
+        f.rowFrames[index]:Show()
+        return f.rowFrames[index]
+    end
+    local row = CreateFrame("Button", nil, f)
+    row:SetHeight(ROW_HEIGHT)
+    row:EnableMouse(true)
+    row:RegisterForClicks("AnyUp")
+    row:SetScript("OnEnter", function(self)
+        BagVal:CancelHideTimer()
+        if self.itemData then
+            self:SetBackdrop({bgFile = "Interface\\ChatFrame\\ChatFrameBackground"})
+            self:SetBackdropColor(0.3, 0.3, 0.3, 0.3)
+        end
+    end)
+    row:SetScript("OnLeave", function(self)
+        BagVal:StartHideTimer()
+        self:SetBackdrop(nil)
+    end)
+    row:SetScript("OnClick", function(self, button)
+        if not self.itemData then return end
+        local db = BagVal:GetDB()
+        local action = DDT:ResolveClickAction(button, db.rowClickActions or {})
+        BagVal:ExecuteRowAction(action, self.itemData)
+    end)
+    f.rowFrames[index] = row
+    return row
+end
+
+local function HideRowFrames(f)
+    if not f.rowFrames then return end
+    for _, row in pairs(f.rowFrames) do
+        row:Hide()
+        row.itemData = nil
+    end
+end
+
+function BagVal:ExecuteRowAction(action, item)
+    if not action or action == "none" or not item then return end
+    if action == "linkitem" then
+        if item.itemID then
+            local _, link = C_Item.GetItemInfo(item.itemID)
+            if link then
+                ChatFrameUtil.OpenChat(link)
+                return
+            end
+        end
+        ChatFrameUtil.OpenChat(item.name)
+    end
+end
+
 local function HideLines(f)
     for _, line in pairs(f.lines) do
         line.label:Hide()
@@ -369,6 +454,7 @@ end
 function BagVal:BuildTooltipContent()
     local f = tooltipFrame
     HideLines(f)
+    HideRowFrames(f)
 
     local db = self:GetDB()
     local hasTSM = TSM_API ~= nil
@@ -467,6 +553,12 @@ function BagVal:BuildTooltipContent()
             row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatGoldShort(item.value))
             row.value:SetTextColor(0.9, 0.82, 0.0)
+
+            -- Clickable row overlay
+            local rf = GetRowFrame(f, i)
+            rf.itemData = item
+            rf:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            rf:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             y = y - ROW_HEIGHT
         end
 
@@ -482,7 +574,16 @@ function BagVal:BuildTooltipContent()
     end
 
     -- Hint
-    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
+    local dtHint = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
+    local rowHint = DDT:BuildHintText(db.rowClickActions or {}, ROW_CLICK_ACTIONS)
+    if rowHint ~= "" then
+        rowHint = "|cff888888Row: " .. rowHint:gsub("|cff888888", ""):gsub("|r$", "") .. "|r"
+    end
+    local combined = dtHint
+    if rowHint ~= "" then
+        combined = combined ~= "" and (combined .. "\n" .. rowHint) or rowHint
+    end
+    f.hint:SetText(combined)
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -575,6 +676,7 @@ function BagVal:BuildSettingsPanel(panel)
         function(v) db().tooltipWidth = v end, r)
 
     y = ns.AddModuleClickActionsSection(c, r, y, "bagvalue", CLICK_ACTIONS)
+    y = ns.AddRowClickActionsSection(c, r, y, "bagvalue", ROW_CLICK_ACTIONS)
 
     c:SetHeight(math.abs(y) + 20)
 end

@@ -39,8 +39,15 @@ local DEFAULTS = {
     tooltipScale   = 1.0,
     tooltipWidth   = 280,
     clickActions   = {
-        leftClick  = "worldmap",
-        rightClick = "copycoords",
+        leftClick       = "worldmap",
+        rightClick      = "copycoords",
+        middleClick     = "none",
+        shiftLeftClick  = "sharecoords",
+        shiftRightClick = "waypoint",
+        ctrlLeftClick   = "zonemap",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
@@ -48,7 +55,9 @@ local CLICK_ACTIONS = {
     worldmap     = "World Map",
     zonemap      = "Zone Map",
     copycoords   = "Copy Coords to Chat",
+    sharecoords  = "Share Coords in Group",
     pastecoords  = "Paste Coords (TomTom)",
+    waypoint     = "Set/Clear Map Pin",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -102,10 +111,11 @@ end
 
 local function ExpandLabel(template, db)
     local result = template
-    result = result:gsub("<coords>", FormatCoords(playerX, playerY, db.coordDecimals))
-    result = result:gsub("<zone>", currentZone or "")
-    result = result:gsub("<subzone>", currentSubZone or "")
-    result = result:gsub("<map>", currentMapName or "")
+    local E = ns.ExpandTag
+    result = E(result, "coords", FormatCoords(playerX, playerY, db.coordDecimals))
+    result = E(result, "zone", currentZone or "")
+    result = E(result, "subzone", currentSubZone or "")
+    result = E(result, "map", currentMapName or "")
     return result
 end
 
@@ -144,12 +154,37 @@ local dataobj = LDB:NewDataObject("DDT-Coordinates", {
             end
             msg = msg .. " (" .. coordStr .. ")"
             ChatFrameUtil.OpenChat(msg)
+        elseif action == "sharecoords" then
+            local coordStr = FormatCoords(playerX, playerY, db.coordDecimals)
+            local msg = currentZone
+            if currentSubZone ~= "" and currentSubZone ~= currentZone then
+                msg = msg .. " - " .. currentSubZone
+            end
+            msg = msg .. " (" .. coordStr .. ")"
+            local channel = IsInRaid() and "RAID" or IsInGroup() and "PARTY" or nil
+            if channel then
+                SendChatMessage(msg, channel)
+            else
+                ChatFrameUtil.OpenChat(msg)
+            end
         elseif action == "pastecoords" then
             -- Build a /way command for TomTom or Blizzard waypoint
             local x = playerX and (playerX * 100) or 0
             local y = playerY and (playerY * 100) or 0
             local waypointStr = string.format("/way %.1f %.1f", x, y)
             ChatFrameUtil.OpenChat(waypointStr)
+        elseif action == "waypoint" then
+            if C_Map and C_Map.SetUserWaypoint and currentMapID and playerX and playerY then
+                if C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() then
+                    C_Map.ClearUserWaypoint()
+                    DDT:Print("Map pin cleared.")
+                else
+                    local point = UiMapPoint.CreateFromCoordinates(currentMapID, playerX, playerY)
+                    C_Map.SetUserWaypoint(point)
+                    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+                    DDT:Print("Map pin set at current location.")
+                end
+            end
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
@@ -347,7 +382,6 @@ function Coordinates:BuildTooltipContent()
     -- Hint
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
-    local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
     f:SetSize(ttWidth, totalHeight)

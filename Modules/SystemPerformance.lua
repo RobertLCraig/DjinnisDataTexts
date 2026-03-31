@@ -52,14 +52,23 @@ local DEFAULTS = {
     clickActions     = {
         leftClick       = "gc",
         rightClick      = "refresh",
+        middleClick     = "none",
+        shiftLeftClick  = "addonlist",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "reloadui",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     gc             = "Collect Garbage",
     refresh        = "Refresh Memory",
+    addonlist      = "Addon List",
     gamemenu       = "Game Menu",
     reloadui       = "Reload UI",
+    copymemory     = "Copy Memory Report",
     opensettings   = "Open DDT Settings",
     none           = "None",
 }
@@ -235,11 +244,12 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<fps>", string.format("%.0f", fps))
-    result = result:gsub("<latency>", tostring(latencyHome))
-    result = result:gsub("<world>", tostring(latencyWorld))
-    result = result:gsub("<memory>", FormatMemory(memoryTotal))
-    result = result:gsub("<cpu>", profilerAvailable and FormatCPU(overallCPU.current) or "N/A")
+    local E = ns.ExpandTag
+    result = E(result, "fps", string.format("%.0f", fps))
+    result = E(result, "latency", latencyHome)
+    result = E(result, "world", latencyWorld)
+    result = E(result, "memory", FormatMemory(memoryTotal))
+    result = E(result, "cpu", profilerAvailable and FormatCPU(overallCPU.current) or "N/A")
     return result
 end
 
@@ -271,6 +281,18 @@ local dataobj = LDB:NewDataObject("DDT-SystemPerformance", {
             ToggleGameMenuFrame()
         elseif action == "reloadui" then
             ReloadUI()
+        elseif action == "addonlist" then
+            if AddonList then
+                if AddonList:IsShown() then
+                    AddonList:Hide()
+                else
+                    AddonList:Show()
+                end
+            end
+        elseif action == "copymemory" then
+            local msg = string.format("FPS: %.0f | Home: %dms | World: %dms | Memory: %s",
+                fps, latencyHome, latencyWorld, FormatMemory(memoryTotal))
+            ChatFrameUtil.OpenChat(msg)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

@@ -465,9 +465,13 @@ ns.CreateScrollPanel = CreateScrollPanel
 local CLICK_ACTION_KEYS = {
     { key = "leftClick",       label = "Left Click" },
     { key = "rightClick",      label = "Right Click" },
+    { key = "middleClick",     label = "Middle Click" },
     { key = "shiftLeftClick",  label = "Shift + Left Click" },
     { key = "shiftRightClick", label = "Shift + Right Click" },
-    { key = "middleClick",     label = "Middle Click" },
+    { key = "ctrlLeftClick",   label = "Ctrl + Left Click" },
+    { key = "ctrlRightClick",  label = "Ctrl + Right Click" },
+    { key = "altLeftClick",    label = "Alt + Left Click" },
+    { key = "altRightClick",   label = "Alt + Right Click" },
 }
 
 local function AddClickActionsSection(c, r, y, dbKey)
@@ -501,6 +505,25 @@ local function AddModuleClickActionsSection(c, r, y, dbKey, actionValues)
 end
 
 ns.AddModuleClickActionsSection = AddModuleClickActionsSection
+
+--- Build row click-action settings for modules with interactive tooltip rows.
+--- @param c Frame     Content frame
+--- @param r table     Refresh callbacks list
+--- @param y number    Current y offset
+--- @param dbKey string  Module db key
+--- @param actionValues table  Module-specific row action { key = "Display Name" } table
+local function AddRowClickActionsSection(c, r, y, dbKey, actionValues)
+    y = AddHeader(c, y, "Row Click Actions")
+    y = AddDescription(c, y, "Configure what happens when you click a row in the tooltip.")
+    for _, entry in ipairs(CLICK_ACTION_KEYS) do
+        y = AddDropdown(c, y, entry.label, actionValues,
+            function() return ns.db[dbKey].rowClickActions[entry.key] end,
+            function(v) ns.db[dbKey].rowClickActions[entry.key] = v end, r)
+    end
+    return y
+end
+
+ns.AddRowClickActionsSection = AddRowClickActionsSection
 
 ---------------------------------------------------------------------------
 -- General panel

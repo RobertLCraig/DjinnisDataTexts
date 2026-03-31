@@ -53,17 +53,42 @@ local DEFAULTS = {
     tooltipScale       = 1.0,
     tooltipWidth       = 340,
     clickActions       = {
-        leftClick  = "currency",
-        rightClick = "refresh",
+        leftClick       = "currency",
+        rightClick      = "refresh",
+        middleClick     = "none",
+        shiftLeftClick  = "copygold",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "trackcurrency",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
+    },
+    rowClickActions    = {
+        leftClick       = "linkcurrency",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     currency       = "Currency Tab",
     trackcurrency  = "Track Currencies (Backpack)",
+    copygold       = "Copy Gold to Chat",
     refresh        = "Refresh Data",
     opensettings   = "Open DDT Settings",
     none           = "None",
+}
+
+local ROW_CLICK_ACTIONS = {
+    linkcurrency = "Link to Chat",
+    opencurrency = "Open Currency Tab",
+    none         = "None",
 }
 
 local CURRENCY_SORT_VALUES = {
@@ -112,11 +137,12 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<gold>", FormatGoldShort(currentGold))
-    result = result:gsub("<session>", FormatGoldShort(sessionChange))
-    result = result:gsub("<token>", tokenPrice and FormatGoldShort(tokenPrice) or "N/A")
-    result = result:gsub("<warbank>", FormatGoldShort(warbankGold))
-    result = result:gsub("<auctions>", tostring(postedAuctionCount))
+    local E = ns.ExpandTag
+    result = E(result, "gold", FormatGoldShort(currentGold))
+    result = E(result, "session", FormatGoldShort(sessionChange))
+    result = E(result, "token", tokenPrice and FormatGoldShort(tokenPrice) or "N/A")
+    result = E(result, "warbank", FormatGoldShort(warbankGold))
+    result = E(result, "auctions", postedAuctionCount)
     return result
 end
 
@@ -142,6 +168,9 @@ local dataobj = LDB:NewDataObject("DDT-Currency", {
             ToggleCharacter("TokenFrame")
         elseif action == "trackcurrency" then
             ToggleAllBags()
+        elseif action == "copygold" then
+            local FormatGoldShort = ns.FormatGoldShort
+            ChatFrameUtil.OpenChat(FormatGoldShort(currentGold))
         elseif action == "refresh" then
             Currency:UpdateData()
         elseif action == "opensettings" then
@@ -446,7 +475,62 @@ local function CreateTooltipFrame()
     f:SetScript("OnLeave", function() Currency:StartHideTimer() end)
 
     f.lines = {}
+    f.rowFrames = {}
     return f
+end
+
+local function GetRowFrame(f, index)
+    if f.rowFrames[index] then
+        f.rowFrames[index]:Show()
+        return f.rowFrames[index]
+    end
+    local row = CreateFrame("Button", nil, f)
+    row:SetHeight(ROW_HEIGHT)
+    row:EnableMouse(true)
+    row:RegisterForClicks("AnyUp")
+    row:SetScript("OnEnter", function(self)
+        Currency:CancelHideTimer()
+        if self.currencyData then
+            self:SetBackdrop({bgFile = "Interface\\ChatFrame\\ChatFrameBackground"})
+            self:SetBackdropColor(0.3, 0.3, 0.3, 0.3)
+        end
+    end)
+    row:SetScript("OnLeave", function(self)
+        Currency:StartHideTimer()
+        self:SetBackdrop(nil)
+    end)
+    row:SetScript("OnClick", function(self, button)
+        if not self.currencyData then return end
+        local db = Currency:GetDB()
+        local action = DDT:ResolveClickAction(button, db.rowClickActions or {})
+        Currency:ExecuteRowAction(action, self.currencyData)
+    end)
+    f.rowFrames[index] = row
+    return row
+end
+
+local function HideRowFrames(f)
+    if not f.rowFrames then return end
+    for _, row in pairs(f.rowFrames) do
+        row:Hide()
+        row.currencyData = nil
+    end
+end
+
+function Currency:ExecuteRowAction(action, cur)
+    if not action or action == "none" or not cur then return end
+    if action == "linkcurrency" then
+        if cur.currencyID then
+            local link = C_CurrencyInfo.GetCurrencyLink(cur.currencyID)
+            if link then
+                ChatFrameUtil.OpenChat(link)
+            else
+                ChatFrameUtil.OpenChat(cur.name)
+            end
+        end
+    elseif action == "opencurrency" then
+        ToggleCharacter("TokenFrame")
+    end
 end
 
 local function GetLine(f, index)
@@ -481,6 +565,7 @@ end
 function Currency:BuildTooltipContent()
     local f = tooltipFrame
     HideLines(f)
+    HideRowFrames(f)
 
     local db = self:GetDB()
 
@@ -756,6 +841,12 @@ function Currency:BuildTooltipContent()
             row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatQuantity(cur.quantity, cur.maxQuantity))
             row.value:SetTextColor(0.9, 0.9, 0.9)
+
+            -- Clickable row overlay
+            local rf = GetRowFrame(f, shown)
+            rf.currencyData = cur
+            rf:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            rf:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             y = y - ROW_HEIGHT
         end
 
@@ -772,7 +863,16 @@ function Currency:BuildTooltipContent()
     end
 
     -- Hint
-    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
+    local dtHint = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
+    local rowHint = DDT:BuildHintText(db.rowClickActions or {}, ROW_CLICK_ACTIONS)
+    if rowHint ~= "" then
+        rowHint = "|cff888888Row: " .. rowHint:gsub("|cff888888", ""):gsub("|r$", "") .. "|r"
+    end
+    local combined = dtHint
+    if rowHint ~= "" then
+        combined = combined ~= "" and (combined .. "\n" .. rowHint) or rowHint
+    end
+    f.hint:SetText(combined)
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -886,6 +986,7 @@ function Currency:BuildSettingsPanel(panel)
         function(v) db().tooltipWidth = v end, r)
 
     y = ns.AddModuleClickActionsSection(c, r, y, "currency", CLICK_ACTIONS)
+    y = ns.AddRowClickActionsSection(c, r, y, "currency", ROW_CLICK_ACTIONS)
     y = W.AddDescription(c, y,
         "Alt gold is tracked per-character across sessions.")
 

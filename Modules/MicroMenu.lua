@@ -32,12 +32,22 @@ local DEFAULTS = {
     tooltipScale  = 1.0,
     tooltipWidth  = 220,
     clickActions  = {
-        leftClick  = "gamemenu",
+        leftClick       = "gamemenu",
+        rightClick      = "reloadui",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     gamemenu     = "Game Menu",
+    reloadui     = "Reload UI",
+    addonlist    = "Addon List",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -110,6 +120,16 @@ local dataobj = LDB:NewDataObject("DDT-MicroMenu", {
                 HideUIPanel(GameMenuFrame)
             else
                 ShowUIPanel(GameMenuFrame)
+            end
+        elseif action == "reloadui" then
+            ReloadUI()
+        elseif action == "addonlist" then
+            if AddonList then
+                if AddonList:IsShown() then
+                    AddonList:Hide()
+                else
+                    AddonList:Show()
+                end
             end
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then

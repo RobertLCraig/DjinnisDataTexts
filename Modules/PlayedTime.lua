@@ -37,12 +37,22 @@ local DEFAULTS = {
     tooltipScale  = 1.0,
     tooltipWidth  = 280,
     clickActions  = {
-        leftClick  = "refresh",
+        leftClick       = "refresh",
+        rightClick      = "stopwatch",
+        middleClick     = "none",
+        shiftLeftClick  = "copytime",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     refresh      = "Refresh /played",
+    stopwatch    = "Toggle Stopwatch",
+    copytime     = "Copy Session Time",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -89,9 +99,10 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<session>", FormatDuration(GetSessionTime()))
-    result = result:gsub("<total>", playedReceived and FormatDuration(totalPlayed + GetSessionTime()) or "...")
-    result = result:gsub("<level>", playedReceived and FormatDuration(levelPlayed + GetSessionTime()) or "...")
+    local E = ns.ExpandTag
+    result = E(result, "session", FormatDuration(GetSessionTime()))
+    result = E(result, "total", playedReceived and FormatDuration(totalPlayed + GetSessionTime()) or "...")
+    result = E(result, "level", playedReceived and FormatDuration(levelPlayed + GetSessionTime()) or "...")
     return result
 end
 
@@ -115,6 +126,10 @@ local dataobj = LDB:NewDataObject("DDT-PlayedTime", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "refresh" then
             RequestTimePlayed()
+        elseif action == "stopwatch" then
+            Stopwatch_Toggle()
+        elseif action == "copytime" then
+            ChatFrameUtil.OpenChat("Session: " .. FormatDuration(GetSessionTime()))
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
@@ -320,10 +335,11 @@ function PlayedTime:BuildTooltipContent()
     charLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
 
+    local db = self:GetDB()
+
     -- Hint
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
-    local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
     f:SetSize(ttWidth, totalHeight)

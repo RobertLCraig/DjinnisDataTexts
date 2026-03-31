@@ -14,7 +14,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 - **19 DataText modules** covering every major information category
 - **Configurable label templates** with `<tag>` syntax, clickable tag-insert buttons, and preset suggestions in settings
 - **Global number formatting** with 8 locale presets (US, EU, French/SI, plain, custom) -- configurable thousands separator, decimal point, and abbreviation (k/m/b vs full numbers)
-- **Configurable click actions** per mouse button on every module
+- **Configurable click actions** with 9 modifier combinations (Left, Right, Middle, Shift, Ctrl, Alt) on every module
+- **Per-row click actions** on Currency and Bag Value tooltip rows (link to chat, open panels)
 - **Configurable tooltip sizing** (width, scale) per module
 - **Configurable sort orders** on all list-based data
 - **Optimized update loops** -- lightweight label-only updates when tooltip is hidden; heavy data collection gated behind tooltip visibility and dirty flags
@@ -32,7 +33,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 |--------|-------------|
 | **Guild** | Online guild roster with MOTD, rank, zone, notes, officer notes. Grouped by rank/class/zone. |
 | **Friends** | Character and Battle.net friends with game info, status, broadcasts. Filterable by type. |
-| **Communities** | WoW Communities roster showing online members, streams, and club activity. |
+| **Communities** | WoW Communities roster showing online members, role badges, M+ scores, and BNet App status. |
 
 ### Character & Stats
 
@@ -97,7 +98,7 @@ Every module supports customizable LDB text via `<tag>` template syntax. Tags ar
 
 ### Click Actions
 
-Every module supports configurable left-click and right-click actions. Available actions vary by module. All modules include "Open DDT Settings" as an option.
+Every module supports configurable click actions across 9 modifier combinations: Left, Right, Middle, Shift+Left, Shift+Right, Ctrl+Left, Ctrl+Right, Alt+Left, Alt+Right. Available actions vary by module and are configured in each module's settings panel. Currency and Bag Value additionally support per-row click actions on their tooltip item rows.
 
 ## Dependencies
 

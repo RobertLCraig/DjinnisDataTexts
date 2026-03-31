@@ -38,9 +38,13 @@ ns.defaults = {
         clickActions = {
             leftClick = "whisper",
             rightClick = "invite",
+            middleClick = "openfriends",
             shiftLeftClick = "copyname",
             shiftRightClick = "who",
-            middleClick = "openfriends",
+            ctrlLeftClick = "copyarmory",
+            ctrlRightClick = "none",
+            altLeftClick = "none",
+            altRightClick = "none",
         },
     },
     guild = {
@@ -60,9 +64,13 @@ ns.defaults = {
         clickActions = {
             leftClick = "whisper",
             rightClick = "invite",
+            middleClick = "openguild",
             shiftLeftClick = "copyname",
             shiftRightClick = "who",
-            middleClick = "openguild",
+            ctrlLeftClick = "copyarmory",
+            ctrlRightClick = "none",
+            altLeftClick = "none",
+            altRightClick = "none",
         },
     },
     global = {
@@ -94,9 +102,13 @@ ns.defaults = {
         clickActions = {
             leftClick = "whisper",
             rightClick = "invite",
+            middleClick = "opencommunities",
             shiftLeftClick = "copyname",
             shiftRightClick = "who",
-            middleClick = "opencommunities",
+            ctrlLeftClick = "copyarmory",
+            ctrlRightClick = "none",
+            altLeftClick = "none",
+            altRightClick = "none",
         },
     },
 }
@@ -551,16 +563,26 @@ function DDT:ParseNoteGroups(note)
     return groups
 end
 
+--- Safely replace a <tag> placeholder without interpreting % in value.
+--- @param str string   The template string
+--- @param tag string   The tag name (without angle brackets)
+--- @param value any     The replacement value (tostring'd automatically)
+--- @return string
+function ns.ExpandTag(str, tag, value)
+    local s = tostring(value)
+    return (str:gsub("<" .. tag .. ">", function() return s end))
+end
+
 --- Replace <token> placeholders in a format string
 function DDT:FormatLabel(fmt, online, total, extra)
     local offline = total - online
     local result = fmt
-    result = result:gsub("<online>", tostring(online))
-    result = result:gsub("<total>", tostring(total))
-    result = result:gsub("<offline>", tostring(offline))
+    result = ns.ExpandTag(result, "online", online)
+    result = ns.ExpandTag(result, "total", total)
+    result = ns.ExpandTag(result, "offline", offline)
     if extra then
         for k, v in pairs(extra) do
-            result = result:gsub("<" .. k .. ">", tostring(v))
+            result = ns.ExpandTag(result, k, v)
         end
     end
     return result
@@ -607,9 +629,13 @@ function DDT:BuildHintText(clickActions, actionLabels)
     local labels = {
         { key = "leftClick",       prefix = "LClick" },
         { key = "rightClick",      prefix = "RClick" },
+        { key = "middleClick",     prefix = "MClick" },
         { key = "shiftLeftClick",  prefix = "Shift+L" },
         { key = "shiftRightClick", prefix = "Shift+R" },
-        { key = "middleClick",     prefix = "MClick" },
+        { key = "ctrlLeftClick",   prefix = "Ctrl+L" },
+        { key = "ctrlRightClick",  prefix = "Ctrl+R" },
+        { key = "altLeftClick",    prefix = "Alt+L" },
+        { key = "altRightClick",   prefix = "Alt+R" },
     }
     local hints = {}
     for _, entry in ipairs(labels) do
@@ -668,16 +694,19 @@ end
 
 --- Resolve a click action from a button+modifier combo
 function DDT:ResolveClickAction(button, clickActions)
-    if button == "LeftButton" and IsShiftKeyDown() then
-        return clickActions.shiftLeftClick
-    elseif button == "RightButton" and IsShiftKeyDown() then
-        return clickActions.shiftRightClick
-    elseif button == "LeftButton" then
-        return clickActions.leftClick
-    elseif button == "RightButton" then
-        return clickActions.rightClick
-    elseif button == "MiddleButton" then
-        return clickActions.middleClick
+    if IsAltKeyDown() then
+        if button == "LeftButton" then return clickActions.altLeftClick end
+        if button == "RightButton" then return clickActions.altRightClick end
+    elseif IsControlKeyDown() then
+        if button == "LeftButton" then return clickActions.ctrlLeftClick end
+        if button == "RightButton" then return clickActions.ctrlRightClick end
+    elseif IsShiftKeyDown() then
+        if button == "LeftButton" then return clickActions.shiftLeftClick end
+        if button == "RightButton" then return clickActions.shiftRightClick end
+    else
+        if button == "LeftButton" then return clickActions.leftClick end
+        if button == "RightButton" then return clickActions.rightClick end
+        if button == "MiddleButton" then return clickActions.middleClick end
     end
 end
 
@@ -874,7 +903,11 @@ function ns.GetCustomURL(template, charName, realmName)
     if not template or template == "" then return nil end
     local region = (GetCurrentRegionName and GetCurrentRegionName() or "US"):lower()
     local slug   = RealmSlug(realmName)
-    return (template:gsub("<name>", charName:lower()):gsub("<realm>", slug):gsub("<region>", region))
+    local result = template
+    result = ns.ExpandTag(result, "name", charName:lower())
+    result = ns.ExpandTag(result, "realm", slug)
+    result = ns.ExpandTag(result, "region", region)
+    return result
 end
 
 --- Copy a URL: uses C_Clipboard if available, otherwise inserts into chat input

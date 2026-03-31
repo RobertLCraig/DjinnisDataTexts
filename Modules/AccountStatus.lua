@@ -38,11 +38,21 @@ local DEFAULTS = {
     tooltipScale     = 1.0,
     tooltipWidth     = 300,
     clickActions     = {
-        leftClick    = "opensettings",
+        leftClick       = "openwarbank",
+        rightClick      = "openjournal",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
+    openwarbank  = "Open Warband Bank",
+    openjournal  = "Open Pet Journal",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -71,10 +81,11 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<warbank>", WarbankStatusText())
-    result = result:gsub("<journal>", JournalStatusText())
-    result = result:gsub("<wbstatus>", warbankEnabled and (warbankLocked and "Available" or "In Use") or "Disabled")
-    result = result:gsub("<petstatus>", journalUnlocked and "Unlocked" or "Locked")
+    local E = ns.ExpandTag
+    result = E(result, "warbank", WarbankStatusText())
+    result = E(result, "journal", JournalStatusText())
+    result = E(result, "wbstatus", warbankEnabled and (warbankLocked and "Available" or "In Use") or "Disabled")
+    result = E(result, "petstatus", journalUnlocked and "Unlocked" or "Locked")
     return result
 end
 
@@ -96,7 +107,13 @@ local dataobj = LDB:NewDataObject("DDT-AccountStatus", {
     OnClick = function(self, button)
         local db = AcctStatus:GetDB()
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
-        if action == "opensettings" then
+        if action == "openwarbank" then
+            if BankFrame then
+                ToggleAllBags()
+            end
+        elseif action == "openjournal" then
+            ToggleCollectionsJournal(2)
+        elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
             end

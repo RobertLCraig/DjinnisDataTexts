@@ -41,8 +41,15 @@ local DEFAULTS = {
     tooltipScale    = 1.0,
     tooltipWidth    = 300,
     clickActions    = {
-        leftClick  = "openjournal",
-        rightClick = "randomsummon",
+        leftClick       = "openjournal",
+        rightClick      = "randomsummon",
+        middleClick     = "none",
+        shiftLeftClick  = "revive",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "randomteam",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
@@ -71,20 +78,21 @@ local CLICK_ACTIONS = {
 
 local function ExpandLabel(template)
     local result = template
+    local E = ns.ExpandTag
     local status
     if journalUnlocked then
         status = numPetsOwned .. " Pets"
     else
         status = "Pets Locked"
     end
-    result = result:gsub("<status>", status)
-    result = result:gsub("<owned>", tostring(numPetsOwned))
-    result = result:gsub("<total>", tostring(numPetsTotal))
-    result = result:gsub("<maxlevel>", tostring(numMaxLevel))
-    result = result:gsub("<rare>", tostring(numRareQuality))
-    result = result:gsub("<favorites>", tostring(favoriteCount))
-    result = result:gsub("<journal>", journalUnlocked and "Unlocked" or "Locked")
-    result = result:gsub("<battles>", findBattleEnabled and "Ready" or "Disabled")
+    result = E(result, "status", status)
+    result = E(result, "owned", numPetsOwned)
+    result = E(result, "total", numPetsTotal)
+    result = E(result, "maxlevel", numMaxLevel)
+    result = E(result, "rare", numRareQuality)
+    result = E(result, "favorites", favoriteCount)
+    result = E(result, "journal", journalUnlocked and "Unlocked" or "Locked")
+    result = E(result, "battles", findBattleEnabled and "Ready" or "Disabled")
     return result
 end
 

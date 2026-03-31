@@ -35,14 +35,23 @@ local DEFAULTS = {
     tooltipScale    = 1.0,
     tooltipWidth    = 260,
     clickActions    = {
-        leftClick  = "calendar",
-        rightClick = "toggletime",
+        leftClick       = "calendar",
+        rightClick      = "toggletime",
+        middleClick     = "none",
+        shiftLeftClick  = "stopwatch",
+        shiftRightClick = "copytime",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     calendar     = "Calendar",
     toggletime   = "Toggle Server/Local",
+    stopwatch    = "Toggle Stopwatch",
+    copytime     = "Copy Time to Chat",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -123,18 +132,19 @@ local function ExpandLabel(template, db)
     local result = template
     local use24h = db.use24h ~= false
     local showSec = db.showSeconds
+    local E = ns.ExpandTag
 
     local sHour, sMin = GetGameTime()
     local lTime = date("*t")
 
     if db.showLocal then
-        result = result:gsub("<time>", FormatTime(lTime.hour, lTime.min, showSec and lTime.sec or nil, use24h, showSec))
+        result = E(result, "time", FormatTime(lTime.hour, lTime.min, showSec and lTime.sec or nil, use24h, showSec))
     else
-        result = result:gsub("<time>", FormatTime(sHour, sMin, nil, use24h, false))
+        result = E(result, "time", FormatTime(sHour, sMin, nil, use24h, false))
     end
-    result = result:gsub("<server>", FormatTime(sHour, sMin, nil, use24h, false))
-    result = result:gsub("<local>", FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
-    result = result:gsub("<date>", GetDateString(db.dateTimeFormat))
+    result = E(result, "server", FormatTime(sHour, sMin, nil, use24h, false))
+    result = E(result, "local", FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
+    result = E(result, "date", GetDateString(db.dateTimeFormat))
     return result
 end
 
@@ -162,6 +172,15 @@ local dataobj = LDB:NewDataObject("DDT-TimeDate", {
             if ns.db and ns.db.timedate then
                 ns.db.timedate.showLocal = not ns.db.timedate.showLocal
             end
+        elseif action == "stopwatch" then
+            Stopwatch_Toggle()
+        elseif action == "copytime" then
+            local use24h = db.use24h ~= false
+            local sHour, sMin = GetGameTime()
+            local lTime = date("*t")
+            local msg = "Server: " .. FormatTime(sHour, sMin, nil, use24h, false)
+                .. " | Local: " .. FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true)
+            ChatFrameUtil.OpenChat(msg)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

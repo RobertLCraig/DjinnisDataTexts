@@ -62,12 +62,21 @@ local DEFAULTS = {
     tooltipScale  = 1.0,
     tooltipWidth  = 300,
     clickActions  = {
-        leftClick  = "character",
+        leftClick       = "character",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "achievements",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     character    = "Character Panel",
+    achievements = "Achievements",
     opensettings = "Open DDT Settings",
     none         = "None",
 }
@@ -185,31 +194,32 @@ local function ExpandLabel(template)
     local result = template
     local db = ns.db and ns.db.experience or DEFAULTS
     local barW = db.barWidth or 20
+    local E = ns.ExpandTag
 
     if isMaxLevel then
         local repPct = 0
         if watchedFaction and watchedFaction.barMax > 0 then
             repPct = (watchedFaction.barValue - watchedFaction.barMin) / (watchedFaction.barMax - watchedFaction.barMin) * 100
         end
-        result = result:gsub("<xp>", watchedFaction and watchedFaction.name or "Max Level")
-        result = result:gsub("<percent>", watchedFaction and string.format("%.1f%%", repPct) or "")
-        result = result:gsub("<bar>", watchedFaction and BuildRepBar(repPct, barW) or "")
-        result = result:gsub("<level>", tostring(playerLevel))
-        result = result:gsub("<remaining>", "")
-        result = result:gsub("<rested>", "")
-        result = result:gsub("<xphr>", "")
-        result = result:gsub("<questxp>", "")
+        result = E(result, "xp", watchedFaction and watchedFaction.name or "Max Level")
+        result = E(result, "percent", watchedFaction and string.format("%.1f%%", repPct) or "")
+        result = E(result, "bar", watchedFaction and BuildRepBar(repPct, barW) or "")
+        result = E(result, "level", playerLevel)
+        result = E(result, "remaining", "")
+        result = E(result, "rested", "")
+        result = E(result, "xphr", "")
+        result = E(result, "questxp", "")
     else
         local pct = GetXPPercent()
         local restPct = GetRestedPercent()
-        result = result:gsub("<xp>", string.format("%.1f%%", pct))
-        result = result:gsub("<percent>", string.format("%.1f%%", pct))
-        result = result:gsub("<bar>", BuildBar(pct, restPct, barW))
-        result = result:gsub("<level>", tostring(playerLevel))
-        result = result:gsub("<remaining>", FormatNumber(maxXP - currentXP))
-        result = result:gsub("<rested>", restedXP > 0 and string.format("+%.0f%%", restPct) or "")
-        result = result:gsub("<xphr>", xpPerHour > 0 and FormatNumber(math.floor(xpPerHour)) .. "/hr" or "")
-        result = result:gsub("<questxp>", questXPTotal > 0 and FormatNumber(questXPTotal) or "")
+        result = E(result, "xp", string.format("%.1f%%", pct))
+        result = E(result, "percent", string.format("%.1f%%", pct))
+        result = E(result, "bar", BuildBar(pct, restPct, barW))
+        result = E(result, "level", playerLevel)
+        result = E(result, "remaining", FormatNumber(maxXP - currentXP))
+        result = E(result, "rested", restedXP > 0 and string.format("+%.0f%%", restPct) or "")
+        result = E(result, "xphr", xpPerHour > 0 and FormatNumber(math.floor(xpPerHour)) .. "/hr" or "")
+        result = E(result, "questxp", questXPTotal > 0 and FormatNumber(questXPTotal) or "")
     end
     return result
 end
@@ -234,6 +244,8 @@ local dataobj = LDB:NewDataObject("DDT-Experience", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "achievements" then
+            ToggleAchievementFrame()
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

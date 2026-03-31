@@ -41,13 +41,21 @@ local DEFAULTS = {
     tooltipScale   = 1.0,
     tooltipWidth   = 360,
     clickActions   = {
-        leftClick  = "groupfinder",
-        rightClick = "opensettings",
+        leftClick       = "groupfinder",
+        rightClick      = "leavequeue",
+        middleClick     = "none",
+        shiftLeftClick  = "premade",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
 local CLICK_ACTIONS = {
     groupfinder  = "Group Finder",
+    premade      = "Premade Groups",
     leavequeue   = "Leave All Queues",
     opensettings = "Open DDT Settings",
     none         = "None",
@@ -291,23 +299,24 @@ end
 
 local function ExpandLabel(template, db)
     local result = template
-    result = result:gsub("<status>", GetStatusText())
-    result = result:gsub("<queues>", tostring(#activeQueues))
-    result = result:gsub("<apps>", tostring(GetActiveAppCount()))
-    result = result:gsub("<role>", roleString)
-    result = result:gsub("<assigned>", assignedRole and GetRoleLabel(assignedRole) or "")
+    local E = ns.ExpandTag
+    result = E(result, "status", GetStatusText())
+    result = E(result, "queues", #activeQueues)
+    result = E(result, "apps", GetActiveAppCount())
+    result = E(result, "role", roleString)
+    result = E(result, "assigned", assignedRole and GetRoleLabel(assignedRole) or "")
     -- Wait time for first queue
-    local waitStr = "—"
+    local waitStr = "\226\128\148"
     if #activeQueues > 0 and activeQueues[1].waitTime > 0 then
         waitStr = FormatTime(activeQueues[1].waitTime)
     end
-    result = result:gsub("<wait>", waitStr)
+    result = E(result, "wait", waitStr)
     -- Elapsed time for first queue
-    local elapsedStr = "—"
+    local elapsedStr = "\226\128\148"
     if #activeQueues > 0 and activeQueues[1].queuedTime > 0 then
         elapsedStr = FormatTime(activeQueues[1].queuedTime)
     end
-    result = result:gsub("<elapsed>", elapsedStr)
+    result = E(result, "elapsed", elapsedStr)
     return result
 end
 
@@ -331,6 +340,8 @@ local dataobj = LDB:NewDataObject("DDT-LFGStatus", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "groupfinder" then
             ToggleLFDParentFrame()
+        elseif action == "premade" then
+            PVEFrame_ToggleFrame("GroupFinderFrame", LFGListPVEStub)
         elseif action == "leavequeue" then
             for _, q in ipairs(activeQueues) do
                 LeaveLFG(q.category)

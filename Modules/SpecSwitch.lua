@@ -51,14 +51,15 @@ local DEFAULTS = {
     tooltipScale  = 1.0,
     tooltipWidth  = 280,
     clickActions = {
-        leftClick      = "opentalents",
-        rightClick     = "none",
-        shiftLeftClick = "nextspec",
+        leftClick       = "opentalents",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "nextspec",
         shiftRightClick = "none",
-        ctrlLeftClick  = "none",
-        ctrlRightClick = "none",
-        altLeftClick   = "none",
-        altRightClick  = "none",
+        ctrlLeftClick   = "nextloadout",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
     },
 }
 
@@ -75,25 +76,7 @@ local SPEC_ACTION_VALUES = {
 }
 ns.SPEC_ACTION_VALUES = SPEC_ACTION_VALUES
 
----------------------------------------------------------------------------
--- Click action resolver (supports shift / ctrl / alt modifiers)
----------------------------------------------------------------------------
-
-local function ResolveSpecClick(button, clickActions)
-    if IsAltKeyDown() then
-        if button == "LeftButton" then return clickActions.altLeftClick end
-        if button == "RightButton" then return clickActions.altRightClick end
-    elseif IsControlKeyDown() then
-        if button == "LeftButton" then return clickActions.ctrlLeftClick end
-        if button == "RightButton" then return clickActions.ctrlRightClick end
-    elseif IsShiftKeyDown() then
-        if button == "LeftButton" then return clickActions.shiftLeftClick end
-        if button == "RightButton" then return clickActions.shiftRightClick end
-    else
-        if button == "LeftButton" then return clickActions.leftClick end
-        if button == "RightButton" then return clickActions.rightClick end
-    end
-end
+-- Click action resolver now handled by DDT:ResolveClickAction in Core.lua
 
 ---------------------------------------------------------------------------
 -- Djinni-style combat message
@@ -197,8 +180,9 @@ local ROLE_ICONS = {
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<spec>", SpecSwitch.currentSpecName or "")
-    result = result:gsub("<loadout>", SpecSwitch.activeLoadoutName or "")
+    local E = ns.ExpandTag
+    result = E(result, "spec", SpecSwitch.currentSpecName or "")
+    result = E(result, "loadout", SpecSwitch.activeLoadoutName or "")
 
     -- Loot spec name
     local lootName = "Current Spec"
@@ -210,18 +194,21 @@ local function ExpandLabel(template)
             end
         end
     end
-    result = result:gsub("<lootspec>", lootName)
-    result = result:gsub("<role>", ROLE_ICONS[SpecSwitch.currentRole] or "")
+    result = E(result, "lootspec", lootName)
+    result = E(result, "role", ROLE_ICONS[SpecSwitch.currentRole] or "")
 
     -- Spec icon texture
     local iconStr = ""
     if SpecSwitch.currentSpecIcon then
         iconStr = "|T" .. SpecSwitch.currentSpecIcon .. ":14:14:0:0|t"
     end
-    result = result:gsub("<icon>", iconStr)
+    result = E(result, "icon", iconStr)
 
     return result
 end
+
+-- Expose for DemoMode.lua
+SpecSwitch.ExpandLabel = ExpandLabel
 
 ---------------------------------------------------------------------------
 -- Demo mode simulation
@@ -281,31 +268,7 @@ local function DemoSetLootSpec(specID)
     SpecSwitch:BuildTooltipContent()
 end
 
----------------------------------------------------------------------------
--- Hint bar builder
----------------------------------------------------------------------------
-
-local function BuildSpecHintText(clickActions)
-    local labels = {
-        { key = "leftClick",       prefix = "LClick" },
-        { key = "rightClick",      prefix = "RClick" },
-        { key = "shiftLeftClick",  prefix = "Shift+L" },
-        { key = "shiftRightClick", prefix = "Shift+R" },
-        { key = "ctrlLeftClick",   prefix = "Ctrl+L" },
-        { key = "ctrlRightClick",  prefix = "Ctrl+R" },
-        { key = "altLeftClick",    prefix = "Alt+L" },
-        { key = "altRightClick",   prefix = "Alt+R" },
-    }
-    local hints = {}
-    for _, entry in ipairs(labels) do
-        local action = clickActions[entry.key]
-        if action and action ~= "none" then
-            table.insert(hints, entry.prefix .. ": " .. (SPEC_ACTION_VALUES[action] or ""))
-        end
-    end
-    if #hints == 0 then return "|cff888888Click a row to switch|r" end
-    return "|cff888888" .. table.concat(hints, "  |  ") .. "|r"
-end
+-- Hint bar now handled by DDT:BuildHintText in Core.lua
 
 ---------------------------------------------------------------------------
 -- LDB Data Object
@@ -324,7 +287,7 @@ local dataobj = LDB:NewDataObject("DDT-SpecSwitch", {
     end,
     OnClick = function(self, button)
         local db = SpecSwitch:GetDB()
-        local action = ResolveSpecClick(button, db.clickActions)
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
         ExecuteSpecAction(action)
     end,
 })
@@ -804,7 +767,8 @@ function SpecSwitch:BuildTooltipContent()
     end
 
     -- Hint bar
-    f.hint:SetText(BuildSpecHintText(db.clickActions))
+    local hintText = DDT:BuildHintText(db.clickActions or {}, SPEC_ACTION_VALUES)
+    f.hint:SetText(hintText ~= "" and hintText or "|cff888888Click a row to switch|r")
 
     -- Size the frame
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
@@ -855,17 +819,6 @@ end
 -- Settings panel
 ---------------------------------------------------------------------------
 
-local SPEC_CLICK_KEYS = {
-    { key = "leftClick",       label = "Left Click" },
-    { key = "rightClick",      label = "Right Click" },
-    { key = "shiftLeftClick",  label = "Shift + Left Click" },
-    { key = "shiftRightClick", label = "Shift + Right Click" },
-    { key = "ctrlLeftClick",   label = "Ctrl + Left Click" },
-    { key = "ctrlRightClick",  label = "Ctrl + Right Click" },
-    { key = "altLeftClick",    label = "Alt + Left Click" },
-    { key = "altRightClick",   label = "Alt + Right Click" },
-}
-
 SpecSwitch.settingsLabel = "Spec Switch"
 
 function SpecSwitch:BuildSettingsPanel(panel)
@@ -894,13 +847,7 @@ function SpecSwitch:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "DataText Click Actions")
-    y = W.AddDescription(c, y, "Configure what happens when you click the DataText label.")
-    for _, entry in ipairs(SPEC_CLICK_KEYS) do
-        y = W.AddDropdown(c, y, entry.label, SPEC_ACTION_VALUES,
-            function() return db().clickActions[entry.key] end,
-            function(v) db().clickActions[entry.key] = v end, r)
-    end
+    y = ns.AddModuleClickActionsSection(c, r, y, "specswitch", SPEC_ACTION_VALUES)
 
     c:SetHeight(math.abs(y) + 20)
 end

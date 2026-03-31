@@ -99,6 +99,25 @@ local function IsPresenceOnline(presence)
         or presence == Enum.ClubMemberPresence.Busy
 end
 
+--- Club role constants (Owner=1, Leader=2, Moderator=3, Member=4)
+local ROLE_OWNER     = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Owner or 1
+local ROLE_LEADER    = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Leader or 2
+local ROLE_MODERATOR = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Moderator or 3
+
+--- Color M+ scores by rating tier
+local function GetScoreColor(score)
+    if C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor then
+        local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
+        if color then return color.r, color.g, color.b end
+    end
+    if score >= 2500 then return 1.0, 0.50, 0.0  end
+    if score >= 2000 then return 0.63, 0.21, 0.93 end
+    if score >= 1500 then return 0.0, 0.44, 0.87  end
+    if score >= 1000 then return 0.12, 0.75, 0.0  end
+    if score >= 500  then return 1.0, 1.0, 1.0    end
+    return 0.62, 0.62, 0.62
+end
+
 --- Check if a club should be shown (not disabled by user)
 function CommunitiesBroker:IsClubEnabled(clubId)
     return not ns.db.communities.disabledClubs[clubId]
@@ -140,18 +159,22 @@ function CommunitiesBroker:UpdateData()
                     end
 
                     table.insert(onlineMembers, {
-                        name        = displayName,
-                        fullName    = memberName,
-                        level       = mInfo.level or 0,
-                        classFile   = classFile,
-                        area        = mInfo.zone or "",
-                        notes       = mInfo.memberNote or "",
-                        afk         = (mInfo.presence == Enum.ClubMemberPresence.Away),
-                        dnd         = (mInfo.presence == Enum.ClubMemberPresence.Busy),
-                        isMobile    = (mInfo.presence == Enum.ClubMemberPresence.OnlineMobile),
-                        isSelf      = mInfo.isSelf,
-                        clubId      = clubInfo.clubId,
-                        clubName    = clubInfo.name or "Unknown",
+                        name         = displayName,
+                        fullName     = memberName,
+                        level        = mInfo.level or 0,
+                        classFile    = classFile,
+                        area         = mInfo.zone or "",
+                        notes        = mInfo.memberNote or "",
+                        afk          = (mInfo.presence == Enum.ClubMemberPresence.Away),
+                        dnd          = (mInfo.presence == Enum.ClubMemberPresence.Busy),
+                        isMobile     = (mInfo.presence == Enum.ClubMemberPresence.OnlineMobile),
+                        isRemoteChat = mInfo.isRemoteChat or false,
+                        isSelf       = mInfo.isSelf,
+                        clubId       = clubInfo.clubId,
+                        clubName     = clubInfo.name or "Unknown",
+                        clubType     = clubInfo.clubType,
+                        role         = mInfo.role,
+                        dungeonScore = mInfo.overallDungeonScore or 0,
                     })
                 end
             end
@@ -230,8 +253,15 @@ local function CreateTooltipFrame()
     f.colLevel:SetWidth(30)
     f.colLevel:SetJustifyH("CENTER")
 
+    f.colScore = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colScore:SetPoint("LEFT", f.colLevel, "RIGHT", 4, 0)
+    f.colScore:SetText("|cffaaaaaaScore|r")
+    f.colScore:SetWidth(45)
+    f.colScore:SetJustifyH("CENTER")
+    f.colScore:Hide()
+
     f.colZone = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
-    f.colZone:SetPoint("LEFT", f.colLevel, "RIGHT", 4, 0)
+    f.colZone:SetPoint("LEFT", f.colScore, "RIGHT", 4, 0)
     f.colZone:SetText("|cffaaaaaaZone|r")
     f.colZone:SetJustifyH("LEFT")
 
@@ -315,8 +345,13 @@ local function GetOrCreateRow(parent, index)
     row.levelText:SetWidth(30)
     row.levelText:SetJustifyH("CENTER")
 
+    row.scoreText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.scoreText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
+    row.scoreText:SetWidth(45)
+    row.scoreText:SetJustifyH("CENTER")
+
     row.zoneText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
-    row.zoneText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
+    row.zoneText:SetPoint("LEFT", row.scoreText, "RIGHT", 4, 0)
     row.zoneText:SetWidth(130)
     row.zoneText:SetJustifyH("LEFT")
 
@@ -377,8 +412,33 @@ function CommunitiesBroker:PopulateTooltip()
     local innerWidth = tooltipWidth - 2 * TOOLTIP_PADDING
     local nameW = math.floor(innerWidth * 0.30)
     local levelW = 30
-    local zoneW = math.floor(innerWidth * 0.28)
-    local noteW = math.max(50, innerWidth - nameW - levelW - zoneW - 12)
+
+    -- Check if any member has M+ scores
+    local hasScores = false
+    for _, clubData in pairs(self.clubsCache) do
+        for _, m in ipairs(clubData.members) do
+            if m.dungeonScore and m.dungeonScore > 0 then
+                hasScores = true
+                break
+            end
+        end
+        if hasScores then break end
+    end
+
+    local scoreW = hasScores and 45 or 0
+    local zoneW = hasScores and math.floor(innerWidth * 0.24) or math.floor(innerWidth * 0.28)
+    local gapTotal = hasScores and 16 or 12
+    local noteW = math.max(50, innerWidth - nameW - levelW - scoreW - zoneW - gapTotal)
+
+    if hasScores then
+        tooltipFrame.colScore:SetWidth(scoreW)
+        tooltipFrame.colScore:SetText("|cffaaaaaaScore|r")
+        tooltipFrame.colScore:Show()
+    else
+        tooltipFrame.colScore:SetWidth(0)
+        tooltipFrame.colScore:SetText("")
+        tooltipFrame.colScore:Hide()
+    end
 
     tooltipFrame:SetWidth(tooltipWidth)
     tooltipFrame.colName:SetWidth(nameW)
@@ -435,26 +495,63 @@ function CommunitiesBroker:PopulateTooltip()
 
         row:SetWidth(innerWidth)
         row.nameText:SetWidth(nameW)
+        row.scoreText:SetWidth(scoreW)
         row.zoneText:SetWidth(zoneW)
         row.noteText:SetWidth(noteW)
 
         row.memberData = member
 
+        -- Status prefix
         local status = ""
-        if member.afk then
+        if member.isRemoteChat then
+            status = "|cff82c5ff[App]|r "
+        elseif member.afk then
             status = "|cffffcc00[AFK]|r "
         elseif member.dnd then
             status = "|cffff0000[DND]|r "
         end
 
-        if useClassColors and member.classFile then
-            row.nameText:SetText(status .. DDT:ClassColorText(member.name, member.classFile))
-        else
-            row.nameText:SetText(status .. member.name)
+        -- Community role badge
+        local roleBadge = ""
+        if member.role then
+            if member.role == ROLE_OWNER then
+                roleBadge = "|cffff8800[O]|r "
+            elseif member.role == ROLE_LEADER then
+                roleBadge = "|cff00ccff[L]|r "
+            elseif member.role == ROLE_MODERATOR then
+                roleBadge = "|cff00cc00[M]|r "
+            end
         end
 
-        row.levelText:SetText(member.level > 0 and tostring(member.level) or "")
-        row.zoneText:SetText(DDT:ColorText(member.area, 0.63, 0.82, 1))
+        local namePrefix = roleBadge .. status
+        if useClassColors and member.classFile then
+            row.nameText:SetText(namePrefix .. DDT:ClassColorText(member.name, member.classFile))
+        else
+            row.nameText:SetText(namePrefix .. member.name)
+        end
+
+        -- Level and zone (blank for app users not in WoW)
+        if member.isRemoteChat then
+            row.levelText:SetText("")
+            row.zoneText:SetText(DDT:ColorText("Battle.net App", 0.51, 0.77, 1))
+        else
+            row.levelText:SetText(member.level > 0 and tostring(member.level) or "")
+            row.zoneText:SetText(DDT:ColorText(member.area, 0.63, 0.82, 1))
+        end
+
+        -- M+ score
+        if hasScores then
+            local score = member.dungeonScore or 0
+            if score > 0 and not member.isRemoteChat then
+                local r, g, b = GetScoreColor(score)
+                row.scoreText:SetText(DDT:ColorText(tostring(score), r, g, b))
+            else
+                row.scoreText:SetText("")
+            end
+        else
+            row.scoreText:SetText("")
+        end
+
         row.noteText:SetText(member.notes or "")
 
         yOffset = yOffset - rowStep
@@ -572,6 +669,8 @@ function CommunitiesBroker:PopulateTooltip()
         row.memberData = nil
         row.nameText:SetText("|cff888888No community members online|r")
         row.levelText:SetText("")
+        row.scoreText:SetText("")
+        row.scoreText:SetWidth(scoreW)
         row.zoneText:SetText("")
         row.noteText:SetText("")
         yOffset = yOffset - rowStep

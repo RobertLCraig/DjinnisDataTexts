@@ -50,8 +50,15 @@ local DEFAULTS = {
     tooltipScale      = 1.0,
     tooltipWidth      = 320,
     clickActions      = {
-        leftClick  = "character",
-        rightClick = "none",
+        leftClick       = "character",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "shopenchants",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
     },
 }
 
@@ -197,16 +204,17 @@ end
 
 local function ExpandLabel(template)
     local result = template
-    result = result:gsub("<speed>", string.format("%.0f", currentPercent))
-    result = result:gsub("<run>", string.format("%.0f", runPercent))
-    result = result:gsub("<fly>", string.format("%.0f", flyPercent))
-    result = result:gsub("<swim>", string.format("%.0f", swimPercent))
+    local E = ns.ExpandTag
+    result = E(result, "speed", string.format("%.0f", currentPercent))
+    result = E(result, "run", string.format("%.0f", runPercent))
+    result = E(result, "fly", string.format("%.0f", flyPercent))
+    result = E(result, "swim", string.format("%.0f", swimPercent))
     -- Movement mode indicator
     local mode = "Run"
     if isGliding then mode = "Glide"
     elseif isFlying then mode = "Fly"
     elseif isSwimming then mode = "Swim" end
-    result = result:gsub("<mode>", mode)
+    result = E(result, "mode", mode)
     return result
 end
 
