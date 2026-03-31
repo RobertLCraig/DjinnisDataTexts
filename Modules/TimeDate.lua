@@ -355,6 +355,13 @@ function TimeDate:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Show local time on DataText (instead of server time)",
         function() return db().showLocal end,
         function(v) db().showLocal = v; self:UpdateDisplay() end, r)
+
+    y = W.AddHeader(c, y, "Interactions")
+    y = W.AddDescription(c, y,
+        "Left-click: Open Calendar\n" ..
+        "Right-click: Toggle server/local time on the DataText")
+
+    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

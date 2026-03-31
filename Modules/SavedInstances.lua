@@ -707,6 +707,8 @@ function SavedInst:BuildSettingsPanel(panel)
         "Shows your current raid and dungeon lockouts.\n\n" ..
         "Click a lockout row in the tooltip to expand/collapse boss kill details.\n\n" ..
         "If the SavedInstances addon is installed, alt lockouts will also be shown.")
+
+    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

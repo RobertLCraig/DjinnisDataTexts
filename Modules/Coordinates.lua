@@ -351,6 +351,13 @@ function Coordinates:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Show zone name on DataText",
         function() return db().showZoneInLDB end,
         function(v) db().showZoneInLDB = v; self:UpdateDisplay() end, r)
+
+    y = W.AddHeader(c, y, "Interactions")
+    y = W.AddDescription(c, y,
+        "Left-click: Open World Map\n" ..
+        "Right-click: Copy coordinates and zone name to chat")
+
+    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

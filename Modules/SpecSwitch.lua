@@ -869,6 +869,8 @@ function SpecSwitch:BuildSettingsPanel(panel)
             function() return db().clickActions[entry.key] end,
             function(v) db().clickActions[entry.key] = v end, r)
     end
+
+    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------
