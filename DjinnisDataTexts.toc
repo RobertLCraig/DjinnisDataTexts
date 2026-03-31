@@ -1,7 +1,7 @@
 ## Interface: 120001
 ## Title: Djinni's Data Texts
 ## Author: Djinni
-## Version: 0.1.0
+## Version: 0.1.1
 ## Notes: LDB data brokers for a unified suite of DataTexts with rich tooltips. Works with any LDB display.
 ## Category: Data Brokers
 ## X-Category: Data Broker
@@ -18,40 +18,40 @@ Libs\LibDataBroker-1.1\LibDataBroker-1.1.lua
 Core.lua
 Settings.lua
 
-# Modules — Social (ported from DjinnisGuildFriends)
+# Modules â€” Social (ported from DjinnisGuildFriends)
 Modules\Friends.lua
 Modules\Guild.lua
 Modules\Communities.lua
 
-# Modules — Phase 2
+# Modules â€” Phase 2
 Modules\SpecSwitch.lua
 Modules\SavedInstances.lua
 
-# Modules — Phase 3
+# Modules â€” Phase 3
 Modules\TimeDate.lua
 Modules\Coordinates.lua
 
-# Modules — Phase 4
+# Modules â€” Phase 4
 Modules\SystemPerformance.lua
 Modules\PlayedTime.lua
 Modules\Mail.lua
 
-# Modules — Phase 5
+# Modules â€” Phase 5
 Modules\MicroMenu.lua
 Modules\Experience.lua
 
-# Modules — Phase 6
+# Modules â€” Phase 6
 Modules\Currency.lua
 
-# Modules — Phase 7
+# Modules â€” Phase 7
 Modules\CharacterInfo.lua
 Modules\MovementSpeed.lua
 Modules\BagValue.lua
 Modules\PetInfo.lua
 
-# Modules — Phase 8
+# Modules â€” Phase 8
 Modules\AccountStatus.lua
 Modules\LFGStatus.lua
 
-# Demo mode — uncomment to inject fake data, comment out for live use:
+# Demo mode â€” uncomment to inject fake data, comment out for live use:
 # DemoMode.lua
