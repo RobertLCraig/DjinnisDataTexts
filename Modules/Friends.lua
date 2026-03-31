@@ -74,7 +74,7 @@ local dataobj = LDB:NewDataObject("DDT-Friends", {
     type  = "data source",
     text  = "Friends: 0/0",
     icon  = "Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon",
-    label = "Friends List",
+    label = "DDT - Friends",
     OnEnter = function(self)
         FriendsBroker:ShowTooltip(self)
     end,

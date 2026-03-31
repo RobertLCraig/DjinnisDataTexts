@@ -76,7 +76,7 @@ local dataobj = LDB:NewDataObject("DDT-SavedInstances", {
     type  = "data source",
     text  = "Lockouts: 0",
     icon  = "Interface\\Icons\\INV_Misc_Key_04",
-    label = "Saved Instances",
+    label = "DDT - Saved Instances",
     OnEnter = function(self)
         SavedInst:ShowTooltip(self)
     end,

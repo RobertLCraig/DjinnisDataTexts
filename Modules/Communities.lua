@@ -29,7 +29,7 @@ local dataobj = LDB:NewDataObject("DDT-Communities", {
     type  = "data source",
     text  = "Communities: 0",
     icon  = "Interface\\FriendsFrame\\UI-Toast-ChatInviteIcon",
-    label = "Communities",
+    label = "DDT - Communities",
     OnEnter = function(self)
         CommunitiesBroker:ShowTooltip(self)
     end,

@@ -38,7 +38,7 @@ local dataobj = LDB:NewDataObject("DDT-Guild", {
     type  = "data source",
     text  = "Guild: 0/0",
     icon  = "Interface\\GossipFrame\\TabardGossipIcon",
-    label = "Guild",
+    label = "DDT - Guild",
     OnEnter = function(self)
         GuildBroker:ShowTooltip(self)
     end,

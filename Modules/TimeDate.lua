@@ -91,7 +91,7 @@ local dataobj = LDB:NewDataObject("DDT-TimeDate", {
     type  = "data source",
     text  = "00:00",
     icon  = "Interface\\Icons\\INV_Misc_PocketWatch_01",
-    label = "Time",
+    label = "DDT - Time",
     OnEnter = function(self)
         TimeDate:ShowTooltip(self)
     end,

@@ -299,7 +299,7 @@ local dataobj = LDB:NewDataObject("DDT-SpecSwitch", {
     type  = "data source",
     text  = "Specialization",
     icon  = "Interface\\Icons\\INV_Misc_QuestionMark",
-    label = "Specialization",
+    label = "DDT - Specialization",
     OnEnter = function(self)
         SpecSwitch:ShowTooltip(self)
     end,

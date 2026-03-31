@@ -79,7 +79,7 @@ local dataobj = LDB:NewDataObject("DDT-Coordinates", {
     type  = "data source",
     text  = "0, 0",
     icon  = "Interface\\Icons\\INV_Misc_Map_01",
-    label = "Coordinates",
+    label = "DDT - Coordinates",
     OnEnter = function(self)
         Coordinates:ShowTooltip(self)
     end,
