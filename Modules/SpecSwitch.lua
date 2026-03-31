@@ -808,7 +808,7 @@ function SpecSwitch:ShowTooltip(anchor)
 
     -- Anchor
     tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
 
     -- Build content
     self:UpdateData()

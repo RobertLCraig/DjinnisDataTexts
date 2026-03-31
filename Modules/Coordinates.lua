@@ -310,7 +310,7 @@ function Coordinates:ShowTooltip(anchor)
     end
 
     tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
 
     self:BuildTooltipContent()
     tooltipFrame:Show()

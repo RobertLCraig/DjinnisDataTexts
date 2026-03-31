@@ -16,6 +16,11 @@ local lockoutCache = {}     -- { { name, id, reset, difficulty, locked, extended
 local raidCount = 0
 local dungeonCount = 0
 
+-- M+ run history cache
+local mythicPlusRuns = {}   -- { { name, level, completed } }  sorted by level desc
+local mythicPlusCount = 0   -- total completed M+ runs this week
+local vaultProgress = {}    -- { { progress, threshold, level } }  Great Vault tiers
+
 -- Tooltip
 local tooltipFrame = nil
 local hideTimer = nil
@@ -107,6 +112,9 @@ function SavedInst:Init()
             -- Delay initial request to avoid login congestion
             C_Timer.After(3, function()
                 RequestRaidInfo()
+                if C_MythicPlus and C_MythicPlus.RequestMapInfo then
+                    C_MythicPlus.RequestMapInfo()
+                end
             end)
         else
             SavedInst:UpdateData()
@@ -117,6 +125,8 @@ function SavedInst:Init()
     eventFrame:RegisterEvent("BOSS_KILL")
     eventFrame:RegisterEvent("INSTANCE_LOCK_START")
     eventFrame:RegisterEvent("INSTANCE_LOCK_STOP")
+    eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
+    eventFrame:RegisterEvent("WEEKLY_REWARDS_UPDATE")
 end
 
 ---------------------------------------------------------------------------
@@ -202,14 +212,58 @@ function SavedInst:UpdateData()
         return a.name < b.name
     end)
 
+    -- M+ run history (weekly)
+    wipe(mythicPlusRuns)
+    mythicPlusCount = 0
+    wipe(vaultProgress)
+
+    if C_MythicPlus and C_MythicPlus.GetRunHistory then
+        local runHistory = C_MythicPlus.GetRunHistory(false, true)
+        if runHistory then
+            for _, run in ipairs(runHistory) do
+                local dungeonName = C_ChallengeMode and C_ChallengeMode.GetMapUIInfo
+                    and C_ChallengeMode.GetMapUIInfo(run.mapChallengeModeID) or "Unknown"
+                table.insert(mythicPlusRuns, {
+                    name      = dungeonName,
+                    level     = run.level,
+                    completed = run.completed,
+                })
+                if run.completed then
+                    mythicPlusCount = mythicPlusCount + 1
+                end
+            end
+            -- Sort by level descending
+            table.sort(mythicPlusRuns, function(a, b)
+                if a.level ~= b.level then return a.level > b.level end
+                return a.name < b.name
+            end)
+        end
+    end
+
+    -- Great Vault progress
+    if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
+        local activities = C_WeeklyRewards.GetActivities(Enum.WeeklyRewardChestThresholdType.Activities)
+        if activities then
+            table.sort(activities, function(a, b) return a.index < b.index end)
+            for _, info in ipairs(activities) do
+                table.insert(vaultProgress, {
+                    progress  = info.progress,
+                    threshold = info.threshold,
+                    level     = info.level,
+                })
+            end
+        end
+    end
+
     -- Update LDB text
     local total = raidCount + dungeonCount
-    if total == 0 then
+    local parts = {}
+    if raidCount > 0 then table.insert(parts, raidCount .. "R") end
+    if dungeonCount > 0 then table.insert(parts, dungeonCount .. "D") end
+    if mythicPlusCount > 0 then table.insert(parts, mythicPlusCount .. "M+") end
+    if #parts == 0 then
         dataobj.text = "No Lockouts"
     else
-        local parts = {}
-        if raidCount > 0 then table.insert(parts, raidCount .. "R") end
-        if dungeonCount > 0 then table.insert(parts, dungeonCount .. "D") end
         dataobj.text = "Lockouts: " .. table.concat(parts, " ")
     end
 
@@ -517,6 +571,65 @@ function SavedInst:BuildTooltipContent()
         end
     end
 
+    -- M+ runs this week
+    if #mythicPlusRuns > 0 then
+        y = y - 4
+        sepIndex = sepIndex + 1
+        local mpSep = GetSeparator(f, sepIndex)
+        mpSep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        mpSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        y = y - 6
+
+        -- Vault progress summary
+        local vaultText = ""
+        if #vaultProgress > 0 then
+            local vaultParts = {}
+            for i, tier in ipairs(vaultProgress) do
+                if tier.progress >= tier.threshold then
+                    table.insert(vaultParts, "|cff00cc00" .. tier.progress .. "/" .. tier.threshold .. "|r")
+                else
+                    table.insert(vaultParts, tier.progress .. "/" .. tier.threshold)
+                end
+            end
+            vaultText = "  |cff888888(Vault: " .. table.concat(vaultParts, " ") .. ")|r"
+        end
+
+        headerIndex = headerIndex + 1
+        local mpHdr = GetHeader(f, headerIndex)
+        mpHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        mpHdr:SetText("Mythic+ This Week (" .. mythicPlusCount .. ")" .. vaultText)
+        y = y - HEADER_HEIGHT
+
+        for _, run in ipairs(mythicPlusRuns) do
+            rowIndex = rowIndex + 1
+            local row = GetRow(f, rowIndex)
+            row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+            row:SetHeight(ROW_HEIGHT)
+
+            row.nameText:SetText(run.name)
+            row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+            -- Level with M+ color
+            local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+            row.diffText:SetText("+" .. run.level)
+            row.diffText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+
+            -- Completed / Failed
+            if run.completed then
+                row.progressText:SetText("|cff00cc00Timed|r")
+            else
+                row.progressText:SetText("|cffcc0000Over|r")
+            end
+
+            row.resetText:SetText("")
+            row.extendedBar:Hide()
+            row:SetScript("OnClick", nil)
+
+            y = y - ROW_HEIGHT
+        end
+    end
+
     -- Alt lockouts from SavedInstances addon (if available)
     local altSection = self:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
     if altSection then
@@ -667,7 +780,7 @@ function SavedInst:ShowTooltip(anchor)
 
     -- Anchor
     tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -4)
+    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
 
     -- Ensure data is fresh
     self:UpdateData()
