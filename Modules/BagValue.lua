@@ -104,33 +104,11 @@ end
 ---------------------------------------------------------------------------
 
 local function FormatGoldShort(copper)
-    if not copper or copper <= 0 then return "0g" end
-    local gold = math.floor(copper / 10000)
-    if gold >= 1000000 then
-        return string.format("%.1fM g", gold / 1000000)
-    elseif gold >= 10000 then
-        return string.format("%.1fK g", gold / 1000)
-    elseif gold >= 1 then
-        return tostring(gold) .. "g"
-    else
-        local silver = math.floor((copper % 10000) / 100)
-        if silver > 0 then return silver .. "s" end
-        return (copper % 100) .. "c"
-    end
+    return ns.FormatGoldShort(copper)
 end
 
 local function FormatGold(copper)
-    if not copper then return "0g" end
-    local gold = math.floor(copper / 10000)
-    local silver = math.floor((copper % 10000) / 100)
-    local cop = copper % 100
-    if gold > 0 then
-        return string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
-            BreakUpLargeNumbers(gold), silver, cop)
-    elseif silver > 0 then
-        return string.format("|cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r", silver, cop)
-    end
-    return string.format("|cffcc7722%d|r|cffcc7722c|r", cop)
+    return ns.FormatGold(copper, true)
 end
 
 ---------------------------------------------------------------------------
@@ -558,7 +536,12 @@ function BagVal:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "value vendor free total used",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:ScanBags() end, r)
+        function(v) db().labelTemplate = v; self:ScanBags() end, r, {
+        { "Default",    "<value>" },
+        { "With Slots", "<value>  <free>/<total> free" },
+        { "Vendor",     "AH: <value>  Vendor: <vendor>" },
+        { "Bags Only",  "<free>/<total> slots" },
+    })
 
     y = W.AddHeader(c, y, "Price Source")
     y = W.AddDropdown(c, y, "TSM Price Source", TSM_SOURCE_VALUES,

@@ -532,7 +532,12 @@ function PetInfo:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "status owned total maxlevel rare favorites journal battles",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",     "<status>" },
+        { "Collection",  "Pets: <owned>/<total>" },
+        { "Max Level",   "<owned> pets (<maxlevel> max)" },
+        { "Favorites",   "<favorites> favorites" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Show collection statistics",

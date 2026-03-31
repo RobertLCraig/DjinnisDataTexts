@@ -76,17 +76,7 @@ end
 
 local function FormatMoney(copper)
     if not copper or copper <= 0 then return "" end
-    local gold = math.floor(copper / 10000)
-    local silver = math.floor((copper % 10000) / 100)
-    local cop = copper % 100
-
-    if gold > 0 then
-        return string.format("%dg %ds %dc", gold, silver, cop)
-    elseif silver > 0 then
-        return string.format("%ds %dc", silver, cop)
-    else
-        return string.format("%dc", cop)
-    end
+    return ns.FormatGold(copper)
 end
 
 ---------------------------------------------------------------------------
@@ -445,7 +435,12 @@ function Mail:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "status count new",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",  "<status>" },
+        { "Count",    "Mail: <count>" },
+        { "New Only", "<new> new" },
+        { "Full",     "Mail: <count> (<new> new)" },
+    })
 
     y = W.AddHeader(c, y, "Sorting")
     y = W.AddDropdown(c, y, "Mail Order", MAIL_SORT_VALUES,

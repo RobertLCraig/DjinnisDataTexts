@@ -95,54 +95,15 @@ end
 ---------------------------------------------------------------------------
 
 local function FormatGold(copper, colorize)
-    if not copper then return "0g" end
-    local negative = copper < 0
-    if negative then copper = -copper end
-
-    local gold = math.floor(copper / 10000)
-    local silver = math.floor((copper % 10000) / 100)
-    local cop = copper % 100
-
-    local str
-    if gold >= 1000000 then
-        str = string.format("%.1fM", gold / 1000000)
-    elseif gold >= 10000 then
-        str = string.format("%.1fK", gold / 1000)
-    else
-        if colorize then
-            str = string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
-                gold >= 1 and tostring(gold) or "0", silver, cop)
-        else
-            str = string.format("%dg %ds %dc", gold, silver, cop)
-        end
-    end
-
-    if negative then str = "-" .. str end
-    return str
+    return ns.FormatGold(copper, colorize)
 end
 
 local function FormatGoldShort(copper)
-    if not copper then return "0g" end
-    local negative = copper < 0
-    if negative then copper = -copper end
-    local gold = math.floor(copper / 10000)
-    local str
-    if gold >= 1000000 then
-        str = string.format("%.1fM g", gold / 1000000)
-    elseif gold >= 10000 then
-        str = string.format("%.1fK g", gold / 1000)
-    else
-        str = tostring(gold) .. "g"
-    end
-    if negative then str = "-" .. str end
-    return str
+    return ns.FormatGoldShort(copper)
 end
 
 local function FormatQuantity(quantity, maxQuantity)
-    if maxQuantity and maxQuantity > 0 then
-        return string.format("%s / %s", BreakUpLargeNumbers(quantity), BreakUpLargeNumbers(maxQuantity))
-    end
-    return BreakUpLargeNumbers(quantity)
+    return ns.FormatQuantity(quantity, maxQuantity)
 end
 
 ---------------------------------------------------------------------------
@@ -867,7 +828,13 @@ function Currency:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "gold session token warbank auctions",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<gold>" },
+        { "Session",    "<gold> (<session>)" },
+        { "With Token", "<gold>  Token: <token>" },
+        { "Warband",    "<gold>  WB: <warbank>" },
+        { "Full",       "<gold> (<session>)  <auctions> auctions" },
+    })
 
     y = W.AddHeader(c, y, "Gold")
     y = W.AddCheckbox(c, y, "Show session gold change",

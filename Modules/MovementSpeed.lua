@@ -670,7 +670,12 @@ function MoveSpeed:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "speed run fly swim mode",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<speed>%" },
+        { "With Mode",  "<speed>% (<mode>)" },
+        { "Labeled",    "Speed: <speed>%" },
+        { "Run/Fly",    "R:<run>% F:<fly>%" },
+    })
 
     y = W.AddHeader(c, y, "Performance")
     y = W.AddDropdown(c, y, "Update Frequency", UPDATE_INTERVAL_VALUES,

@@ -230,7 +230,8 @@ end
 
 --- Label template edit box with clickable tag-insert buttons.
 --- @param tags string  Space-separated tag names e.g. "fps latency world memory cpu"
-local function AddLabelEditBox(content, y, tags, getter, setter, refreshList)
+--- @param suggestions table|nil  Optional list of { label, template } preset suggestions
+local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, suggestions)
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
     text:SetText("Template")
@@ -288,7 +289,6 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList)
     local TAG_BTN_HEIGHT = 20
     local TAG_BTN_PAD = 4
     local xOffset = 22
-    local rowStartY = tagY
     local maxRowWidth = 380
 
     for _, tag in ipairs(tagList) do
@@ -342,7 +342,48 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList)
         end)
     end
 
-    return tagY - TAG_BTN_HEIGHT - 6
+    tagY = tagY - TAG_BTN_HEIGHT - 6
+
+    -- Preset suggestion buttons (click to replace template)
+    if suggestions and #suggestions > 0 then
+        tagY = tagY - 2
+        local sugLabel = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        sugLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 22, tagY)
+        sugLabel:SetText("Presets:")
+        tagY = tagY - 14
+
+        for _, sug in ipairs(suggestions) do
+            local btn = CreateFrame("Button", nil, content)
+            btn:SetHeight(18)
+            btn:SetPoint("TOPLEFT", content, "TOPLEFT", 22, tagY)
+            btn:SetPoint("RIGHT", content, "RIGHT", -22, 0)
+
+            local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            btnText:SetPoint("LEFT", 6, 0)
+            btnText:SetJustifyH("LEFT")
+            btnText:SetText("|cff888888" .. sug[1] .. ":|r  " .. sug[2])
+
+            local bg = btn:CreateTexture(nil, "BACKGROUND")
+            bg:SetAllPoints()
+            bg:SetColorTexture(0, 0, 0, 0)
+
+            btn:SetScript("OnEnter", function()
+                bg:SetColorTexture(0.2, 0.3, 0.4, 0.5)
+            end)
+            btn:SetScript("OnLeave", function()
+                bg:SetColorTexture(0, 0, 0, 0)
+            end)
+            btn:SetScript("OnClick", function()
+                setter(sug[2])
+                editbox:SetText(sug[2])
+                valText:SetText(sug[2])
+            end)
+
+            tagY = tagY - 20
+        end
+    end
+
+    return tagY
 end
 
 local function AddButton(content, y, label, onClick)
@@ -509,8 +550,121 @@ local function BuildGeneralPanel(panel)
     local r = panel.refreshCallbacks
     local y = -10
 
+    y = AddHeader(c, y, "Number Formatting")
+    y = AddDescription(c, y,
+        "Controls how numbers, gold, and quantities are displayed across\n" ..
+        "all modules. Choose a preset or use Custom for full control.")
+    y = AddDropdown(c, y, "Format Preset", ns.FORMAT_PRESET_LABELS,
+        function() return ns.db.global.numberFormat end,
+        function(v)
+            ns.db.global.numberFormat = v
+            if v ~= "custom" then
+                local preset = ns.FORMAT_PRESETS[v]
+                if preset then
+                    ns.db.global.numberSep = preset.sep
+                    ns.db.global.numberDec = preset.dec
+                    ns.db.global.numberAbbr = preset.abbr
+                end
+            end
+            for _, cb in ipairs(r) do cb() end
+        end, r)
+
+    -- Preview
+    local previewLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    previewLabel:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    previewLabel:SetText("Preview:")
+    local previewValue = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    previewValue:SetPoint("LEFT", previewLabel, "RIGHT", 8, 0)
+
+    local function UpdatePreview()
+        local examples = {
+            ns.FormatNumber(1234),
+            ns.FormatNumber(1234567),
+            ns.FormatGoldShort(12345670000),
+        }
+        previewValue:SetText("|cff66c7ff" .. table.concat(examples, "  |  ") .. "|r")
+    end
+    UpdatePreview()
+    table.insert(r, UpdatePreview)
+    y = y - 20
+
+    -- Custom separators (only shown when preset == custom)
+    local customWidgetsY = y
+    local customWidgets = {}
+
+    local function ShowCustomWidgets()
+        local isCustom = ns.db.global.numberFormat == "custom"
+        for _, w in ipairs(customWidgets) do
+            if isCustom then w:Show() else w:Hide() end
+        end
+    end
+
+    -- Thousands separator
+    local sepLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sepLabel:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    sepLabel:SetText("Thousands Separator")
+    table.insert(customWidgets, sepLabel)
+
+    local sepBox = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
+    sepBox:SetPoint("TOPLEFT", sepLabel, "BOTTOMLEFT", 4, -4)
+    sepBox:SetSize(60, 20)
+    sepBox:SetAutoFocus(false)
+    sepBox:SetText(ns.db.global.numberSep or ",")
+    sepBox:SetScript("OnEnterPressed", function(self)
+        ns.db.global.numberSep = self:GetText()
+        UpdatePreview()
+        self:ClearFocus()
+    end)
+    sepBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    table.insert(customWidgets, sepBox)
+    table.insert(r, function() sepBox:SetText(ns.db.global.numberSep or ",") end)
+
+    -- Decimal separator
+    local decLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    decLabel:SetPoint("LEFT", sepLabel, "RIGHT", 100, 0)
+    decLabel:SetText("Decimal Separator")
+    table.insert(customWidgets, decLabel)
+
+    local decBox = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
+    decBox:SetPoint("TOPLEFT", decLabel, "BOTTOMLEFT", 4, -4)
+    decBox:SetSize(60, 20)
+    decBox:SetAutoFocus(false)
+    decBox:SetText(ns.db.global.numberDec or ".")
+    decBox:SetScript("OnEnterPressed", function(self)
+        ns.db.global.numberDec = self:GetText()
+        UpdatePreview()
+        self:ClearFocus()
+    end)
+    decBox:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+    table.insert(customWidgets, decBox)
+    table.insert(r, function() decBox:SetText(ns.db.global.numberDec or ".") end)
+
+    y = y - 44
+
+    -- Abbreviate checkbox
+    local abbrCb = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
+    abbrCb:SetPoint("TOPLEFT", c, "TOPLEFT", 14, y)
+    local abbrText = abbrCb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    abbrText:SetPoint("LEFT", abbrCb, "RIGHT", 2, 0)
+    abbrText:SetText("Abbreviate large numbers (K / M / B)")
+    abbrCb:SetChecked(ns.db.global.numberAbbr ~= false)
+    abbrCb:SetScript("OnClick", function(self)
+        ns.db.global.numberAbbr = self:GetChecked()
+        UpdatePreview()
+    end)
+    table.insert(customWidgets, abbrCb)
+    table.insert(customWidgets, abbrText)
+    table.insert(r, function()
+        abbrCb:SetChecked(ns.db.global.numberAbbr ~= false)
+        ShowCustomWidgets()
+    end)
+    y = y - 26
+
+    ShowCustomWidgets()
+
+    y = y - 6
     y = AddHeader(c, y, "Tooltip Font")
-    y = AddDescription(c, y, "Global font used by all module tooltips. Individual modules can override this in their own settings.")
+    y = AddDescription(c, y, "Global font used by all module tooltips.")
     y = AddDropdown(c, y, "Font Face", FONT_OPTIONS,
         function() return ns.db.global.tooltipFont end,
         function(v) ns.db.global.tooltipFont = v; ns:UpdateFonts() end, r)
@@ -557,7 +711,11 @@ local function BuildFriendsPanel(panel)
     y = AddHeader(c, y, "Label Template")
     y = AddLabelEditBox(c, y, "online total offline",
         function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r)
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",  "Friends: <online>/<total>" },
+        { "Short",    "F: <online>" },
+        { "Detailed", "Friends: <online> on / <offline> off" },
+    })
 
     y = AddHeader(c, y, "Tooltip")
     y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
@@ -624,7 +782,12 @@ local function BuildGuildPanel(panel)
     y = AddHeader(c, y, "Label Template")
     y = AddLabelEditBox(c, y, "online total offline guildname",
         function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r)
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",    "Guild: <online>/<total>" },
+        { "Guild Name", "<guildname>" },
+        { "Short",      "G: <online>" },
+        { "Named",      "<guildname> (<online>)" },
+    })
 
     y = AddHeader(c, y, "Tooltip")
     y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
@@ -689,7 +852,11 @@ local function BuildCommunitiesPanel(panel)
     y = AddHeader(c, y, "Label Template")
     y = AddLabelEditBox(c, y, "online",
         function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r)
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",  "Communities: <online>" },
+        { "Short",    "Comm: <online>" },
+        { "Labeled",  "<online> online" },
+    })
 
     y = AddHeader(c, y, "Tooltip")
     y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

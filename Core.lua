@@ -72,6 +72,10 @@ ns.defaults = {
         customUrl2 = "",
         tagSeparator = "#",
         noteShowInAllGroups = true,
+        numberFormat = "us_short",
+        numberSep = ",",
+        numberDec = ".",
+        numberAbbr = true,
     },
     communities = {
         labelFormat = "Communities: <online>",
@@ -298,6 +302,228 @@ local function CheckDGFCoexistence()
             DDT:Print("DjinnisGuildFriends is still installed. Its Guild, Friends, and Communities brokers are now provided by Djinni's Data Texts. You can safely disable DjinnisGuildFriends.")
         end)
     end
+end
+
+---------------------------------------------------------------------------
+-- Number formatting (global)
+---------------------------------------------------------------------------
+
+-- Presets: { thousandsSep, decimalSep, abbreviate }
+local FORMAT_PRESETS = {
+    us_short   = { sep = ",", dec = ".", abbr = true },   -- 1.2K  12.3M
+    us_full    = { sep = ",", dec = ".", abbr = false },   -- 1,234  12,345,678
+    eu_short   = { sep = ".", dec = ",", abbr = true },   -- 1,2K  12,3M
+    eu_full    = { sep = ".", dec = ",", abbr = false },   -- 1.234  12.345.678
+    fr_short   = { sep = " ", dec = ",", abbr = true },   -- 1,2K  12,3M
+    fr_full    = { sep = " ", dec = ",", abbr = false },   -- 1 234  12 345 678
+    plain      = { sep = "",  dec = ".", abbr = false },   -- 1234  12345678
+    custom     = { sep = ",", dec = ".", abbr = true },    -- user-defined
+}
+ns.FORMAT_PRESETS = FORMAT_PRESETS
+
+-- Preset display names for settings dropdown
+ns.FORMAT_PRESET_LABELS = {
+    us_short   = "US/UK - Short (1.2K, 3.4M)",
+    us_full    = "US/UK - Full (1,234,567)",
+    eu_short   = "EU - Short (1,2K, 3,4M)",
+    eu_full    = "EU - Full (1.234.567)",
+    fr_short   = "FR/SI - Short (1,2K)",
+    fr_full    = "FR/SI - Full (1 234 567)",
+    plain      = "No Separators (1234567)",
+    custom     = "Custom",
+}
+
+--- Get the active format settings
+local function GetFormatSettings()
+    local db = ns.db and ns.db.global or {}
+    local preset = db.numberFormat or "us_short"
+    if preset == "custom" then
+        return {
+            sep  = db.numberSep or ",",
+            dec  = db.numberDec or ".",
+            abbr = db.numberAbbr ~= false,
+        }
+    end
+    return FORMAT_PRESETS[preset] or FORMAT_PRESETS.us_short
+end
+
+--- Insert thousands separators into an integer string
+local function InsertSeparators(intStr, sep)
+    if sep == "" or #intStr <= 3 then return intStr end
+    local result = ""
+    local count = 0
+    for i = #intStr, 1, -1 do
+        if count > 0 and count % 3 == 0 then
+            result = sep .. result
+        end
+        result = intStr:sub(i, i) .. result
+        count = count + 1
+    end
+    return result
+end
+
+--- Format a number for display, respecting global format settings.
+--- @param n number       The number to format
+--- @param decimals number|nil  Decimal places (default 0 for integers, 1 for abbreviated)
+--- @param forceAbbr boolean|nil  Override abbreviation setting (true=always abbreviate)
+--- @return string
+function ns.FormatNumber(n, decimals, forceAbbr)
+    if not n then return "0" end
+    local fmt = GetFormatSettings()
+    local abbr = forceAbbr or fmt.abbr
+    local negative = n < 0
+    if negative then n = -n end
+
+    local result
+    if abbr then
+        if n >= 1000000000 then
+            result = string.format("%." .. (decimals or 1) .. "f", n / 1000000000)
+            if fmt.dec ~= "." then result = result:gsub("%.", fmt.dec) end
+            result = result .. "B"
+        elseif n >= 1000000 then
+            result = string.format("%." .. (decimals or 1) .. "f", n / 1000000)
+            if fmt.dec ~= "." then result = result:gsub("%.", fmt.dec) end
+            result = result .. "M"
+        elseif n >= 10000 then
+            result = string.format("%." .. (decimals or 1) .. "f", n / 1000)
+            if fmt.dec ~= "." then result = result:gsub("%.", fmt.dec) end
+            result = result .. "K"
+        else
+            local dec = decimals or 0
+            if dec > 0 then
+                result = string.format("%." .. dec .. "f", n)
+                if fmt.dec ~= "." then result = result:gsub("%.", fmt.dec) end
+            else
+                result = InsertSeparators(tostring(math.floor(n + 0.5)), fmt.sep)
+            end
+        end
+    else
+        local dec = decimals or 0
+        if dec > 0 then
+            local intPart = math.floor(n)
+            local fracPart = string.format("%." .. dec .. "f", n - intPart):sub(2)  -- ".xx"
+            if fmt.dec ~= "." then fracPart = fracPart:gsub("%.", fmt.dec) end
+            result = InsertSeparators(tostring(intPart), fmt.sep) .. fracPart
+        else
+            result = InsertSeparators(tostring(math.floor(n + 0.5)), fmt.sep)
+        end
+    end
+
+    if negative then result = "-" .. result end
+    return result
+end
+
+--- Format gold/silver/copper, respecting global format settings.
+--- @param copper number  Amount in copper
+--- @param colorize boolean|nil  Add WoW color codes (for tooltips)
+--- @return string
+function ns.FormatGold(copper, colorize)
+    if not copper then return "0g" end
+    local negative = copper < 0
+    if negative then copper = -copper end
+
+    local gold = math.floor(copper / 10000)
+    local silver = math.floor((copper % 10000) / 100)
+    local cop = copper % 100
+
+    local fmt = GetFormatSettings()
+    local str
+
+    if fmt.abbr then
+        -- Abbreviated gold
+        if gold >= 1000000 then
+            local val = string.format("%.1f", gold / 1000000)
+            if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
+            str = val .. "M g"
+        elseif gold >= 10000 then
+            local val = string.format("%.1f", gold / 1000)
+            if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
+            str = val .. "K g"
+        elseif colorize then
+            local goldStr = gold >= 1 and InsertSeparators(tostring(gold), fmt.sep) or "0"
+            str = string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
+                goldStr, silver, cop)
+        else
+            str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
+        end
+    else
+        -- Full number gold
+        if colorize then
+            local goldStr = InsertSeparators(tostring(gold), fmt.sep)
+            str = string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
+                goldStr, silver, cop)
+        else
+            str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
+        end
+    end
+
+    if negative then str = "-" .. str end
+    return str
+end
+
+--- Short gold format for labels (no silver/copper when abbreviating)
+--- @param copper number  Amount in copper
+--- @return string
+function ns.FormatGoldShort(copper)
+    if not copper then return "0g" end
+    local negative = copper < 0
+    if negative then copper = -copper end
+
+    local gold = math.floor(copper / 10000)
+    local fmt = GetFormatSettings()
+    local str
+
+    if fmt.abbr then
+        if gold >= 1000000 then
+            local val = string.format("%.1f", gold / 1000000)
+            if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
+            str = val .. "M g"
+        elseif gold >= 10000 then
+            local val = string.format("%.1f", gold / 1000)
+            if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
+            str = val .. "K g"
+        elseif gold >= 1 then
+            str = InsertSeparators(tostring(gold), fmt.sep) .. "g"
+        else
+            local silver = math.floor((copper % 10000) / 100)
+            if silver > 0 then
+                str = silver .. "s"
+            else
+                str = (copper % 100) .. "c"
+            end
+        end
+    else
+        str = InsertSeparators(tostring(gold), fmt.sep) .. "g"
+        local silver = math.floor((copper % 10000) / 100)
+        local cop = copper % 100
+        if silver > 0 or cop > 0 then
+            str = str .. " " .. silver .. "s " .. cop .. "c"
+        end
+    end
+
+    if negative then str = "-" .. str end
+    return str
+end
+
+--- Format memory (KB) for display
+function ns.FormatMemory(kb)
+    if not kb then return "0 KB" end
+    local fmt = GetFormatSettings()
+    if kb >= 1024 then
+        local val = string.format("%.1f", kb / 1024)
+        if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
+        return val .. " MB"
+    end
+    return string.format("%.0f KB", kb)
+end
+
+--- Format currency quantity with optional max
+function ns.FormatQuantity(quantity, maxQuantity)
+    local str = ns.FormatNumber(quantity)
+    if maxQuantity and maxQuantity > 0 then
+        return str .. " / " .. ns.FormatNumber(maxQuantity)
+    end
+    return str
 end
 
 ---------------------------------------------------------------------------

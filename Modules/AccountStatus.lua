@@ -438,7 +438,12 @@ function AcctStatus:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "warbank journal wbstatus petstatus",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",  "<warbank>" },
+        { "Status",   "<wbstatus>  <petstatus>" },
+        { "Journal",  "Journal: <journal>" },
+        { "Combined", "<warbank>  <journal>" },
+    })
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

@@ -447,7 +447,13 @@ function CharInfo:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "name realm class level ilvl race shard",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<name>" },
+        { "With iLvl",  "<name>  iLvl: <ilvl>" },
+        { "Class Info", "<name> (<class> <level>)" },
+        { "Realm",      "<name> - <realm>" },
+        { "Full",       "<name> <level> <class> (<ilvl>)" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Show item level",

@@ -456,7 +456,12 @@ function TimeDate:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "time server local date",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
+        { "Default",    "<time>" },
+        { "With Date",  "<time>  <date>" },
+        { "Both Times", "S: <server>  L: <local>" },
+        { "Date Only",  "<date>" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Use 24-hour format",

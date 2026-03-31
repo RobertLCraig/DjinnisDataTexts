@@ -400,7 +400,12 @@ function Coordinates:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "coords zone subzone map",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
+        { "Coords Only",  "<coords>" },
+        { "Zone + Coords", "<zone> <coords>" },
+        { "Full Location", "<zone> - <subzone> (<coords>)" },
+        { "Map Name",      "<map>: <coords>" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddSlider(c, y, "Decimal places", 0, 4, 1,

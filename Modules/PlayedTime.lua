@@ -376,7 +376,13 @@ function PlayedTime:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "session total level",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
+        { "Default",   "<session>" },
+        { "Labeled",   "Session: <session>" },
+        { "Total",     "Played: <total>" },
+        { "Both",      "<session> / <total>" },
+        { "Level",     "Lv: <level>  Total: <total>" },
+    })
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

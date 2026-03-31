@@ -77,12 +77,7 @@ local CLICK_ACTIONS = {
 ---------------------------------------------------------------------------
 
 local function FormatNumber(n)
-    if n >= 1000000 then
-        return string.format("%.1fM", n / 1000000)
-    elseif n >= 1000 then
-        return string.format("%.1fK", n / 1000)
-    end
-    return tostring(n)
+    return ns.FormatNumber(n)
 end
 
 local function GetXPPercent()
@@ -681,7 +676,13 @@ function Experience:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "xp percent bar level remaining rested xphr questxp",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",     "<xp>" },
+        { "With Bar",    "<bar> <percent>" },
+        { "Detailed",    "Lv<level> <percent> <rested>" },
+        { "XP/Hour",     "<percent> - <xphr>" },
+        { "Bar + Level", "Lv<level> <bar>" },
+    })
 
     y = W.AddHeader(c, y, "Progress Bar")
     y = W.AddSlider(c, y, "Bar width (characters)", 10, 40, 1,

@@ -108,10 +108,7 @@ end
 ---------------------------------------------------------------------------
 
 local function FormatMemory(kb)
-    if kb >= 1024 then
-        return string.format("%.1f MB", kb / 1024)
-    end
-    return string.format("%.0f KB", kb)
+    return ns.FormatMemory(kb)
 end
 
 local function LatencyColor(ms)
@@ -679,7 +676,13 @@ function SysPerf:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "fps latency world memory cpu",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",   "<fps> fps  <latency>ms" },
+        { "Detailed",  "<fps> fps  H:<latency>  W:<world>ms" },
+        { "Compact",   "<fps>/<latency>" },
+        { "Full",      "<fps> fps  <latency>ms  <memory>" },
+        { "CPU Focus", "<fps> fps  CPU: <cpu>" },
+    })
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

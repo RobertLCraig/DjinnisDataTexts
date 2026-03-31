@@ -878,7 +878,13 @@ function SpecSwitch:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "spec loadout lootspec role icon",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<spec>" },
+        { "With Role",  "<icon> <spec> (<role>)" },
+        { "Loadout",    "<spec> - <loadout>" },
+        { "Loot Spec",  "<spec>  Loot: <lootspec>" },
+        { "Full",       "<icon> <spec> / <loadout>" },
+    })
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

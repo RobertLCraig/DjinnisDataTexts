@@ -1068,7 +1068,12 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddHeader(c, y, "Label Template")
     y = W.AddLabelEditBox(c, y, "summary raids dungeons mplus total",
         function() return db().labelTemplate end,
-        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+        function(v) db().labelTemplate = v; self:UpdateData() end, r, {
+        { "Default",    "<summary>" },
+        { "Split",      "R:<raids> D:<dungeons>" },
+        { "M+ Focus",   "M+: <mplus>  Saved: <total>" },
+        { "Count",      "<total> lockouts" },
+    })
 
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Condensed raid view (group difficulties per instance)",
