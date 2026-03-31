@@ -5,13 +5,13 @@ Works with any LDB display addon (ElvUI, Titan Panel, Bazooka, ChocolateBar, etc
 
 ## Summary
 
-Djinni's Data Texts (DDT) provides 18 information-rich DataText modules covering social, character, economy, instance, time/location, and system categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
+Djinni's Data Texts (DDT) provides 19 information-rich DataText modules covering social, character, economy, instance, time/location, and system categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
 
 DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing settings on first load.
 
 ## Features
 
-- **18 DataText modules** covering every major information category
+- **19 DataText modules** covering every major information category
 - **Configurable label templates** with `<tag>` syntax and clickable tag-insert buttons in settings
 - **Configurable click actions** per mouse button on every module
 - **Configurable tooltip sizing** (width, scale) per module
@@ -54,6 +54,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 
 | Module | Description |
 |--------|-------------|
+| **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Live wait time and elapsed counters. Icon changes based on queue state. |
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 

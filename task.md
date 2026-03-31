@@ -234,9 +234,23 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - Designed for multibox setups (at-a-glance shared resource access)
   - Label tags: <warbank> <journal> <wbstatus> <petstatus>
 - [x] Unicode arrow fix across all modules (SavedInstances, Currency, BagValue, SystemPerformance)
+- [x] AddLabelEditBox widget with clickable tag-insert buttons in settings panels
+- [x] Alphabetical sort for settings subcategories (social + standalone modules)
+- [x] Currency: Track Currencies click action (opens backpack)
+- [x] LFGStatus module (NEW)
+  - Tracks LFG queue status: Dungeon Finder, Raid Finder, Scenarios
+  - Premade group applications with role, group name, activity, status
+  - Active listed group with applicant count
+  - Live wait time / elapsed counters via OnUpdate
+  - Dynamic icon based on queue state (idle/queued/proposal/applied/listed)
+  - Label tags: <status> <queues> <apps> <role> <wait> <elapsed>
+  - LClick: Group Finder, RClick: Open Settings
+  - Events: LFG_UPDATE, LFG_QUEUE_STATUS_UPDATE, LFG_PROPOSAL_*, LFG_LIST_*
+- [x] README.md with full module documentation
+- [x] ARTWORK_PROMPTS.md with logo/banner generation prompts
 
 ## Current State
-Phase 8 complete. Addon has 18 modules:
+Phase 8 complete. Addon has 19 modules:
 - Guild, Friends, Communities (ported from DGF, visuals standardized)
 - SpecSwitch (talent/loadout/loot spec switching)
 - SavedInstances (lockout summary, boss details, M+ runs, Great Vault click, alt integration)
@@ -253,6 +267,7 @@ Phase 8 complete. Addon has 18 modules:
 - BagValue (TSM-priced bag contents, vendor fallback, top items, free slots)
 - PetInfo (journal unlock, battle capability, collection stats, pet actions)
 - AccountStatus (warband bank + pet journal access for multiboxers)
+- LFGStatus (queue tracking, premade applications, roles, wait times)
 All modules use unified DDT font system (configurable face/size in General settings).
 All modules have configurable label templates, tooltip sizing, sort order, and settings panels.
 All modules have configurable click actions with "Open DDT Settings" available everywhere.
