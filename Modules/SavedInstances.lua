@@ -28,6 +28,9 @@ local rowPool = {}
 local headerPool = {}
 local separatorPool = {}
 
+-- Alt lockout expanded state (per session)
+local expandedAlts = {}
+
 -- Layout constants
 local TOOLTIP_WIDTH   = 380
 local ROW_HEIGHT      = 20
@@ -70,6 +73,10 @@ local DEFAULTS = {
     mplusSortOrder  = "level_asc",  -- level_asc, level_desc, name, api
     tooltipScale    = 1.0,
     tooltipWidth    = 380,
+    -- Alt lockout display
+    showAlts        = true,
+    altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
+    altManualList   = {},           -- { ["Name - Realm"] = true } — used when altFilter == "manual"
     clickActions    = {
         leftClick       = "refresh",
         rightClick      = "greatvault",
@@ -118,6 +125,18 @@ local DIFFICULTY_RANK = {
     ["10N"] = 2, ["25N"] = 2,
     ["10H"] = 3, ["25H"] = 3,
     ["40"]  = 1,
+}
+
+-- Alt filter dropdown values
+local ALT_FILTER_VALUES = {
+    all      = "All with lockouts",
+    hasraids = "Has raid lockouts",
+    maxlevel = "Max level only",
+    mplus30  = "M+ active (30 days)",
+    mplus60  = "M+ active (60 days)",
+    mplus90  = "M+ active (90 days)",
+    mplus180 = "M+ active (180 days)",
+    manual   = "Manual selection",
 }
 
 -- Sort dropdown values
@@ -260,6 +279,55 @@ function SavedInst:GetDB()
 end
 
 ---------------------------------------------------------------------------
+-- Alt lockout data: save current character to global SavedVariables
+---------------------------------------------------------------------------
+
+function SavedInst:SaveCurrentCharData()
+    if not ns.db then return end
+    if not ns.db.altLockouts then ns.db.altLockouts = {} end
+
+    local playerName  = UnitName("player")
+    local playerRealm = GetRealmName()
+    local key         = playerName .. " - " .. playerRealm
+    local now         = time()
+    local existing    = ns.db.altLockouts[key] or {}
+
+    -- Lightweight lockout summary (no boss data — kept small for SavedVariables)
+    local lockouts = {}
+    for _, entry in ipairs(lockoutCache) do
+        table.insert(lockouts, {
+            name         = entry.name,
+            difficultyTag = entry.difficultyTag,
+            progress     = entry.encounterProgress,
+            total        = entry.numEncounters,
+            reset        = entry.reset,
+            isRaid       = entry.isRaid,
+            extended     = entry.extended,
+        })
+    end
+
+    -- M+ run summary
+    local mpRuns = {}
+    for _, run in ipairs(mythicPlusRuns) do
+        table.insert(mpRuns, { name = run.name, level = run.level, completed = run.completed })
+    end
+
+    ns.db.altLockouts[key] = {
+        name                 = playerName,
+        realm                = playerRealm,
+        class                = select(2, UnitClass("player")):upper(),
+        level                = UnitLevel("player"),
+        lastSeen             = now,
+        lockouts             = lockouts,
+        hasRaids             = raidCount > 0,
+        mythicPlusRuns       = mpRuns,
+        mythicPlusCount      = mythicPlusCount,
+        -- Updated only when M+ runs exist; used for mplus30/60/90/180 filters
+        mythicPlusLastActive = (mythicPlusCount > 0) and now or (existing.mythicPlusLastActive or 0),
+    }
+end
+
+---------------------------------------------------------------------------
 -- Label template expansion
 ---------------------------------------------------------------------------
 
@@ -395,6 +463,9 @@ function SavedInst:UpdateData()
             end
         end
     end
+
+    -- Persist this character's data for display on other alts
+    self:SaveCurrentCharData()
 
     -- Update LDB text
     local db = self:GetDB()
@@ -546,6 +617,51 @@ local function HideAllPooled()
     for _, row in pairs(rowPool) do row:Hide() end
     for _, hdr in pairs(headerPool) do hdr:Hide() end
     for _, sep in pairs(separatorPool) do sep:Hide() end
+end
+
+-- Renders one alt lockout row (indented, no boss-expand). Returns updated rowIndex, y.
+local function RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
+    local lrow = GetRow(f, rowIndex)
+    lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
+    lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+    lrow:SetHeight(ROW_HEIGHT)
+    lrow.isBossRow = false
+
+    lrow.nameText:SetText(lo.name)
+    lrow.nameText:SetTextColor(0.8, 0.8, 0.8)
+
+    local colors = DIFFICULTY_COLORS[lo.difficultyTag] or { 0.7, 0.7, 0.7 }
+    lrow.diffText:SetText(lo.difficultyTag)
+    lrow.diffText:SetTextColor(colors[1], colors[2], colors[3])
+
+    if lo.total and lo.total > 0 then
+        local ratio = lo.progress / lo.total
+        lrow.progressText:SetText(lo.progress .. "/" .. lo.total)
+        if ratio >= 1 then
+            lrow.progressText:SetTextColor(0.0, 1.0, 0.0)
+        elseif ratio > 0 then
+            lrow.progressText:SetTextColor(1.0, 0.82, 0.0)
+        else
+            lrow.progressText:SetTextColor(0.5, 0.5, 0.5)
+        end
+    else
+        lrow.progressText:SetText("")
+    end
+
+    -- Adjust reset time for elapsed since last seen
+    local adjustedReset = math.max(0, (lo.reset or 0) - elapsed)
+    if adjustedReset > 0 then
+        lrow.resetText:SetText(FormatResetTime(adjustedReset))
+        lrow.resetText:SetTextColor(0.6, 0.6, 0.6)
+    else
+        lrow.resetText:SetText("|cff888888Exp|r")
+        lrow.resetText:SetTextColor(1, 1, 1)
+    end
+
+    if lo.extended then lrow.extendedBar:Show() else lrow.extendedBar:Hide() end
+    lrow:SetScript("OnClick", nil)
+
+    return rowIndex, y - ROW_HEIGHT
 end
 
 ---------------------------------------------------------------------------
@@ -898,122 +1014,160 @@ function SavedInst:BuildTooltipContent()
 end
 
 ---------------------------------------------------------------------------
--- Alt lockout integration (reads SavedInstances addon DB if present)
+-- Alt lockout section (reads DDT's own DjinnisDataTextsDB.altLockouts)
 ---------------------------------------------------------------------------
 
 function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
-    -- Check for SavedInstances addon data
-    if not SavedInstancesDB or type(SavedInstancesDB) ~= "table" then return nil end
-    local toons = SavedInstancesDB.Toons
-    if not toons or type(toons) ~= "table" then return nil end
+    local db = self:GetDB()
+    if not db.showAlts then return nil end
+    if not ns.db or not ns.db.altLockouts then return nil end
 
     local playerName = UnitName("player")
     local playerRealm = GetRealmName()
-    local playerKey = playerName .. " - " .. playerRealm
+    local currentKey = playerName .. " - " .. playerRealm
+    local now = time()
+    local maxLevel = (GetMaxPlayerLevel and GetMaxPlayerLevel()) or 90
+    local filter = db.altFilter or "all"
 
-    -- Collect alts with lockouts
+    -- Collect alts that pass the active filter and have any data
     local alts = {}
-    for toonKey, toonData in pairs(toons) do
-        if toonKey ~= playerKey and type(toonData) == "table" then
-            local hasLockouts = false
-            for key, val in pairs(toonData) do
-                -- Instance data is stored with string keys that aren't standard fields
-                if type(val) == "table" and key ~= "currency" and key ~= "Quests"
-                   and key ~= "MythicKey" and key ~= "BonusRoll" and key ~= "Calling"
-                   and key ~= "Warfront" and key ~= "Emissary" and key ~= "WorldBoss" then
-                    -- Check if this is an instance entry with lockout data
-                    for diffKey, diffData in pairs(val) do
-                        if type(diffData) == "table" and diffData.ID and diffData.Locked then
-                            hasLockouts = true
-                            break
-                        end
-                    end
+    for key, altData in pairs(ns.db.altLockouts) do
+        if key ~= currentKey and type(altData) == "table" then
+            local hasLockouts = altData.lockouts and #altData.lockouts > 0
+            local hasMPlus    = altData.mythicPlusRuns and #altData.mythicPlusRuns > 0
+            if hasLockouts or hasMPlus then
+                local pass = false
+                if     filter == "all"      then pass = true
+                elseif filter == "maxlevel" then pass = (altData.level or 0) >= maxLevel
+                elseif filter == "hasraids" then pass = altData.hasRaids == true
+                elseif filter == "mplus30"  then pass = (altData.mythicPlusLastActive or 0) > (now - 30  * 86400)
+                elseif filter == "mplus60"  then pass = (altData.mythicPlusLastActive or 0) > (now - 60  * 86400)
+                elseif filter == "mplus90"  then pass = (altData.mythicPlusLastActive or 0) > (now - 90  * 86400)
+                elseif filter == "mplus180" then pass = (altData.mythicPlusLastActive or 0) > (now - 180 * 86400)
+                elseif filter == "manual"   then pass = db.altManualList[key] == true
                 end
-                if hasLockouts then break end
-            end
-
-            if hasLockouts and toonData.Class then
-                table.insert(alts, {
-                    key = toonKey,
-                    name = toonKey:match("^(.+) %-") or toonKey,
-                    class = toonData.Class,
-                    level = toonData.Level or 0,
-                })
+                if pass then
+                    table.insert(alts, { key = key, data = altData })
+                end
             end
         end
     end
 
     if #alts == 0 then return nil end
 
-    -- Sort: max level first, then alphabetical
+    -- Sort: highest level first, then alphabetical by name
     table.sort(alts, function(a, b)
-        if a.level ~= b.level then return a.level > b.level end
-        return a.name < b.name
+        local la, lb = a.data.level or 0, b.data.level or 0
+        if la ~= lb then return la > lb end
+        return (a.data.name or a.key) < (b.data.name or b.key)
     end)
 
-    -- Section header
+    -- Section separator + header
     y = y - 4
     sepIndex = sepIndex + 1
-    local sep = separatorPool[sepIndex]
-    if not sep then
-        sep = f:CreateTexture(nil, "ARTWORK")
-        sep:SetHeight(1)
-        sep:SetColorTexture(0.3, 0.3, 0.3, 0.5)
-        separatorPool[sepIndex] = sep
-    end
-    sep:Show()
+    local sep = GetSeparator(f, sepIndex)
     sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
     sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
     y = y - 6
 
     headerIndex = headerIndex + 1
-    local altHdr = headerPool[headerIndex]
-    if not altHdr then
-        altHdr = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
-        altHdr:SetJustifyH("LEFT")
-        headerPool[headerIndex] = altHdr
-    end
-    altHdr:Show()
+    local altHdr = GetHeader(f, headerIndex)
     altHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    altHdr:SetText("Alt Lockouts (SavedInstances)")
+    altHdr:SetText("Alt Lockouts")
     altHdr:SetTextColor(1, 0.82, 0)
     y = y - HEADER_HEIGHT
 
-    -- Show summary per alt
     for _, alt in ipairs(alts) do
-        local toonData = toons[alt.key]
-        local lockCount = 0
+        local altData  = alt.data
+        local lockouts = altData.lockouts or {}
+        local mpRuns   = altData.mythicPlusRuns or {}
+        local elapsed  = now - (altData.lastSeen or now)
 
-        for key, val in pairs(toonData) do
-            if type(val) == "table" and key ~= "currency" and key ~= "Quests"
-               and key ~= "MythicKey" and key ~= "BonusRoll" and key ~= "Calling"
-               and key ~= "Warfront" and key ~= "Emissary" and key ~= "WorldBoss" then
-                for _, diffData in pairs(val) do
-                    if type(diffData) == "table" and diffData.Locked then
-                        lockCount = lockCount + 1
-                    end
+        -- Build summary badge: "2R 1D 3M+"
+        local rCt, dCt, mCt = 0, 0, altData.mythicPlusCount or 0
+        for _, lo in ipairs(lockouts) do
+            if lo.isRaid then rCt = rCt + 1 else dCt = dCt + 1 end
+        end
+        local summaryParts = {}
+        if rCt > 0 then table.insert(summaryParts, rCt .. "R") end
+        if dCt > 0 then table.insert(summaryParts, dCt .. "D") end
+        if mCt > 0 then table.insert(summaryParts, mCt .. "M+") end
+        local summary = #summaryParts > 0 and table.concat(summaryParts, " ") or "No lockouts"
+
+        local isExpanded = expandedAlts[alt.key]
+        local arrow = isExpanded and "|cffaaaaaa▼|r " or "|cffaaaaaa▶|r "
+
+        -- Alt summary row (click to expand)
+        rowIndex = rowIndex + 1
+        local row = GetRow(f, rowIndex)
+        row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        row:SetHeight(ROW_HEIGHT)
+        row.isBossRow = false
+
+        row.nameText:SetText(arrow .. DDT:ClassColorText(altData.name or alt.key, (altData.class or ""):upper()))
+        row.nameText:SetTextColor(1, 1, 1)
+        row.diffText:SetText("")
+        row.progressText:SetText(summary)
+        row.progressText:SetTextColor(0.7, 0.7, 0.7)
+        row.resetText:SetText("Lv " .. (altData.level or "?"))
+        row.resetText:SetTextColor(0.5, 0.5, 0.5)
+        row.extendedBar:Hide()
+
+        local capturedKey = alt.key
+        row:SetScript("OnClick", function()
+            expandedAlts[capturedKey] = not expandedAlts[capturedKey]
+            SavedInst:BuildTooltipContent()
+        end)
+
+        y = y - ROW_HEIGHT
+
+        -- Expanded: show individual lockout rows
+        if isExpanded then
+            -- Split and sort raids/dungeons using main sort setting
+            local altRaids, altDungs = {}, {}
+            for _, lo in ipairs(lockouts) do
+                if lo.isRaid then table.insert(altRaids, lo) else table.insert(altDungs, lo) end
+            end
+            SortRaidEntries(altRaids, db.raidSortOrder)
+            SortRaidEntries(altDungs, db.raidSortOrder)
+
+            for _, lo in ipairs(altRaids) do
+                rowIndex = rowIndex + 1
+                rowIndex, y = RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
+            end
+            for _, lo in ipairs(altDungs) do
+                rowIndex = rowIndex + 1
+                rowIndex, y = RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
+            end
+
+            -- M+ runs
+            if #mpRuns > 0 then
+                local sortedRuns = {}
+                for _, r in ipairs(mpRuns) do table.insert(sortedRuns, r) end
+                SortMPlusRuns(sortedRuns, db.mplusSortOrder)
+
+                local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+                for _, run in ipairs(sortedRuns) do
+                    rowIndex = rowIndex + 1
+                    local lrow = GetRow(f, rowIndex)
+                    lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
+                    lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    lrow:SetHeight(ROW_HEIGHT)
+                    lrow.isBossRow = false
+
+                    lrow.nameText:SetText(run.name)
+                    lrow.nameText:SetTextColor(0.8, 0.8, 0.8)
+                    lrow.diffText:SetText("+" .. run.level)
+                    lrow.diffText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+                    lrow.progressText:SetText(run.completed and "|cff00cc00Timed|r" or "|cffcc0000Over|r")
+                    lrow.resetText:SetText("")
+                    lrow.extendedBar:Hide()
+                    lrow:SetScript("OnClick", nil)
+
+                    y = y - ROW_HEIGHT
                 end
             end
-        end
-
-        if lockCount > 0 then
-            rowIndex = rowIndex + 1
-            local row = GetRow(f, rowIndex)
-            row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-            row:SetHeight(ROW_HEIGHT)
-
-            local nameColor = DDT:ClassColorText(alt.name, alt.class:upper())
-            row.nameText:SetText(nameColor)
-            row.diffText:SetText("")
-            row.progressText:SetText(string.format("%d saved", lockCount))
-            row.progressText:SetTextColor(0.7, 0.7, 0.7)
-            row.resetText:SetText("Lv " .. alt.level)
-            row.resetText:SetTextColor(0.5, 0.5, 0.5)
-            row.extendedBar:Hide()
-            row:SetScript("OnClick", nil)
-
-            y = y - ROW_HEIGHT
         end
     end
 
@@ -1112,6 +1266,53 @@ function SavedInst:BuildSettingsPanel(panel)
     y = ns.AddModuleClickActionsSection(c, r, y, "savedinstances", CLICK_ACTIONS)
     y = W.AddDescription(c, y,
         "Click a lockout row: Expand/collapse boss details")
+
+    -- Alt Lockouts
+    y = W.AddHeader(c, y, "Alt Lockouts")
+    y = W.AddCheckbox(c, y, "Show alt lockout data in tooltip",
+        function() return db().showAlts end,
+        function(v) db().showAlts = v; refreshTT() end, r)
+    y = W.AddDropdown(c, y, "Show alts matching", ALT_FILTER_VALUES,
+        function() return db().altFilter end,
+        function(v) db().altFilter = v; refreshTT() end, r)
+
+    -- Manual alt selection: always shown so users can pre-configure before switching to manual
+    y = W.AddDescription(c, y, "Manual selection (used when filter = \"Manual selection\"):")
+
+    local altDB = ns.db and ns.db.altLockouts
+    local playerName  = UnitName("player")
+    local playerRealm = GetRealmName()
+    local currentKey  = playerName .. " - " .. playerRealm
+
+    if altDB then
+        -- Collect known alts sorted: level desc, then name
+        local knownAlts = {}
+        for key, altData in pairs(altDB) do
+            if key ~= currentKey and type(altData) == "table" then
+                table.insert(knownAlts, { key = key, data = altData })
+            end
+        end
+        table.sort(knownAlts, function(a, b)
+            local la, lb = a.data.level or 0, b.data.level or 0
+            if la ~= lb then return la > lb end
+            return (a.data.name or a.key) < (b.data.name or b.key)
+        end)
+
+        if #knownAlts == 0 then
+            y = W.AddDescription(c, y, "|cff888888No alts recorded yet. Log in to each alt to populate.|r")
+        else
+            for _, alt in ipairs(knownAlts) do
+                local label = DDT:ClassColorText(alt.data.name or alt.key, (alt.data.class or ""):upper())
+                              .. " |cff888888(Lv " .. (alt.data.level or "?") .. ")|r"
+                local capturedKey = alt.key
+                y = W.AddCheckbox(c, y, label,
+                    function() return db().altManualList[capturedKey] == true end,
+                    function(v) db().altManualList[capturedKey] = v or nil; refreshTT() end, r)
+            end
+        end
+    else
+        y = W.AddDescription(c, y, "|cff888888No alts recorded yet. Log in to each alt to populate.|r")
+    end
 
     c:SetHeight(math.abs(y) + 20)
 end
