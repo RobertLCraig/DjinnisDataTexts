@@ -38,6 +38,19 @@ local DEFAULTS = {
     labelTemplate  = "<coords>",
     tooltipScale   = 1.0,
     tooltipWidth   = 280,
+    clickActions   = {
+        leftClick  = "worldmap",
+        rightClick = "copycoords",
+    },
+}
+
+local CLICK_ACTIONS = {
+    worldmap     = "World Map",
+    zonemap      = "Zone Map",
+    copycoords   = "Copy Coords to Chat",
+    pastecoords  = "Paste Coords (TomTom)",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 ---------------------------------------------------------------------------
@@ -102,11 +115,18 @@ local dataobj = LDB:NewDataObject("DDT-Coordinates", {
         Coordinates:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
+        local db = Coordinates:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "worldmap" then
             ToggleWorldMap()
-        elseif button == "RightButton" then
-            -- Copy coords to chat
-            local db = Coordinates:GetDB()
+        elseif action == "zonemap" then
+            -- Open the zone/flight map
+            if ToggleBattlefieldMap then
+                ToggleBattlefieldMap()
+            elseif ToggleWorldMap then
+                ToggleWorldMap()
+            end
+        elseif action == "copycoords" then
             local coordStr = FormatCoords(playerX, playerY, db.coordDecimals)
             local msg = currentZone
             if currentSubZone ~= "" and currentSubZone ~= currentZone then
@@ -114,6 +134,16 @@ local dataobj = LDB:NewDataObject("DDT-Coordinates", {
             end
             msg = msg .. " (" .. coordStr .. ")"
             ChatFrameUtil.OpenChat(msg)
+        elseif action == "pastecoords" then
+            -- Build a /way command for TomTom or Blizzard waypoint
+            local x = playerX and (playerX * 100) or 0
+            local y = playerY and (playerY * 100) or 0
+            local waypointStr = string.format("/way %.1f %.1f", x, y)
+            ChatFrameUtil.OpenChat(waypointStr)
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -305,7 +335,7 @@ function Coordinates:BuildTooltipContent()
     end
 
     -- Hint
-    f.hint:SetText("|cff888888LClick: World Map  |  RClick: Copy to Chat|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
@@ -358,8 +388,7 @@ function Coordinates:BuildSettingsPanel(panel)
     local db = function() return ns.db.coordinates end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <coords> <zone> <subzone> <map>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "coords zone subzone map",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
 
@@ -376,10 +405,7 @@ function Coordinates:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
-    y = W.AddDescription(c, y,
-        "Left-click: Open World Map\n" ..
-        "Right-click: Copy coordinates and zone name to chat")
+    y = ns.AddModuleClickActionsSection(c, r, y, "coordinates", CLICK_ACTIONS)
 
     c:SetHeight(math.abs(y) + 20)
 end

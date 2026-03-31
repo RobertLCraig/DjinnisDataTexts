@@ -29,6 +29,9 @@ local latencyWorld = 0
 local memoryTotal = 0      -- KB, all addons
 local addonMemory = {}     -- { { name, memory } } sorted desc
 local NUM_TOP_ADDONS = 10
+local cpuEnabled = false    -- whether CPU profiling is active in this session
+local addonCPU = {}         -- { { name, cpu } } sorted desc
+local cpuTotal = 0          -- total CPU (ms) across all addons
 
 ---------------------------------------------------------------------------
 -- Defaults
@@ -39,13 +42,29 @@ local DEFAULTS = {
     showTopAddons    = true,
     numTopAddons     = 10,
     addonSortOrder   = "memory_desc",  -- memory_desc, memory_asc, name
+    showCpuUsage     = false,
+    numTopCpuAddons  = 10,
     tooltipScale     = 1.0,
     tooltipWidth     = 320,
+    clickActions     = {
+        leftClick       = "gc",
+        rightClick      = "refresh",
+    },
+}
+
+local CLICK_ACTIONS = {
+    gc             = "Collect Garbage",
+    refresh        = "Refresh Memory",
+    gamemenu       = "Game Menu",
+    reloadui       = "Reload UI",
+    cputoggle      = "Toggle CPU Profiler",
+    opensettings   = "Open DDT Settings",
+    none           = "None",
 }
 
 local ADDON_SORT_VALUES = {
-    memory_desc = "Memory (High \226\134\146 Low)",
-    memory_asc  = "Memory (Low \226\134\146 High)",
+    memory_desc = "Memory (High > Low)",
+    memory_asc  = "Memory (Low > High)",
     name        = "Name (A-Z)",
 }
 
@@ -94,12 +113,20 @@ end
 -- Label template expansion
 ---------------------------------------------------------------------------
 
+local function FormatCPU(ms)
+    if ms >= 1000 then
+        return string.format("%.1f s", ms / 1000)
+    end
+    return string.format("%.0f ms", ms)
+end
+
 local function ExpandLabel(template)
     local result = template
     result = result:gsub("<fps>", string.format("%.0f", fps))
     result = result:gsub("<latency>", tostring(latencyHome))
     result = result:gsub("<world>", tostring(latencyWorld))
     result = result:gsub("<memory>", FormatMemory(memoryTotal))
+    result = result:gsub("<cpu>", cpuEnabled and FormatCPU(cpuTotal) or "N/A")
     return result
 end
 
@@ -119,13 +146,26 @@ local dataobj = LDB:NewDataObject("DDT-SystemPerformance", {
         SysPerf:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
-            -- Garbage collect
+        local db = SysPerf:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "gc" then
             collectgarbage("collect")
             SysPerf:UpdateData()
-        elseif button == "RightButton" then
+        elseif action == "refresh" then
             UpdateAddOnMemoryUsage()
             SysPerf:UpdateData()
+        elseif action == "gamemenu" then
+            ToggleGameMenuFrame()
+        elseif action == "reloadui" then
+            ReloadUI()
+        elseif action == "cputoggle" then
+            local current = GetCVarBool("scriptProfile")
+            SetCVar("scriptProfile", current and "0" or "1")
+            DDT:Print("CPU Profiler " .. (current and "disabled" or "enabled") .. ". /reload required to take effect.")
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -167,6 +207,8 @@ function SysPerf:UpdateData()
     fps = GetFramerate()
     latencyHome, latencyWorld = select(3, GetNetStats())
 
+    local db = self:GetDB()
+
     -- Addon memory
     UpdateAddOnMemoryUsage()
     memoryTotal = 0
@@ -182,8 +224,24 @@ function SysPerf:UpdateData()
         end
     end
 
+    -- CPU profiling (requires scriptProfile CVar = "1")
+    cpuEnabled = GetCVarBool("scriptProfile") or false
+    wipe(addonCPU)
+    cpuTotal = 0
+    if cpuEnabled and db.showCpuUsage then
+        ResetCPUUsage()
+        UpdateAddOnCPUUsage()
+        for i = 1, numAddons do
+            local cpuTime = GetAddOnCPUUsage(i)
+            cpuTotal = cpuTotal + cpuTime
+            if cpuTime > 0 then
+                local name = C_AddOns.GetAddOnInfo(i)
+                table.insert(addonCPU, { name = name, cpu = cpuTime })
+            end
+        end
+    end
+
     -- Update LDB text
-    local db = self:GetDB()
     dataobj.text = ExpandLabel(db.labelTemplate)
 
     -- Refresh tooltip if visible
@@ -339,8 +397,54 @@ function SysPerf:BuildTooltipContent()
         end
     end
 
+    -- CPU profiling section
+    if db.showCpuUsage then
+        y = y - 4
+        lineIdx = lineIdx + 1
+        local cpuHdr = GetLine(f, lineIdx)
+        cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+
+        if not cpuEnabled then
+            cpuHdr.label:SetText("|cffffd100CPU Profiling|r")
+            cpuHdr.value:SetText("|cffff3333Disabled|r")
+            y = y - ROW_HEIGHT
+
+            lineIdx = lineIdx + 1
+            local cpuNote = GetLine(f, lineIdx)
+            cpuNote.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            cpuNote.label:SetText("|cff888888Enable via: /console scriptProfile 1|r")
+            cpuNote.label:SetTextColor(0.5, 0.5, 0.5)
+            cpuNote.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            cpuNote.value:SetText("|cff888888(requires /reload)|r")
+            cpuNote.value:SetTextColor(0.5, 0.5, 0.5)
+            y = y - ROW_HEIGHT
+        else
+            cpuHdr.label:SetText("|cffffd100Top Addons (CPU)|r")
+            cpuHdr.value:SetText("")
+            y = y - HEADER_HEIGHT
+
+            -- Sort CPU list
+            table.sort(addonCPU, function(a, b) return a.cpu > b.cpu end)
+
+            local cpuCount = math.min(db.numTopCpuAddons or 10, #addonCPU)
+            for i = 1, cpuCount do
+                local addon = addonCPU[i]
+                lineIdx = lineIdx + 1
+                local row = GetLine(f, lineIdx)
+                row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                row.label:SetText(addon.name)
+                row.label:SetTextColor(0.8, 0.8, 0.8)
+                row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                row.value:SetText(FormatCPU(addon.cpu))
+                row.value:SetTextColor(0.9, 0.6, 0.3)
+                y = y - ROW_HEIGHT
+            end
+        end
+    end
+
     -- Hint
-    f.hint:SetText("|cff888888LClick: Collect Garbage  |  RClick: Refresh Memory|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -393,8 +497,7 @@ function SysPerf:BuildSettingsPanel(panel)
     local db = function() return ns.db.systemperformance end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <fps> <latency> <world> <memory>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "fps latency world memory cpu",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
 
@@ -405,6 +508,7 @@ function SysPerf:BuildSettingsPanel(panel)
     y = W.AddSlider(c, y, "Width", 250, 600, 10,
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
+
     y = W.AddHeader(c, y, "Addon Memory")
     y = W.AddCheckbox(c, y, "Show top addon memory usage",
         function() return db().showTopAddons end,
@@ -416,10 +520,21 @@ function SysPerf:BuildSettingsPanel(panel)
         function() return db().addonSortOrder end,
         function(v) db().addonSortOrder = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
+    y = W.AddHeader(c, y, "CPU Profiling")
+    y = W.AddCheckbox(c, y, "Show CPU usage per addon",
+        function() return db().showCpuUsage end,
+        function(v) db().showCpuUsage = v end, r)
+    y = W.AddSlider(c, y, "Number of CPU addons to show", 5, 25, 1,
+        function() return db().numTopCpuAddons end,
+        function(v) db().numTopCpuAddons = v end, r)
     y = W.AddDescription(c, y,
-        "Left-click: Garbage collect (free memory)\n" ..
-        "Right-click: Refresh addon memory stats")
+        "Requires WoW's CPU profiler to be enabled.\n" ..
+        "Enable: /console scriptProfile 1\n" ..
+        "Disable: /console scriptProfile 0\n" ..
+        "A /reload is required after changing this CVar.\n" ..
+        "CPU profiling adds minor overhead; disable when not needed.")
+
+    y = ns.AddModuleClickActionsSection(c, r, y, "systemperformance", CLICK_ACTIONS)
 
     c:SetHeight(math.abs(y) + 20)
 end

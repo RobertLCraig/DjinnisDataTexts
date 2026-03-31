@@ -70,6 +70,19 @@ local DEFAULTS = {
     mplusSortOrder  = "level_asc",  -- level_asc, level_desc, name, api
     tooltipScale    = 1.0,
     tooltipWidth    = 380,
+    clickActions    = {
+        leftClick       = "refresh",
+        rightClick      = "greatvault",
+        shiftLeftClick  = "raidinfo",
+    },
+}
+
+local CLICK_ACTIONS = {
+    refresh      = "Refresh",
+    greatvault   = "Great Vault",
+    raidinfo     = "Raid Info",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 -- Difficulty colors
@@ -102,14 +115,14 @@ local DIFFICULTY_RANK = {
 
 -- Sort dropdown values
 local RAID_SORT_VALUES = {
-    diff_asc  = "Difficulty (LFR \226\134\146 Mythic)",
-    diff_desc = "Difficulty (Mythic \226\134\146 LFR)",
+    diff_asc  = "Difficulty (LFR > Mythic)",
+    diff_desc = "Difficulty (Mythic > LFR)",
     name      = "Name (A-Z)",
     api       = "As Received",
 }
 local MPLUS_SORT_VALUES = {
-    level_asc  = "Level (Low \226\134\146 High)",
-    level_desc = "Level (High \226\134\146 Low)",
+    level_asc  = "Level (Low > High)",
+    level_desc = "Level (High > Low)",
     name       = "Name (A-Z)",
     api        = "As Received",
 }
@@ -177,11 +190,27 @@ local dataobj = LDB:NewDataObject("DDT-SavedInstances", {
         SavedInst:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" and IsShiftKeyDown() then
-            ToggleRaidFrame()
-        elseif button == "LeftButton" then
-            -- Request fresh data
+        local db = SavedInst:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "refresh" then
             RequestRaidInfo()
+        elseif action == "greatvault" then
+            if not C_AddOns.IsAddOnLoaded("Blizzard_WeeklyRewards") then
+                C_AddOns.LoadAddOn("Blizzard_WeeklyRewards")
+            end
+            if WeeklyRewardsFrame then
+                if WeeklyRewardsFrame:IsShown() then
+                    WeeklyRewardsFrame:Hide()
+                else
+                    WeeklyRewardsFrame:Show()
+                end
+            end
+        elseif action == "raidinfo" then
+            ToggleRaidFrame()
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -845,7 +874,12 @@ function SavedInst:BuildTooltipContent()
     end
 
     -- Hint bar
-    f.hint:SetText("|cff888888LClick: Refresh  |  Shift+LClick: Raid Info  |  Click Row: Bosses|r")
+    local hintParts = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
+    if hintParts ~= "" then
+        f.hint:SetText(hintParts .. "  |  |cff888888Row: Bosses|r")
+    else
+        f.hint:SetText("|cff888888Row: Bosses|r")
+    end
 
     -- Size
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
@@ -1032,8 +1066,7 @@ function SavedInst:BuildSettingsPanel(panel)
     end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <summary> <raids> <dungeons> <mplus> <total>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "summary raids dungeons mplus total",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
 
@@ -1061,10 +1094,8 @@ function SavedInst:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v; refreshTT() end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
+    y = ns.AddModuleClickActionsSection(c, r, y, "savedinstances", CLICK_ACTIONS)
     y = W.AddDescription(c, y,
-        "Left-click: Refresh lockout data\n" ..
-        "Shift+Left-click: Open Raid Info\n" ..
         "Click a lockout row: Expand/collapse boss details")
 
     c:SetHeight(math.abs(y) + 20)

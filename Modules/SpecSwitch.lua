@@ -36,7 +36,7 @@ local separatorPool = {}
 
 -- Layout constants
 local TOOLTIP_WIDTH  = 280
-local ROW_HEIGHT     = 22
+local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local ICON_SIZE      = 18
@@ -70,6 +70,7 @@ local SPEC_ACTION_VALUES = {
     opentalents  = "Open Talents",
     nextspec     = "Next Spec",
     nextloadout  = "Next Loadout",
+    opensettings = "Open DDT Settings",
     none         = "None",
 }
 ns.SPEC_ACTION_VALUES = SPEC_ACTION_VALUES
@@ -175,6 +176,11 @@ local function ExecuteSpecAction(action)
         end
         if C_ClassTalents.LoadConfig then
             C_ClassTalents.LoadConfig(loadouts[nextIdx].configID, true)
+        end
+
+    elseif action == "opensettings" then
+        if DDT.settingsCategoryID then
+            Settings.OpenToCategory(DDT.settingsCategoryID)
         end
     end
 end
@@ -870,8 +876,7 @@ function SpecSwitch:BuildSettingsPanel(panel)
     local db = function() return ns.db.specswitch end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <spec> <loadout> <lootspec> <role> <icon>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "spec loadout lootspec role icon",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
 

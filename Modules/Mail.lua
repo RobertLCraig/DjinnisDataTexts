@@ -37,6 +37,15 @@ local DEFAULTS = {
     mailSortOrder  = "sender",  -- sender, subject, expiry, unread
     tooltipScale   = 1.0,
     tooltipWidth   = 300,
+    clickActions   = {
+        leftClick  = "character",
+    },
+}
+
+local CLICK_ACTIONS = {
+    character    = "Character Panel",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 local MAIL_SORT_VALUES = {
@@ -120,8 +129,14 @@ local dataobj = LDB:NewDataObject("DDT-Mail", {
         Mail:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
+        local db = Mail:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -371,7 +386,12 @@ function Mail:BuildTooltipContent()
     end
 
     -- Hint
-    f.hint:SetText("|cff888888Visit a mailbox to see mail details|r")
+    local hintText = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
+    if hintText == "" then
+        f.hint:SetText("|cff888888Visit a mailbox to see mail details|r")
+    else
+        f.hint:SetText(hintText)
+    end
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -423,8 +443,7 @@ function Mail:BuildSettingsPanel(panel)
     local db = function() return ns.db.mail end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <status> <count> <new>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "status count new",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
 
@@ -441,7 +460,7 @@ function Mail:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
+    y = ns.AddModuleClickActionsSection(c, r, y, "mail", CLICK_ACTIONS)
     y = W.AddDescription(c, y,
         "Mail details are populated when you visit a mailbox.\n" ..
         "The indicator shows whether you have new unread mail.")

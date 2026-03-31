@@ -60,6 +60,15 @@ local DEFAULTS = {
     labelTemplate = "<xp>",
     tooltipScale  = 1.0,
     tooltipWidth  = 300,
+    clickActions  = {
+        leftClick  = "character",
+    },
+}
+
+local CLICK_ACTIONS = {
+    character    = "Character Panel",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 ---------------------------------------------------------------------------
@@ -164,8 +173,14 @@ local dataobj = LDB:NewDataObject("DDT-Experience", {
         Experience:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
+        local db = Experience:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -543,7 +558,7 @@ function Experience:BuildTooltipContent()
         f.repBar:Hide()
     end
 
-    f.hint:SetText("|cff888888LClick: Character Panel|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
     f:SetSize(ttWidth, totalHeight)
@@ -595,8 +610,7 @@ function Experience:BuildSettingsPanel(panel)
     local db = function() return ns.db.experience end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <xp> <percent> <level> <remaining> <rested> <xphr> <questxp>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "xp percent level remaining rested xphr questxp",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
 
@@ -608,9 +622,8 @@ function Experience:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
+    y = ns.AddModuleClickActionsSection(c, r, y, "experience", CLICK_ACTIONS)
     y = W.AddDescription(c, y,
-        "Left-click: Open Character Panel\n\n" ..
         "XP/Hour tracks experience gained since login.\n" ..
         "Quest XP shows total XP from quests ready to turn in.\n" ..
         "At max level, the DataText shows watched reputation if set.")

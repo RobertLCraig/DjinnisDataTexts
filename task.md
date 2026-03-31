@@ -109,35 +109,154 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - Tooltip shows today's calendar events (holidays, raid resets)
   - C_Calendar.OpenCalendar() on login to populate data
   - CALENDAR_UPDATE_EVENT_LIST event registered
+- [x] TimeDate Phase 2.5 (configurable datetime format)
+  - strftime-based dateTimeFormat setting (default: "%A, %B %d, %Y")
+  - 10 format presets dropdown (ISO, US, EU, abbreviated, etc.)
+  - Custom format editbox for arbitrary strftime strings
+  - Live preview in settings panel
+  - Strftime token cheatsheet in settings
+  - GetDateString() now uses date(fmt) directly, removed manual WEEKDAY/MONTH tables
 - [ ] TimeDate Phase 3 (multi-timezone) — deferred
 
+## Phase 6: Currency + Visual Consistency — COMPLETE
+- [x] Modules/Currency.lua
+  - Current character gold with colorized display (gold/silver/copper)
+  - Session gold change tracking (green positive, red negative)
+  - Alt character gold totals (persisted per-character in SavedVariables)
+  - Total gold across all characters
+  - WoW Token price via C_WowTokenPublic (polled every 60s)
+  - Tracked currencies from currency tab (C_CurrencyInfo)
+  - Expansion-grouped currency sub-headers (when sorted by list order)
+  - Currency icons with quality-colored names
+  - Configurable max currencies shown, sort order (list/name/quantity)
+  - Label tags: <gold> <session> <token>
+  - Left-click: Currency Tab, Right-click: Refresh
+  - Events: PLAYER_MONEY, CURRENCY_DISPLAY_UPDATE, TOKEN_MARKET_PRICE_UPDATED
+- [x] Visual consistency pass
+  - Social modules (Guild, Friends, Communities) updated to match standard tooltip pattern:
+    - Backdrop: ChatFrameBackground (was UI-Tooltip-Background)
+    - Border: (0.3, 0.3, 0.3, 1) (was 0.6, 0.6, 0.6, 0.8)
+    - Edge size: 14 (was 16), insets: 3 (was 4)
+    - Added gold title separator line (was missing)
+    - Header color: gold (1, 0.82, 0) via SetTextColor
+    - Hint bar: CENTER-justified at y=8 (was LEFT at TOOLTIP_PADDING)
+    - Hint bar color: (0.53, 0.53, 0.53) explicit
+  - MicroMenu and SpecSwitch ROW_HEIGHT: 20 (was 22) to match all other modules
+
+## Phase 7: Character, Speed, Bags, Pets + Currency Enhancements — COMPLETE
+- [x] Modules/CharacterInfo.lua
+  - Character name, realm, class (class-colored), race, level, item level
+  - Faction display (Alliance blue / Horde red)
+  - Guild name
+  - Shard ID (best-effort via NPC GUID parsing, off by default)
+  - Settings: limitations explained for shard ID, opt-in toggle
+  - Label tags: <name> <realm> <class> <level> <ilvl> <race> <shard>
+  - LClick: Character Panel, RClick: Copy Name-Realm to chat
+  - Events: PLAYER_ENTERING_WORLD, PLAYER_LEVEL_UP, PLAYER_AVG_ITEM_LEVEL_UPDATE, UNIT_TARGET
+- [x] Modules/MovementSpeed.lua
+  - Current/base speed as percentage (base 7 yd/s = 100%)
+  - Ground, flying, swimming, skyriding (C_PlayerInfo.GetGlidingInfo) speeds
+  - Active speed buff detection from known spell list (consumables, enchants, items, class, food)
+  - Common speed source reference in tooltip (potions, enchants, gunshoes, food, class abilities)
+  - Configurable update interval dropdown (0.05s-1s) for CPU impact control
+  - Label tags: <speed> <run> <fly> <swim> <mode>
+  - Events: UNIT_AURA + OnUpdate at configurable interval
+- [x] Modules/BagValue.lua
+  - Total estimated bag value using TSM price source (6 sources: dbmarket, dbminbuyout, etc.)
+  - Vendor value fallback when TSM not loaded
+  - Top items breakdown with icons, quantities, individual values
+  - Free/total bag slot display with color-coded warnings
+  - Debounced scanning (0.5s) on BAG_UPDATE
+  - Settings: TSM source dropdown, item count, sort order (value/name/quantity)
+  - Future: Auctionator, Auctioneer, Oribos Exchange support planned
+  - Label tags: <value> <vendor> <free> <total> <used>
+  - LClick: Toggle Bags, RClick: Rescan
+- [x] Modules/PetInfo.lua
+  - Pet Journal unlock status (C_PetJournal.IsJournalUnlocked)
+  - Battle capability (C_PetJournal.IsFindBattleEnabled)
+  - Find Battle queue status
+  - Collection stats: owned/total with %, level 25 count, rare quality count, favorites
+  - Locked journal explanation for restricted accounts
+  - Label tags: <status> <owned> <total> <maxlevel>
+  - LClick: Open Pet Journal
+  - Events: PET_JOURNAL_LIST_UPDATE, COMPANION_UPDATE, NEW_PET_ADDED
+- [x] Currency module enhancements
+  - Warband bank gold (C_Bank.FetchDepositedMoney, works anytime)
+  - Warband access status (C_PlayerInfo.HasAccountInventoryLock / IsAccountBankEnabled)
+  - Posted auctions count + value (scanned at AH, cached when away)
+  - Auction post hooks (C_AuctionHouse.PostCommodity/PostItem)
+  - Staleness indicator ("last scanned: 2h ago")
+  - New label tags: <warbank> <auctions>
+- [x] SavedInstances: RClick opens Great Vault (loads Blizzard_WeeklyRewards, toggles WeeklyRewardsFrame)
+
 ## Deprioritised
-- Currency/Gold — EnhanceQoL is sufficient; implement later with guild bank, token price, alt gold, expansion-grouped currencies
-- Bags/Durability — EnhanceQoL is sufficient
+- Durability — EnhanceQoL is sufficient
 
 ## Architecture Reference
-- Primary: DjinnisGuildFriends (LDB, namespace, tooltip, settings patterns)
-- Secondary: ElvUI, Shadow & Light, WindTools, EnhanceQoL, SavedInstances
+### Source / Inspirational Projects
+- DjinnisGuildFriends — Original social module codebase (LDB, namespace, tooltip, settings patterns)
+- ElvUI — DataText patterns, tooltip conventions, feature parity target
+- Shadow & Light (ElvUI plugin) — Extended DataText ideas
+- WindTools (ElvUI plugin) — Additional DataText modules
+- EnhanceQoL — System/performance DataText patterns
+- SavedInstances addon — Alt lockout data integration (reads SavedInstancesDB)
+- TradeSkillMaster — Bag value pricing API (TSM_API)
+- GoblinToolbox — Warband bank access detection patterns
 - LDB prefix: DDT-
 - SavedVariables: DjinnisDataTextsDB
 - Slash: /ddt
 - Tooltip: dark bg (0.05, 0.05, 0.05, 0.92), gold headers, class-colored names, gray hint bar
 - Font system: DDTFontHeader/DDTFontNormal/DDTFontSmall (global, configurable in General settings)
 
+## Phase 8: Configurable Click Actions + Account Status + Enhancements — COMPLETE
+- [x] Configurable click actions for all 17 modules
+  - Every module: OpenDDT Settings available as click action
+  - Social modules: opensettings added to ns.ACTION_VALUES
+  - Standalone modules: per-module CLICK_ACTIONS table + DDT:BuildHintText(actions, labels)
+  - New: ns.AddModuleClickActionsSection() settings helper
+- [x] SystemPerformance: CPU profiler support
+  - Uses scriptProfile CVar + GetAddOnCPUUsage/ResetCPUUsage
+  - Toggleable via showCpuUsage setting
+  - "Enable via /console scriptProfile 1" instructions in tooltip when disabled
+  - Game Menu added as click action option
+- [x] BagValue enhancements
+  - Added DBRecent TSM price source
+  - Fixed Unicode arrow artifacts in dropdown labels (replaced with >)
+- [x] PetInfo enhancements
+  - 8 click actions: openjournal, randomsummon, revive, bandage, safarihat, pettreat, randomteam, opensettings
+  - New label tags: <rare> <favorites> <journal> <battles>
+- [x] MovementSpeed enhancements
+  - Shopping click actions: enchants, food, potions, gear (Midnight-era items)
+  - Auctionator shopping list creation or TSM search string copy
+- [x] AccountStatus module (NEW)
+  - Warband bank access indicator (feature enabled + inventory lock status)
+  - Pet journal unlock + battle capability indicator
+  - Designed for multibox setups (at-a-glance shared resource access)
+  - Label tags: <warbank> <journal> <wbstatus> <petstatus>
+- [x] Unicode arrow fix across all modules (SavedInstances, Currency, BagValue, SystemPerformance)
+
 ## Current State
-Phase 5 complete. Addon has 12 modules:
-- Guild, Friends, Communities (ported from DGF)
+Phase 8 complete. Addon has 18 modules:
+- Guild, Friends, Communities (ported from DGF, visuals standardized)
 - SpecSwitch (talent/loadout/loot spec switching)
-- SavedInstances (lockout summary with boss details, M+ runs, condensed views, configurable sort order, alt integration)
-- TimeDate (server/local time, reset countdowns, calendar events/holidays)
+- SavedInstances (lockout summary, boss details, M+ runs, Great Vault click, alt integration)
+- TimeDate (server/local time, reset countdowns, calendar events, configurable datetime format)
 - Coordinates (player map coordinates with zone info)
-- SystemPerformance (FPS, latency, addon memory)
+- SystemPerformance (FPS, latency, addon memory, CPU profiler)
 - PlayedTime (session timer, total/level played)
 - Mail (unread mail indicator, mailbox contents)
 - MicroMenu (quick-access game panel launcher)
 - Experience (XP progress, XP/hr, quest XP, time-to-level, rested XP, watched reputation)
+- Currency (gold, alt totals, warband bank, WoW Token, posted auctions, tracked currencies)
+- CharacterInfo (name, realm, class, race, level, ilvl, shard ID)
+- MovementSpeed (current/base %, swim/fly/glide, speed buffs, shopping actions)
+- BagValue (TSM-priced bag contents, vendor fallback, top items, free slots)
+- PetInfo (journal unlock, battle capability, collection stats, pet actions)
+- AccountStatus (warband bank + pet journal access for multiboxers)
 All modules use unified DDT font system (configurable face/size in General settings).
 All modules have configurable label templates, tooltip sizing, sort order, and settings panels.
+All modules have configurable click actions with "Open DDT Settings" available everywhere.
+All modules share consistent tooltip visual pattern (backdrop, border, separator, hint bar).
 
 ## Blockers
 None.

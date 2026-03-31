@@ -1,3 +1,5 @@
+-- Djinni's Data Texts — Guild
+-- Guild roster with online members, MOTD, rank, zone, and note display.
 local addonName, ns = ...
 local DDT = ns.addon
 local LDB = LibStub("LibDataBroker-1.1")
@@ -206,21 +208,26 @@ local function CreateTooltipFrame()
     f:SetSize(420, 100)
 
     f:SetBackdrop({
-        bgFile   = "Interface\\Tooltips\\UI-Tooltip-Background",
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
         edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        tile     = true,
-        tileSize = 16,
-        edgeSize = 16,
-        insets   = { left = 4, right = 4, top = 4, bottom = 4 },
+        edgeSize = 14,
+        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
     })
     f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.6, 0.6, 0.6, 0.8)
+    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     f.header = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
     f.header:SetPoint("TOPLEFT", f, "TOPLEFT", TOOLTIP_PADDING, -TOOLTIP_PADDING)
     f.header:SetPoint("TOPRIGHT", f, "TOPRIGHT", -TOOLTIP_PADDING, -TOOLTIP_PADDING)
     f.header:SetJustifyH("LEFT")
+    f.header:SetTextColor(1, 0.82, 0)
     f.header:SetHeight(HEADER_HEIGHT)
+
+    f.titleSep = f:CreateTexture(nil, "ARTWORK")
+    f.titleSep:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -3)
+    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
+    f.titleSep:SetHeight(1)
+    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
     f.motd = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     f.motd:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -2)
@@ -252,9 +259,10 @@ local function CreateTooltipFrame()
     f.colNote:SetJustifyH("LEFT")
 
     f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", TOOLTIP_PADDING, TOOLTIP_PADDING)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -TOOLTIP_PADDING, TOOLTIP_PADDING)
-    f.hint:SetJustifyH("LEFT")
+    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", TOOLTIP_PADDING, 8)
+    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -TOOLTIP_PADDING, 8)
+    f.hint:SetJustifyH("CENTER")
+    f.hint:SetTextColor(0.53, 0.53, 0.53)
 
     -- Scrollable content area (clip frame + content frame)
     f.clipFrame = CreateFrame("Frame", nil, f)

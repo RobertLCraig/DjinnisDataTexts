@@ -18,7 +18,7 @@ local rowPool = {}
 
 -- Layout
 local TOOLTIP_WIDTH  = 220
-local ROW_HEIGHT     = 22
+local ROW_HEIGHT     = 20
 local ICON_SIZE      = 16
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -31,6 +31,15 @@ local DEFAULTS = {
     labelTemplate = "Menu",
     tooltipScale  = 1.0,
     tooltipWidth  = 220,
+    clickActions  = {
+        leftClick  = "gamemenu",
+    },
+}
+
+local CLICK_ACTIONS = {
+    gamemenu     = "Game Menu",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 ---------------------------------------------------------------------------
@@ -94,11 +103,17 @@ local dataobj = LDB:NewDataObject("DDT-MicroMenu", {
         MicroMenu:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
+        local db = MicroMenu:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "gamemenu" then
             if GameMenuFrame and GameMenuFrame:IsShown() then
                 HideUIPanel(GameMenuFrame)
             else
                 ShowUIPanel(GameMenuFrame)
+            end
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
             end
         end
     end,
@@ -235,7 +250,7 @@ function MicroMenu:BuildTooltipContent()
         y = y - ROW_HEIGHT
     end
 
-    f.hint:SetText("|cff888888Click to open|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -300,10 +315,9 @@ function MicroMenu:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
+    y = ns.AddModuleClickActionsSection(c, r, y, "micromenu", CLICK_ACTIONS)
     y = W.AddDescription(c, y,
-        "Click any row to open the corresponding panel.\n" ..
-        "Left-click DataText: Game Menu")
+        "Click any row in the tooltip to open the corresponding panel.")
 
     c:SetHeight(math.abs(y) + 20)
 end

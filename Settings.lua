@@ -1,3 +1,5 @@
+-- Djinni's Data Texts — Settings
+-- Blizzard Settings API integration, widget helpers, and per-module subcategories.
 local addonName, ns = ...
 local DDT = ns.addon
 
@@ -226,6 +228,123 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
     return y - 44
 end
 
+--- Label template edit box with clickable tag-insert buttons.
+--- @param tags string  Space-separated tag names e.g. "fps latency world memory cpu"
+local function AddLabelEditBox(content, y, tags, getter, setter, refreshList)
+    local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
+    text:SetText("Template")
+
+    local editbox = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
+    editbox:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 4, -4)
+    editbox:SetSize(380, 20)
+    editbox:SetAutoFocus(false)
+    editbox:SetText(getter())
+    editbox:SetTextColor(0, 0, 0, 0)
+
+    local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    valText:SetPoint("LEFT", editbox, "LEFT", 6, 0)
+    valText:SetPoint("RIGHT", editbox, "RIGHT", -6, 0)
+    valText:SetJustifyH("LEFT")
+    valText:SetText(getter())
+
+    editbox:SetScript("OnEditFocusGained", function(self)
+        valText:Hide()
+        self:SetTextColor(1, 1, 1, 1)
+        self:SetText(getter())
+        self:HighlightText()
+    end)
+    editbox:SetScript("OnEditFocusLost", function(self)
+        self:HighlightText(0, 0)
+        self:SetTextColor(0, 0, 0, 0)
+        valText:SetText(getter())
+        valText:Show()
+    end)
+    editbox:SetScript("OnEnterPressed", function(self)
+        setter(self:GetText())
+        valText:SetText(self:GetText())
+        self:ClearFocus()
+    end)
+    editbox:SetScript("OnEscapePressed", function(self)
+        self:SetText(getter())
+        valText:SetText(getter())
+        self:ClearFocus()
+    end)
+
+    if refreshList then
+        table.insert(refreshList, function()
+            editbox:SetText(getter())
+            valText:SetText(getter())
+        end)
+    end
+
+    -- Tag insert buttons row
+    local tagY = y - 44
+    local tagList = {}
+    for tag in tags:gmatch("%S+") do
+        table.insert(tagList, tag)
+    end
+
+    local TAG_BTN_HEIGHT = 20
+    local TAG_BTN_PAD = 4
+    local xOffset = 22
+    local rowStartY = tagY
+    local maxRowWidth = 380
+
+    for _, tag in ipairs(tagList) do
+        local tagStr = "<" .. tag .. ">"
+        local btn = CreateFrame("Button", nil, content)
+        btn:SetHeight(TAG_BTN_HEIGHT)
+
+        local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        btnText:SetPoint("CENTER")
+        btnText:SetText(tagStr)
+        btnText:SetTextColor(0.4, 0.78, 1.0)
+        local btnWidth = math.max(btnText:GetStringWidth() + 12, 40)
+        btn:SetWidth(btnWidth)
+
+        -- Background
+        local bg = btn:CreateTexture(nil, "BACKGROUND")
+        bg:SetAllPoints()
+        bg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+
+        -- Border
+        local border = btn:CreateTexture(nil, "BORDER")
+        border:SetPoint("TOPLEFT", -1, 1)
+        border:SetPoint("BOTTOMRIGHT", 1, -1)
+        border:SetColorTexture(0.3, 0.3, 0.3, 0.6)
+
+        -- Wrap to next row if exceeds width
+        if xOffset + btnWidth > maxRowWidth + 22 then
+            xOffset = 22
+            tagY = tagY - TAG_BTN_HEIGHT - TAG_BTN_PAD
+        end
+
+        btn:SetPoint("TOPLEFT", content, "TOPLEFT", xOffset, tagY)
+        xOffset = xOffset + btnWidth + TAG_BTN_PAD
+
+        -- Hover effect
+        btn:SetScript("OnEnter", function(self)
+            bg:SetColorTexture(0.25, 0.35, 0.45, 0.9)
+            btnText:SetTextColor(1, 1, 1)
+        end)
+        btn:SetScript("OnLeave", function(self)
+            bg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+            btnText:SetTextColor(0.4, 0.78, 1.0)
+        end)
+
+        btn:SetScript("OnClick", function()
+            local cur = getter()
+            local newVal = cur .. tagStr
+            setter(newVal)
+            editbox:SetText(newVal)
+            valText:SetText(newVal)
+        end)
+    end
+
+    return tagY - TAG_BTN_HEIGHT - 6
+end
+
 local function AddButton(content, y, label, onClick)
     local btn = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
     btn:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
@@ -254,13 +373,14 @@ end
 
 -- Expose widget helpers for use by module settings panels
 ns.SettingsWidgets = {
-    AddHeader      = AddHeader,
-    AddCheckbox    = AddCheckbox,
-    AddSlider      = AddSlider,
-    AddDropdown    = AddDropdown,
-    AddEditBox     = AddEditBox,
-    AddButton      = AddButton,
-    AddDescription = AddDescription,
+    AddHeader       = AddHeader,
+    AddCheckbox     = AddCheckbox,
+    AddSlider       = AddSlider,
+    AddDropdown     = AddDropdown,
+    AddEditBox      = AddEditBox,
+    AddLabelEditBox = AddLabelEditBox,
+    AddButton       = AddButton,
+    AddDescription  = AddDescription,
 }
 
 ---------------------------------------------------------------------------
@@ -322,6 +442,25 @@ end
 
 ns.AddClickActionsSection = AddClickActionsSection
 
+--- Build click-action settings for standalone (non-social) modules.
+--- @param c Frame     Content frame
+--- @param r table     Refresh callbacks list
+--- @param y number    Current y offset
+--- @param dbKey string  Module db key
+--- @param actionValues table  Module-specific { key = "Display Name" } table
+local function AddModuleClickActionsSection(c, r, y, dbKey, actionValues)
+    y = AddHeader(c, y, "Click Actions")
+    y = AddDescription(c, y, "Configure what happens when you click the DataText.")
+    for _, entry in ipairs(CLICK_ACTION_KEYS) do
+        y = AddDropdown(c, y, entry.label, actionValues,
+            function() return ns.db[dbKey].clickActions[entry.key] end,
+            function(v) ns.db[dbKey].clickActions[entry.key] = v end, r)
+    end
+    return y
+end
+
+ns.AddModuleClickActionsSection = AddModuleClickActionsSection
+
 ---------------------------------------------------------------------------
 -- General panel
 ---------------------------------------------------------------------------
@@ -332,7 +471,7 @@ local function AddTooltipSection(c, r, y, header, labelTokens, dbKey, broker, co
     local refresh = function() if broker() then broker():UpdateData() end end
 
     y = AddHeader(c, y, header)
-    y = AddEditBox(c, y, "Panel Text  (tokens: " .. labelTokens .. ")",
+    y = AddLabelEditBox(c, y, labelTokens,
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r)
     y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
@@ -416,7 +555,7 @@ local function BuildFriendsPanel(panel)
     local refresh = function() if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end
 
     y = AddHeader(c, y, "Label Template")
-    y = AddEditBox(c, y, "Panel Text  (tokens: <online> <total> <offline>)",
+    y = AddLabelEditBox(c, y, "online total offline",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r)
 
@@ -483,7 +622,7 @@ local function BuildGuildPanel(panel)
     local refresh = function() if ns.GuildBroker then ns.GuildBroker:UpdateData() end end
 
     y = AddHeader(c, y, "Label Template")
-    y = AddEditBox(c, y, "Panel Text  (tokens: <online> <total> <offline> <guildname>)",
+    y = AddLabelEditBox(c, y, "online total offline guildname",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r)
 
@@ -548,7 +687,7 @@ local function BuildCommunitiesPanel(panel)
     local refresh = function() if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end
 
     y = AddHeader(c, y, "Label Template")
-    y = AddEditBox(c, y, "Panel Text  (tokens: <online>)",
+    y = AddLabelEditBox(c, y, "online",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r)
 
@@ -682,18 +821,24 @@ function DDT:SetupOptions()
 
     -- Register with Blizzard Settings
     local mainCategory = Settings.RegisterCanvasLayoutCategory(generalPanel, "Djinni's Data Texts")
-    Settings.RegisterCanvasLayoutSubcategory(mainCategory, friendsPanel, "Friends")
-    Settings.RegisterCanvasLayoutSubcategory(mainCategory, guildPanel, "Guild")
-    Settings.RegisterCanvasLayoutSubcategory(mainCategory, commPanel, "Communities")
 
-    -- Let registered modules add their own subcategories
+    -- Collect all subcategories (social + standalone modules), sort alphabetically
+    local subcats = {
+        { label = "Communities", panel = commPanel },
+        { label = "Friends",     panel = friendsPanel },
+        { label = "Guild",       panel = guildPanel },
+    }
     for key, mod in pairs(ns.modules) do
         if mod.BuildSettingsPanel then
             local modPanel = CreateScrollPanel()
             mod:BuildSettingsPanel(modPanel)
             local label = mod.settingsLabel or key
-            Settings.RegisterCanvasLayoutSubcategory(mainCategory, modPanel, label)
+            table.insert(subcats, { label = label, panel = modPanel })
         end
+    end
+    table.sort(subcats, function(a, b) return a.label < b.label end)
+    for _, entry in ipairs(subcats) do
+        Settings.RegisterCanvasLayoutSubcategory(mainCategory, entry.panel, entry.label)
     end
 
     Settings.RegisterAddOnCategory(mainCategory)

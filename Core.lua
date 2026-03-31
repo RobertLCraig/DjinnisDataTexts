@@ -111,6 +111,7 @@ ns.ACTION_VALUES = {
     openfriends      = "Open Friends List",
     openguild        = "Open Guild Roster",
     opencommunities  = "Open Communities",
+    opensettings     = "Open DDT Settings",
     none             = "None",
 }
 
@@ -372,8 +373,11 @@ function DDT:CopyDisplaySettings(fromKey, toKey)
     to.sortAscending = from.sortAscending
 end
 
---- Build the hint bar text showing all configured click actions
-function DDT:BuildHintText(clickActions)
+--- Build the hint bar text showing all configured click actions.
+--- @param clickActions table  Map of click slots to action keys
+--- @param actionLabels table|nil  Optional display-name map (defaults to ns.ACTION_VALUES)
+function DDT:BuildHintText(clickActions, actionLabels)
+    actionLabels = actionLabels or ns.ACTION_VALUES
     local labels = {
         { key = "leftClick",       prefix = "LClick" },
         { key = "rightClick",      prefix = "RClick" },
@@ -385,7 +389,7 @@ function DDT:BuildHintText(clickActions)
     for _, entry in ipairs(labels) do
         local action = clickActions[entry.key]
         if action and action ~= "none" then
-            table.insert(hints, entry.prefix .. ": " .. (ns.ACTION_VALUES[action] or ""))
+            table.insert(hints, entry.prefix .. ": " .. (actionLabels[action] or action))
         end
     end
     if #hints == 0 then return "" end
@@ -604,6 +608,10 @@ function DDT:ExecuteAction(action, charName, realmName, fullName, bnet, tooltipF
         ToggleGuildFrame()
     elseif action == "opencommunities" then
         ToggleCommunitiesFrame()
+    elseif action == "opensettings" then
+        if DDT.settingsCategoryID then
+            Settings.OpenToCategory(DDT.settingsCategoryID)
+        end
     end
 
     if tooltipFrame then tooltipFrame:Hide() end

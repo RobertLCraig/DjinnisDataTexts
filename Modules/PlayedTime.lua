@@ -36,6 +36,15 @@ local DEFAULTS = {
     labelTemplate = "<session>",
     tooltipScale  = 1.0,
     tooltipWidth  = 280,
+    clickActions  = {
+        leftClick  = "refresh",
+    },
+}
+
+local CLICK_ACTIONS = {
+    refresh      = "Refresh /played",
+    opensettings = "Open DDT Settings",
+    none         = "None",
 }
 
 ---------------------------------------------------------------------------
@@ -102,9 +111,14 @@ local dataobj = LDB:NewDataObject("DDT-PlayedTime", {
         PlayedTime:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
-            -- Request fresh /played data (silently)
+        local db = PlayedTime:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "refresh" then
             RequestTimePlayed()
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
+            end
         end
     end,
 })
@@ -307,7 +321,7 @@ function PlayedTime:BuildTooltipContent()
     y = y - ROW_HEIGHT
 
     -- Hint
-    f.hint:SetText("|cff888888LClick: Refresh /played|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
@@ -360,8 +374,7 @@ function PlayedTime:BuildSettingsPanel(panel)
     local db = function() return ns.db.playedtime end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <session> <total> <level>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "session total level",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
 
@@ -373,9 +386,7 @@ function PlayedTime:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
-    y = W.AddDescription(c, y,
-        "Left-click: Refresh /played data")
+    y = ns.AddModuleClickActionsSection(c, r, y, "playedtime", CLICK_ACTIONS)
 
     c:SetHeight(math.abs(y) + 20)
 end

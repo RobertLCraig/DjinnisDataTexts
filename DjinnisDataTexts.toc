@@ -7,7 +7,7 @@
 ## X-Category: Data Broker
 ## IconTexture: Interface\Icons\INV_Misc_Gear_01
 ## SavedVariables: DjinnisDataTextsDB
-## OptionalDeps: ElvUI, DjinnisGuildFriends
+## OptionalDeps: ElvUI, DjinnisGuildFriends, TradeSkillMaster
 
 # Libraries
 Libs\LibStub\LibStub.lua
@@ -39,6 +39,18 @@ Modules\Mail.lua
 # Modules — Phase 5
 Modules\MicroMenu.lua
 Modules\Experience.lua
+
+# Modules — Phase 6
+Modules\Currency.lua
+
+# Modules — Phase 7
+Modules\CharacterInfo.lua
+Modules\MovementSpeed.lua
+Modules\BagValue.lua
+Modules\PetInfo.lua
+
+# Modules — Phase 8
+Modules\AccountStatus.lua
 
 # Demo mode — uncomment to inject fake data, comment out for live use:
 # DemoMode.lua

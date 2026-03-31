@@ -22,22 +22,58 @@ local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
 
--- State
-local displayHour = 0
-local displayMin  = 0
-
 ---------------------------------------------------------------------------
 -- Defaults
 ---------------------------------------------------------------------------
 
 local DEFAULTS = {
-    use24h        = true,
-    showLocal     = false,   -- false = server time on LDB, true = local time
-    showSeconds   = false,
-    labelTemplate = "<time>",
-    tooltipScale  = 1.0,
-    tooltipWidth  = 260,
+    use24h          = true,
+    showLocal       = false,   -- false = server time on LDB, true = local time
+    showSeconds     = false,
+    dateTimeFormat  = "%A, %B %d, %Y",
+    labelTemplate   = "<time>",
+    tooltipScale    = 1.0,
+    tooltipWidth    = 260,
+    clickActions    = {
+        leftClick  = "calendar",
+        rightClick = "toggletime",
+    },
 }
+
+local CLICK_ACTIONS = {
+    calendar     = "Calendar",
+    toggletime   = "Toggle Server/Local",
+    opensettings = "Open DDT Settings",
+    none         = "None",
+}
+
+---------------------------------------------------------------------------
+-- Date/time format presets
+---------------------------------------------------------------------------
+
+local FORMAT_PRESETS = {
+    ["%A, %B %d, %Y"]       = "Tuesday, March 31, 2026",
+    ["%Y-%m-%d"]             = "2026-03-31",
+    ["%d/%m/%Y"]             = "31/03/2026",
+    ["%m/%d/%Y"]             = "03/31/2026",
+    ["%d %B %Y"]             = "31 March 2026",
+    ["%B %d, %Y"]            = "March 31, 2026",
+    ["%a, %d %b %Y"]         = "Tue, 31 Mar 2026",
+    ["%d-%b-%Y"]             = "31-Mar-2026",
+    ["%Y/%m/%d"]             = "2026/03/31",
+    ["%A, %d %B %Y"]         = "Tuesday, 31 March 2026",
+}
+
+local FORMAT_CHEATSHEET =
+    "Strftime Tokens:\n" ..
+    "  %Y = Year (2026)          %y = Year short (26)\n" ..
+    "  %m = Month 01-12          %B = Month name (March)\n" ..
+    "  %b = Month abbr (Mar)     %d = Day 01-31\n" ..
+    "  %A = Weekday (Tuesday)    %a = Weekday abbr (Tue)\n" ..
+    "  %H = Hour 00-23           %I = Hour 01-12\n" ..
+    "  %M = Minute 00-59         %S = Second 00-59\n" ..
+    "  %p = AM/PM                %X = Time (locale)\n" ..
+    "  %x = Date (locale)        %c = Date+Time (locale)"
 
 ---------------------------------------------------------------------------
 -- Time formatting
@@ -75,15 +111,8 @@ local function FormatCountdown(seconds)
     end
 end
 
-local WEEKDAY_NAMES = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" }
-local MONTH_NAMES = { "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }
-
-local function GetDateString()
-    local d = C_DateAndTime.GetCurrentCalendarTime()
-    if not d then return "" end
-    local wday = WEEKDAY_NAMES[d.weekday] or ""
-    local month = MONTH_NAMES[d.month] or ""
-    return string.format("%s, %s %d, %d", wday, month, d.monthDay, d.year)
+local function GetDateString(fmt)
+    return date(fmt or "%A, %B %d, %Y")
 end
 
 ---------------------------------------------------------------------------
@@ -105,7 +134,7 @@ local function ExpandLabel(template, db)
     end
     result = result:gsub("<server>", FormatTime(sHour, sMin, nil, use24h, false))
     result = result:gsub("<local>", FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
-    result = result:gsub("<date>", GetDateString())
+    result = result:gsub("<date>", GetDateString(db.dateTimeFormat))
     return result
 end
 
@@ -125,12 +154,17 @@ local dataobj = LDB:NewDataObject("DDT-TimeDate", {
         TimeDate:StartHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" then
+        local db = TimeDate:GetDB()
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "calendar" then
             ToggleCalendar()
-        elseif button == "RightButton" then
-            -- Toggle between server/local on the label
+        elseif action == "toggletime" then
             if ns.db and ns.db.timedate then
                 ns.db.timedate.showLocal = not ns.db.timedate.showLocal
+            end
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then
+                Settings.OpenToCategory(DDT.settingsCategoryID)
             end
         end
     end,
@@ -268,7 +302,7 @@ function TimeDate:BuildTooltipContent()
     dateLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
     dateLine.label:SetText("|cffffffffDate|r")
     dateLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
-    dateLine.value:SetText(GetDateString())
+    dateLine.value:SetText(GetDateString(db.dateTimeFormat))
     dateLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
 
@@ -368,7 +402,7 @@ function TimeDate:BuildTooltipContent()
     end
 
     -- Hint
-    f.hint:SetText("|cff888888LClick: Calendar  |  RClick: Toggle Server/Local|r")
+    f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
@@ -420,8 +454,7 @@ function TimeDate:BuildSettingsPanel(panel)
     local db = function() return ns.db.timedate end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <time> <server> <local> <date>")
-    y = W.AddEditBox(c, y, "Template",
+    y = W.AddLabelEditBox(c, y, "time server local date",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
 
@@ -436,6 +469,40 @@ function TimeDate:BuildSettingsPanel(panel)
         function() return db().showLocal end,
         function(v) db().showLocal = v; self:UpdateDisplay() end, r)
 
+    y = W.AddHeader(c, y, "Date Format")
+
+    -- Live preview
+    y = y - 4
+    local previewText = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    previewText:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    previewText:SetText("Preview: |cff4bc8ff" .. date(db().dateTimeFormat) .. "|r")
+    y = y - 20
+
+    local function RefreshPreview()
+        previewText:SetText("Preview: |cff4bc8ff" .. date(db().dateTimeFormat) .. "|r")
+    end
+
+    -- Preset dropdown
+    y = W.AddDropdown(c, y, "Preset", FORMAT_PRESETS,
+        function() return db().dateTimeFormat end,
+        function(v)
+            db().dateTimeFormat = v
+            self:UpdateDisplay()
+            RefreshPreview()
+        end, r)
+
+    -- Custom format editbox
+    y = W.AddEditBox(c, y, "Custom Format String",
+        function() return db().dateTimeFormat end,
+        function(v)
+            db().dateTimeFormat = v
+            self:UpdateDisplay()
+            RefreshPreview()
+        end, r)
+
+    -- Cheatsheet
+    y = W.AddDescription(c, y, FORMAT_CHEATSHEET)
+
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
         function() return db().tooltipScale end,
@@ -444,10 +511,7 @@ function TimeDate:BuildSettingsPanel(panel)
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
 
-    y = W.AddHeader(c, y, "Interactions")
-    y = W.AddDescription(c, y,
-        "Left-click: Open Calendar\n" ..
-        "Right-click: Toggle server/local time on the DataText")
+    y = ns.AddModuleClickActionsSection(c, r, y, "timedate", CLICK_ACTIONS)
 
     c:SetHeight(math.abs(y) + 20)
 end
