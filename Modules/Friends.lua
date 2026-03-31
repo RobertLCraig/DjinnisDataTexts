@@ -84,8 +84,16 @@ local dataobj = LDB:NewDataObject("DDT-Friends", {
         FriendsBroker:StartTooltipHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" and IsShiftKeyDown() then
+        local db = ns.db and ns.db.friends or {}
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "openfriends" then
             ToggleFriendsFrame()
+        elseif action == "openguild" then
+            ToggleGuildFrame()
+        elseif action == "opencommunities" then
+            ToggleCommunitiesFrame()
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then Settings.OpenToCategory(DDT.settingsCategoryID) end
         end
     end,
 })
@@ -454,7 +462,7 @@ function FriendsBroker:PopulateTooltip()
 
     local showHint = db.showHintBar ~= false
     if showHint then
-        tooltipFrame.hint:SetText(DDT:BuildHintText(db.clickActions))
+        tooltipFrame.hint:SetText(DDT:BuildHintText(db.rowClickActions or {}))
         tooltipFrame.hint:Show()
     else
         tooltipFrame.hint:Hide()
@@ -649,7 +657,7 @@ function FriendsBroker:OnRowClick(row, button)
     local friend = row.friendData
     if not friend then return end
 
-    local action = DDT:ResolveClickAction(button, ns.db.friends.clickActions)
+    local action = DDT:ResolveClickAction(button, ns.db.friends.rowClickActions or {})
     if action and action ~= "none" then
         self:ExecuteAction(action, friend)
     end

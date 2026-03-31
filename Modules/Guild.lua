@@ -48,8 +48,16 @@ local dataobj = LDB:NewDataObject("DDT-Guild", {
         GuildBroker:StartTooltipHideTimer()
     end,
     OnClick = function(self, button)
-        if button == "LeftButton" and IsShiftKeyDown() then
+        local db = ns.db and ns.db.guild or {}
+        local action = DDT:ResolveClickAction(button, db.clickActions or {})
+        if action == "openguild" then
             ToggleGuildFrame()
+        elseif action == "openfriends" then
+            ToggleFriendsFrame()
+        elseif action == "opencommunities" then
+            ToggleCommunitiesFrame()
+        elseif action == "opensettings" then
+            if DDT.settingsCategoryID then Settings.OpenToCategory(DDT.settingsCategoryID) end
         end
     end,
 })
@@ -461,7 +469,7 @@ function GuildBroker:PopulateTooltip()
 
     local showHint = db.showHintBar ~= false
     if showHint then
-        tooltipFrame.hint:SetText(DDT:BuildHintText(db.clickActions))
+        tooltipFrame.hint:SetText(DDT:BuildHintText(db.rowClickActions or {}))
         tooltipFrame.hint:Show()
     else
         tooltipFrame.hint:Hide()
@@ -689,7 +697,7 @@ function GuildBroker:OnRowClick(row, button)
     local member = row.memberData
     if not member then return end
 
-    local action = DDT:ResolveClickAction(button, ns.db.guild.clickActions)
+    local action = DDT:ResolveClickAction(button, ns.db.guild.rowClickActions or {})
     if action and action ~= "none" then
         self:ExecuteAction(action, member)
     end

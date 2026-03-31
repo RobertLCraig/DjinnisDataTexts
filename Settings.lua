@@ -723,19 +723,19 @@ local CLICK_ACTION_KEYS = {
     { key = "altRightClick",   label = "Alt + Right Click" },
 }
 
---- Build click-action settings for social modules (tooltip row clicks).
+--- Build row click-action settings for social modules (tooltip row clicks).
 --- Creates a collapsed section automatically.
 --- @param panel table  Sectioned panel
 --- @param r table  Refresh callbacks list
 --- @param dbKey string  Module db key
 local function AddClickActionsSection(panel, r, dbKey)
-    local body = AddSection(panel, "Click Actions", true)
+    local body = AddSection(panel, "Row Click Actions", true)
     local y = 0
-    y = AddDescription(body, y, "Configure what happens when you click on a row in the tooltip.")
+    y = AddDescription(body, y, "Configure what happens when you click on a player row in the tooltip.")
     for _, entry in ipairs(CLICK_ACTION_KEYS) do
         y = AddDropdown(body, y, entry.label, ns.ACTION_VALUES,
-            function() return ns.db[dbKey].clickActions[entry.key] end,
-            function(v) ns.db[dbKey].clickActions[entry.key] = v end, r)
+            function() return ns.db[dbKey].rowClickActions[entry.key] end,
+            function(v) ns.db[dbKey].rowClickActions[entry.key] = v end, r)
     end
     EndSection(panel, y)
 end
@@ -1030,7 +1030,10 @@ local function BuildFriendsPanel(panel)
         function(v) db().sortAscending = v; refresh() end, r)
     EndSection(panel, y)
 
-    -- Click Actions (collapsed)
+    -- Label Click Actions (collapsed)
+    AddModuleClickActionsSection(panel, r, "friends", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
     AddClickActionsSection(panel, r, "friends")
 
     -- Social Settings (collapsed)
@@ -1110,7 +1113,10 @@ local function BuildGuildPanel(panel)
         function(v) db().sortAscending = v; refresh() end, r)
     EndSection(panel, y)
 
-    -- Click Actions (collapsed)
+    -- Label Click Actions (collapsed)
+    AddModuleClickActionsSection(panel, r, "guild", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
     AddClickActionsSection(panel, r, "guild")
 
     -- Social Settings (collapsed)
@@ -1185,7 +1191,10 @@ local function BuildCommunitiesPanel(panel)
         function(v) db().sortAscending = v; refresh() end, r)
     EndSection(panel, y)
 
-    -- Click Actions (collapsed)
+    -- Label Click Actions (collapsed)
+    AddModuleClickActionsSection(panel, r, "communities", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
     AddClickActionsSection(panel, r, "communities")
 
     -- Social Settings (collapsed)
