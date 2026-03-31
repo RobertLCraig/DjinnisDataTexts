@@ -532,13 +532,12 @@ PetInfo.settingsLabel = "Pet Info"
 
 function PetInfo:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.petinfo end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "status owned total maxlevel rare favorites journal battles",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "status owned total maxlevel rare favorites journal battles",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",     "<status>" },
@@ -546,32 +545,38 @@ function PetInfo:BuildSettingsPanel(panel)
         { "Max Level",   "<owned> pets (<maxlevel> max)" },
         { "Favorites",   "<favorites> favorites" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Show collection statistics",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show collection statistics",
         function() return db().showCollection end,
         function(v) db().showCollection = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 200, 500, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 200, max = 500, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "petinfo", CLICK_ACTIONS)
+    ns.AddModuleClickActionsSection(panel, r, "petinfo", CLICK_ACTIONS)
 
-    y = W.AddHeader(c, y, "About")
-    y = W.AddDescription(c, y,
+    body = W.AddSection(panel, "About", true)
+    y = 0
+    y = W.AddDescription(body, y,
         "Shows whether this account can use pet battles.\n" ..
         "A locked journal means pet battles, summoning,\n" ..
         "caging, and renaming are all unavailable.\n\n" ..
         "Click actions support: revive pets, use bandage,\n" ..
         "equip Safari Hat, use pet treats, summon a random\n" ..
         "pet, or load a random pet team.")
-
-    c:SetHeight(math.abs(y) + 20)
+    W.EndSection(panel, y)
 end
 
 ---------------------------------------------------------------------------

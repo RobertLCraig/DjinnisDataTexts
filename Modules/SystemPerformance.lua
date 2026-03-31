@@ -690,13 +690,12 @@ SysPerf.settingsLabel = "System Performance"
 
 function SysPerf:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.systemperformance end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "fps latency world memory cpu",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "fps latency world memory cpu",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",   "<fps> fps  <latency>ms" },
@@ -705,45 +704,51 @@ function SysPerf:BuildSettingsPanel(panel)
         { "Full",      "<fps> fps  <latency>ms  <memory>" },
         { "CPU Focus", "<fps> fps  CPU: <cpu>" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 250, 600, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 250, max = 600, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Addon Memory")
-    y = W.AddCheckbox(c, y, "Show top addon memory usage",
+    body = W.AddSection(panel, "Addon Memory")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show top addon memory usage",
         function() return db().showTopAddons end,
         function(v) db().showTopAddons = v end, r)
-    y = W.AddSlider(c, y, "Number of addons to show", 5, 25, 1,
+    y = W.AddSlider(body, y, "Number of addons to show", 5, 25, 1,
         function() return db().numTopAddons end,
         function(v) db().numTopAddons = v end, r)
-    y = W.AddDropdown(c, y, "Sort Order", ADDON_SORT_VALUES,
+    y = W.AddDropdown(body, y, "Sort Order", ADDON_SORT_VALUES,
         function() return db().addonSortOrder end,
         function(v) db().addonSortOrder = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "CPU Profiling")
-    y = W.AddCheckbox(c, y, "Show CPU usage per addon",
+    body = W.AddSection(panel, "CPU Profiling")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show CPU usage per addon",
         function() return db().showCpuUsage end,
         function(v) db().showCpuUsage = v end, r)
-    y = W.AddDropdown(c, y, "Sort By", CPU_SORT_VALUES,
+    y = W.AddDropdown(body, y, "Sort By", CPU_SORT_VALUES,
         function() return db().cpuSortMetric end,
         function(v) db().cpuSortMetric = v end, r)
-    y = W.AddSlider(c, y, "Number of CPU addons to show", 5, 25, 1,
+    y = W.AddSlider(body, y, "Number of CPU addons to show", 5, 25, 1,
         function() return db().numTopCpuAddons end,
         function(v) db().numTopCpuAddons = v end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Uses the C_AddOnProfiler API to display per-addon CPU\n" ..
         "usage as a percentage of total frame time.\n" ..
         "Shows Current, Average, Encounter, and Peak metrics\n" ..
         "similar to Simple Addon Manager's profiler view.")
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "systemperformance", CLICK_ACTIONS)
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddModuleClickActionsSection(panel, r, "systemperformance", CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

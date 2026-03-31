@@ -680,13 +680,12 @@ Experience.settingsLabel = "Experience"
 
 function Experience:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.experience end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "xp percent bar level remaining rested xphr questxp",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "xp percent bar level remaining rested xphr questxp",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",     "<xp>" },
@@ -695,30 +694,33 @@ function Experience:BuildSettingsPanel(panel)
         { "XP/Hour",     "<percent> - <xphr>" },
         { "Bar + Level", "Lv<level> <bar>" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Progress Bar")
-    y = W.AddSlider(c, y, "Bar width (characters)", 10, 40, 1,
+    body = W.AddSection(panel, "Progress Bar")
+    y = 0
+    y = W.AddSlider(body, y, "Bar width (characters)", 10, 40, 1,
         function() return db().barWidth end,
         function(v) db().barWidth = v; self:UpdateData() end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "The <bar> tag renders an ASCII progress bar in the label.\n" ..
         "Purple = XP, Blue = Rested, Green = Reputation (at max level).")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 200, 500, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 200, max = 500, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "experience", CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
+    ns.AddModuleClickActionsSection(panel, r, "experience", CLICK_ACTIONS,
         "XP/Hour tracks experience gained since login.\n" ..
         "Quest XP shows total XP from quests ready to turn in.\n" ..
         "At max level, the DataText shows watched reputation if set.")
-
-    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

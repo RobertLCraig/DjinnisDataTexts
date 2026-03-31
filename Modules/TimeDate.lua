@@ -467,13 +467,12 @@ TimeDate.settingsLabel = "Time / Date"
 
 function TimeDate:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.timedate end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "time server local date",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "time server local date",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
         { "Default",    "<time>" },
@@ -481,24 +480,28 @@ function TimeDate:BuildSettingsPanel(panel)
         { "Both Times", "S: <server>  L: <local>" },
         { "Date Only",  "<date>" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Use 24-hour format",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckbox(body, y, "Use 24-hour format",
         function() return db().use24h end,
         function(v) db().use24h = v; self:UpdateDisplay() end, r)
-    y = W.AddCheckbox(c, y, "Show seconds",
+    y = W.AddCheckbox(body, y, "Show seconds",
         function() return db().showSeconds end,
         function(v) db().showSeconds = v; self:UpdateDisplay() end, r)
-    y = W.AddCheckbox(c, y, "Show local time on DataText (instead of server time)",
+    y = W.AddCheckbox(body, y, "Show local time on DataText (instead of server time)",
         function() return db().showLocal end,
         function(v) db().showLocal = v; self:UpdateDisplay() end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Date Format")
+    body = W.AddSection(panel, "Date Format")
+    y = 0
 
     -- Live preview
     y = y - 4
-    local previewText = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    previewText:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    local previewText = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    previewText:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
     previewText:SetText("Preview: |cff4bc8ff" .. date(db().dateTimeFormat) .. "|r")
     y = y - 20
 
@@ -507,7 +510,7 @@ function TimeDate:BuildSettingsPanel(panel)
     end
 
     -- Preset dropdown
-    y = W.AddDropdown(c, y, "Preset", FORMAT_PRESETS,
+    y = W.AddDropdown(body, y, "Preset", FORMAT_PRESETS,
         function() return db().dateTimeFormat end,
         function(v)
             db().dateTimeFormat = v
@@ -516,7 +519,7 @@ function TimeDate:BuildSettingsPanel(panel)
         end, r)
 
     -- Custom format editbox
-    y = W.AddEditBox(c, y, "Custom Format String",
+    y = W.AddEditBox(body, y, "Custom Format String",
         function() return db().dateTimeFormat end,
         function(v)
             db().dateTimeFormat = v
@@ -525,19 +528,21 @@ function TimeDate:BuildSettingsPanel(panel)
         end, r)
 
     -- Cheatsheet
-    y = W.AddDescription(c, y, FORMAT_CHEATSHEET)
+    y = W.AddDescription(body, y, FORMAT_CHEATSHEET)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 200, 500, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 200, max = 500, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "timedate", CLICK_ACTIONS)
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddModuleClickActionsSection(panel, r, "timedate", CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

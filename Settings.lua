@@ -41,6 +41,32 @@ local function AddCheckbox(content, y, label, getter, setter, refreshList)
     return y - 26
 end
 
+local function AddCheckboxPair(content, y, label1, getter1, setter1, label2, getter2, setter2, refreshList)
+    local cb1 = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    cb1:SetPoint("TOPLEFT", content, "TOPLEFT", 14, y)
+    local text1 = cb1:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text1:SetPoint("LEFT", cb1, "RIGHT", 2, 0)
+    text1:SetText(label1)
+    cb1:SetChecked(getter1())
+    cb1:SetScript("OnClick", function(self) setter1(self:GetChecked()) end)
+
+    local cb2 = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    cb2:SetPoint("TOPLEFT", content, "TOPLEFT", 270, y)
+    local text2 = cb2:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text2:SetPoint("LEFT", cb2, "RIGHT", 2, 0)
+    text2:SetText(label2)
+    cb2:SetChecked(getter2())
+    cb2:SetScript("OnClick", function(self) setter2(self:GetChecked()) end)
+
+    if refreshList then
+        table.insert(refreshList, function()
+            cb1:SetChecked(getter1())
+            cb2:SetChecked(getter2())
+        end)
+    end
+    return y - 26
+end
+
 local function AddSlider(content, y, label, min, max, step, getter, setter, refreshList)
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
@@ -138,6 +164,114 @@ local function AddSlider(content, y, label, min, max, step, getter, setter, refr
             valText:SetText(FormatVal(getter()))
         end)
     end
+    return y - 48
+end
+
+--- Two compact sliders side by side.
+--- @param spec1 table  { label, min, max, step, get, set }
+--- @param spec2 table  { label, min, max, step, get, set }
+local function AddSliderPair(content, y, spec1, spec2, refreshList)
+    local specs = {spec1, spec2}
+    local xBases = {18, 280}
+    local SLIDER_W = 155
+
+    for i = 1, 2 do
+        local spec = specs[i]
+        local xBase = xBases[i]
+        local stp = spec.step
+
+        local function FormatVal(v)
+            if stp < 1 then return string.format("%.2f", v)
+            else return tostring(math.floor(v + 0.5)) end
+        end
+
+        local lbl = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        lbl:SetPoint("TOPLEFT", content, "TOPLEFT", xBase, y)
+        lbl:SetText(spec.label)
+
+        local slider = CreateFrame("Slider", nil, content)
+        slider:SetPoint("TOPLEFT", lbl, "BOTTOMLEFT", 0, -6)
+        slider:SetMinMaxValues(spec.min, spec.max)
+        slider:SetValueStep(stp)
+        slider:SetObeyStepOnDrag(true)
+        slider:SetWidth(SLIDER_W)
+        slider:SetHeight(16)
+        slider:SetOrientation("HORIZONTAL")
+        slider:SetThumbTexture("Interface\\Buttons\\UI-SliderBar-Button-Horizontal")
+        local bg = slider:CreateTexture(nil, "BACKGROUND")
+        bg:SetTexture("Interface\\Buttons\\UI-SliderBar-Background")
+        bg:SetAllPoints()
+        bg:SetTexCoord(0, 1, 0, 1)
+
+        local input = CreateFrame("EditBox", nil, content, "BackdropTemplate")
+        input:SetPoint("LEFT", slider, "RIGHT", 8, 0)
+        input:SetSize(48, 20)
+        input:SetAutoFocus(false)
+        input:SetFontObject(GameFontHighlightSmall)
+        input:SetJustifyH("CENTER")
+        input:SetMaxLetters(8)
+        input:SetTextInsets(4, 4, 0, 0)
+        input:SetBackdrop({
+            bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+            edgeFile = "Interface\\ChatFrame\\ChatFrameBackground",
+            tile = true, edgeSize = 1, tileSize = 5,
+        })
+        input:SetBackdropColor(0, 0, 0, 0.5)
+        input:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
+
+        local valText = input:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+        valText:SetPoint("CENTER")
+        valText:SetJustifyH("CENTER")
+        valText:SetText(FormatVal(spec.get()))
+
+        input:SetScript("OnEditFocusGained", function(self)
+            valText:Hide()
+            self:SetText(FormatVal(spec.get()))
+            self:HighlightText()
+        end)
+        input:SetScript("OnEditFocusLost", function(self)
+            self:HighlightText(0, 0)
+            valText:SetText(FormatVal(spec.get()))
+            valText:Show()
+        end)
+        input:SetScript("OnEnter", function(self)
+            self:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
+        end)
+        input:SetScript("OnLeave", function(self)
+            self:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
+        end)
+
+        slider:SetScript("OnValueChanged", function(_, value)
+            value = math.floor(value / stp + 0.5) * stp
+            spec.set(value)
+            valText:SetText(FormatVal(value))
+            input:SetText(FormatVal(value))
+        end)
+        slider:SetValue(spec.get())
+
+        input:SetScript("OnEnterPressed", function(self)
+            local val = tonumber(self:GetText())
+            if val then
+                val = math.max(spec.min, math.min(spec.max, val))
+                val = math.floor(val / stp + 0.5) * stp
+                spec.set(val)
+                slider:SetValue(val)
+            else
+                self:SetText(FormatVal(spec.get()))
+            end
+            self:ClearFocus()
+        end)
+        input:SetScript("OnEscapePressed", function(self) self:ClearFocus() end)
+
+        if refreshList then
+            local s, v = slider, valText
+            table.insert(refreshList, function()
+                s:SetValue(spec.get())
+                v:SetText(FormatVal(spec.get()))
+            end)
+        end
+    end
+
     return y - 48
 end
 
@@ -304,9 +438,9 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
         btn:SetWidth(btnWidth)
 
         -- Background
-        local bg = btn:CreateTexture(nil, "BACKGROUND")
-        bg:SetAllPoints()
-        bg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+        local bbg = btn:CreateTexture(nil, "BACKGROUND")
+        bbg:SetAllPoints()
+        bbg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
 
         -- Border
         local border = btn:CreateTexture(nil, "BORDER")
@@ -325,11 +459,11 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
 
         -- Hover effect
         btn:SetScript("OnEnter", function(self)
-            bg:SetColorTexture(0.25, 0.35, 0.45, 0.9)
+            bbg:SetColorTexture(0.25, 0.35, 0.45, 0.9)
             btnText:SetTextColor(1, 1, 1)
         end)
         btn:SetScript("OnLeave", function(self)
-            bg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+            bbg:SetColorTexture(0.15, 0.15, 0.15, 0.8)
             btnText:SetTextColor(0.4, 0.78, 1.0)
         end)
 
@@ -363,15 +497,15 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
             btnText:SetJustifyH("LEFT")
             btnText:SetText("|cff888888" .. sug[1] .. ":|r  " .. sug[2])
 
-            local bg = btn:CreateTexture(nil, "BACKGROUND")
-            bg:SetAllPoints()
-            bg:SetColorTexture(0, 0, 0, 0)
+            local sbg = btn:CreateTexture(nil, "BACKGROUND")
+            sbg:SetAllPoints()
+            sbg:SetColorTexture(0, 0, 0, 0)
 
             btn:SetScript("OnEnter", function()
-                bg:SetColorTexture(0.2, 0.3, 0.4, 0.5)
+                sbg:SetColorTexture(0.2, 0.3, 0.4, 0.5)
             end)
             btn:SetScript("OnLeave", function()
-                bg:SetColorTexture(0, 0, 0, 0)
+                sbg:SetColorTexture(0, 0, 0, 0)
             end)
             btn:SetScript("OnClick", function()
                 setter(sug[2])
@@ -412,16 +546,119 @@ local function AddDescription(content, y, text)
     return y - h - 12
 end
 
+---------------------------------------------------------------------------
+-- Collapsible section infrastructure
+---------------------------------------------------------------------------
+
+--- Create a collapsible section in a sectioned panel.
+--- Widgets are added to the returned body frame using standard y-offset calls.
+--- Call EndSection(panel, y) when done adding widgets.
+--- @param panel table  Panel created by CreateScrollPanel
+--- @param title string  Section header text
+--- @param defaultCollapsed boolean|nil  Start collapsed (default false)
+--- @return Frame body  The body frame to add widgets into
+local function AddSection(panel, title, defaultCollapsed)
+    local sections = panel.sections
+    local content = panel.content
+
+    local section = CreateFrame("Frame", nil, content)
+    section:SetPoint("RIGHT", content, "RIGHT")
+    if #sections == 0 then
+        section:SetPoint("TOPLEFT", content, "TOPLEFT", 0, -6)
+    else
+        section:SetPoint("TOPLEFT", sections[#sections], "BOTTOMLEFT", 0, -2)
+    end
+
+    -- Header button
+    local headerBtn = CreateFrame("Button", nil, section)
+    headerBtn:SetHeight(24)
+    headerBtn:SetPoint("TOPLEFT", 0, 0)
+    headerBtn:SetPoint("RIGHT", 0, 0)
+
+    local arrow = headerBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    arrow:SetPoint("LEFT", 8, 0)
+    arrow:SetTextColor(0.6, 0.6, 0.6)
+
+    local titleStr = headerBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    titleStr:SetPoint("LEFT", arrow, "RIGHT", 4, 0)
+    titleStr:SetText(title)
+
+    -- Separator line extends from end of title to right edge
+    local line = section:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("LEFT", titleStr, "RIGHT", 8, 0)
+    line:SetPoint("RIGHT", section, "RIGHT", -10, 0)
+    line:SetHeight(1)
+    line:SetColorTexture(0.5, 0.5, 0.5, 0.3)
+
+    -- Hover highlight on header
+    headerBtn:SetScript("OnEnter", function()
+        arrow:SetTextColor(1, 0.82, 0)
+    end)
+    headerBtn:SetScript("OnLeave", function()
+        arrow:SetTextColor(0.6, 0.6, 0.6)
+    end)
+
+    -- Body container
+    local body = CreateFrame("Frame", nil, section)
+    body:SetPoint("TOPLEFT", headerBtn, "BOTTOMLEFT", 0, -4)
+    body:SetPoint("RIGHT")
+
+    local HEADER_H = 28
+    section.body = body
+    section.headerHeight = HEADER_H
+    section.bodyHeight = 0
+    section.isCollapsed = defaultCollapsed or false
+
+    function section:UpdateLayout()
+        if self.isCollapsed then
+            arrow:SetText("+")
+            body:Hide()
+            self:SetHeight(self.headerHeight)
+        else
+            arrow:SetText("-")
+            body:Show()
+            self:SetHeight(self.headerHeight + self.bodyHeight)
+        end
+        panel:RecalcHeight()
+    end
+
+    headerBtn:SetScript("OnClick", function()
+        section.isCollapsed = not section.isCollapsed
+        section:UpdateLayout()
+    end)
+
+    table.insert(sections, section)
+    panel.currentSection = section
+
+    return body
+end
+
+--- Finalize a section after adding widgets. Sets body height from final y offset.
+--- @param panel table  The panel
+--- @param y number  Final y offset (negative) from widget building
+local function EndSection(panel, y)
+    local section = panel.currentSection
+    if not section then return end
+    section.bodyHeight = math.abs(y) + 8
+    section.body:SetHeight(section.bodyHeight)
+    section:UpdateLayout()
+    panel.currentSection = nil
+end
+
 -- Expose widget helpers for use by module settings panels
 ns.SettingsWidgets = {
     AddHeader       = AddHeader,
     AddCheckbox     = AddCheckbox,
+    AddCheckboxPair = AddCheckboxPair,
     AddSlider       = AddSlider,
+    AddSliderPair   = AddSliderPair,
     AddDropdown     = AddDropdown,
     AddEditBox      = AddEditBox,
     AddLabelEditBox = AddLabelEditBox,
     AddButton       = AddButton,
     AddDescription  = AddDescription,
+    AddSection      = AddSection,
+    EndSection      = EndSection,
 }
 
 ---------------------------------------------------------------------------
@@ -442,6 +679,18 @@ local function CreateScrollPanel()
     panel.scroll = scroll
     panel.content = content
     panel.refreshCallbacks = {}
+    panel.sections = {}
+
+    function panel:RecalcHeight()
+        local totalH = 6
+        for i, sec in ipairs(self.sections) do
+            totalH = totalH + sec:GetHeight()
+            if i < #self.sections then
+                totalH = totalH + 2
+            end
+        end
+        self.content:SetHeight(math.max(totalH + 20, 100))
+    end
 
     panel:SetScript("OnSizeChanged", function(self, w)
         content:SetWidth(math.max(w - 30, 400))
@@ -474,53 +723,65 @@ local CLICK_ACTION_KEYS = {
     { key = "altRightClick",   label = "Alt + Right Click" },
 }
 
-local function AddClickActionsSection(c, r, y, dbKey)
-    y = AddHeader(c, y, "Click Actions")
-    y = AddDescription(c, y, "Configure what happens when you click on a row in the tooltip.")
+--- Build click-action settings for social modules (tooltip row clicks).
+--- Creates a collapsed section automatically.
+--- @param panel table  Sectioned panel
+--- @param r table  Refresh callbacks list
+--- @param dbKey string  Module db key
+local function AddClickActionsSection(panel, r, dbKey)
+    local body = AddSection(panel, "Click Actions", true)
+    local y = 0
+    y = AddDescription(body, y, "Configure what happens when you click on a row in the tooltip.")
     for _, entry in ipairs(CLICK_ACTION_KEYS) do
-        y = AddDropdown(c, y, entry.label, ns.ACTION_VALUES,
+        y = AddDropdown(body, y, entry.label, ns.ACTION_VALUES,
             function() return ns.db[dbKey].clickActions[entry.key] end,
             function(v) ns.db[dbKey].clickActions[entry.key] = v end, r)
     end
-    return y
+    EndSection(panel, y)
 end
 
 ns.AddClickActionsSection = AddClickActionsSection
 
 --- Build click-action settings for standalone (non-social) modules.
---- @param c Frame     Content frame
---- @param r table     Refresh callbacks list
---- @param y number    Current y offset
+--- Creates a collapsed section automatically.
+--- @param panel table  Sectioned panel
+--- @param r table  Refresh callbacks list
 --- @param dbKey string  Module db key
 --- @param actionValues table  Module-specific { key = "Display Name" } table
-local function AddModuleClickActionsSection(c, r, y, dbKey, actionValues)
-    y = AddHeader(c, y, "Click Actions")
-    y = AddDescription(c, y, "Configure what happens when you click the DataText.")
+--- @param extraDesc string|nil  Optional description appended after dropdowns
+local function AddModuleClickActionsSection(panel, r, dbKey, actionValues, extraDesc)
+    local body = AddSection(panel, "Click Actions", true)
+    local y = 0
+    y = AddDescription(body, y, "Configure what happens when you click the DataText.")
     for _, entry in ipairs(CLICK_ACTION_KEYS) do
-        y = AddDropdown(c, y, entry.label, actionValues,
+        y = AddDropdown(body, y, entry.label, actionValues,
             function() return ns.db[dbKey].clickActions[entry.key] end,
             function(v) ns.db[dbKey].clickActions[entry.key] = v end, r)
     end
-    return y
+    if extraDesc then
+        y = AddDescription(body, y, extraDesc)
+    end
+    EndSection(panel, y)
 end
 
 ns.AddModuleClickActionsSection = AddModuleClickActionsSection
 
 --- Build row click-action settings for modules with interactive tooltip rows.
---- @param c Frame     Content frame
---- @param r table     Refresh callbacks list
---- @param y number    Current y offset
+--- Creates a collapsed section automatically.
+--- @param panel table  Sectioned panel
+--- @param r table  Refresh callbacks list
 --- @param dbKey string  Module db key
 --- @param actionValues table  Module-specific row action { key = "Display Name" } table
-local function AddRowClickActionsSection(c, r, y, dbKey, actionValues)
-    y = AddHeader(c, y, "Row Click Actions")
-    y = AddDescription(c, y, "Configure what happens when you click a row in the tooltip.")
+local function AddRowClickActionsSection(panel, r, dbKey, actionValues)
+    local body = AddSection(panel, "Row Click Actions", true)
+    local y = 0
+    y = AddDescription(body, y, "Configure what happens when you click a row in the tooltip.")
     for _, entry in ipairs(CLICK_ACTION_KEYS) do
-        y = AddDropdown(c, y, entry.label, actionValues,
+        y = AddDropdown(body, y, entry.label, actionValues,
             function() return ns.db[dbKey].rowClickActions[entry.key] end,
             function(v) ns.db[dbKey].rowClickActions[entry.key] = v end, r)
     end
-    return y
+    EndSection(panel, y)
 end
 
 ns.AddRowClickActionsSection = AddRowClickActionsSection
@@ -528,37 +789,6 @@ ns.AddRowClickActionsSection = AddRowClickActionsSection
 ---------------------------------------------------------------------------
 -- General panel
 ---------------------------------------------------------------------------
-
---- Build a tooltip-appearance section (scale, width, spacing, max height, label format).
-local function AddTooltipSection(c, r, y, header, labelTokens, dbKey, broker, copyFrom)
-    local db = function() return ns.db[dbKey] end
-    local refresh = function() if broker() then broker():UpdateData() end end
-
-    y = AddHeader(c, y, header)
-    y = AddLabelEditBox(c, y, labelTokens,
-        function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r)
-    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = AddSlider(c, y, "Width", 300, 800, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
-    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
-        function() return db().rowSpacing end,
-        function(v) db().rowSpacing = v end, r)
-    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
-        function() return db().tooltipMaxHeight end,
-        function(v) db().tooltipMaxHeight = v end, r)
-    if copyFrom then
-        y = AddButton(c, y, "Copy from " .. copyFrom.label, function()
-            DDT:CopyDisplaySettings(copyFrom.key, dbKey)
-            refresh()
-            for _, cb in ipairs(r) do cb() end
-        end)
-    end
-    return y
-end
 
 local FONT_OPTIONS = {
     ["Fonts\\FRIZQT__.TTF"]  = "Friz Quadrata (Default)",
@@ -569,15 +799,15 @@ local FONT_OPTIONS = {
 }
 
 local function BuildGeneralPanel(panel)
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
 
-    y = AddHeader(c, y, "Number Formatting")
-    y = AddDescription(c, y,
+    -- Number Formatting
+    local body = AddSection(panel, "Number Formatting")
+    local y = 0
+    y = AddDescription(body, y,
         "Controls how numbers, gold, and quantities are displayed across\n" ..
         "all modules. Choose a preset or use Custom for full control.")
-    y = AddDropdown(c, y, "Format Preset", ns.FORMAT_PRESET_LABELS,
+    y = AddDropdown(body, y, "Format Preset", ns.FORMAT_PRESET_LABELS,
         function() return ns.db.global.numberFormat end,
         function(v)
             ns.db.global.numberFormat = v
@@ -593,10 +823,10 @@ local function BuildGeneralPanel(panel)
         end, r)
 
     -- Preview
-    local previewLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    previewLabel:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    local previewLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    previewLabel:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
     previewLabel:SetText("Preview:")
-    local previewValue = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local previewValue = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     previewValue:SetPoint("LEFT", previewLabel, "RIGHT", 8, 0)
 
     local function UpdatePreview()
@@ -612,7 +842,6 @@ local function BuildGeneralPanel(panel)
     y = y - 20
 
     -- Custom separators (only shown when preset == custom)
-    local customWidgetsY = y
     local customWidgets = {}
 
     local function ShowCustomWidgets()
@@ -623,12 +852,12 @@ local function BuildGeneralPanel(panel)
     end
 
     -- Thousands separator
-    local sepLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    sepLabel:SetPoint("TOPLEFT", c, "TOPLEFT", 18, y)
+    local sepLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    sepLabel:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
     sepLabel:SetText("Thousands Separator")
     table.insert(customWidgets, sepLabel)
 
-    local sepBox = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
+    local sepBox = CreateFrame("EditBox", nil, body, "InputBoxTemplate")
     sepBox:SetPoint("TOPLEFT", sepLabel, "BOTTOMLEFT", 4, -4)
     sepBox:SetSize(60, 20)
     sepBox:SetAutoFocus(false)
@@ -643,12 +872,12 @@ local function BuildGeneralPanel(panel)
     table.insert(r, function() sepBox:SetText(ns.db.global.numberSep or ",") end)
 
     -- Decimal separator
-    local decLabel = c:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    local decLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     decLabel:SetPoint("LEFT", sepLabel, "RIGHT", 100, 0)
     decLabel:SetText("Decimal Separator")
     table.insert(customWidgets, decLabel)
 
-    local decBox = CreateFrame("EditBox", nil, c, "InputBoxTemplate")
+    local decBox = CreateFrame("EditBox", nil, body, "InputBoxTemplate")
     decBox:SetPoint("TOPLEFT", decLabel, "BOTTOMLEFT", 4, -4)
     decBox:SetSize(60, 20)
     decBox:SetAutoFocus(false)
@@ -665,8 +894,8 @@ local function BuildGeneralPanel(panel)
     y = y - 44
 
     -- Abbreviate checkbox
-    local abbrCb = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
-    abbrCb:SetPoint("TOPLEFT", c, "TOPLEFT", 14, y)
+    local abbrCb = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
+    abbrCb:SetPoint("TOPLEFT", body, "TOPLEFT", 14, y)
     local abbrText = abbrCb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     abbrText:SetPoint("LEFT", abbrCb, "RIGHT", 2, 0)
     abbrText:SetText("Abbreviate large numbers (K / M / B)")
@@ -684,40 +913,47 @@ local function BuildGeneralPanel(panel)
     y = y - 26
 
     ShowCustomWidgets()
+    EndSection(panel, y)
 
-    y = y - 6
-    y = AddHeader(c, y, "Tooltip Font")
-    y = AddDescription(c, y, "Global font used by all module tooltips.")
-    y = AddDropdown(c, y, "Font Face", FONT_OPTIONS,
+    -- Tooltip Font
+    body = AddSection(panel, "Tooltip Font")
+    y = 0
+    y = AddDescription(body, y, "Global font used by all module tooltips.")
+    y = AddDropdown(body, y, "Font Face", FONT_OPTIONS,
         function() return ns.db.global.tooltipFont end,
         function(v) ns.db.global.tooltipFont = v; ns:UpdateFonts() end, r)
-    y = AddSlider(c, y, "Font Size", 8, 20, 1,
+    y = AddSlider(body, y, "Font Size", 8, 20, 1,
         function() return ns.db.global.tooltipFontSize end,
         function(v) ns.db.global.tooltipFontSize = v; ns:UpdateFonts() end, r)
-
-    c:SetHeight(math.abs(y) + 20)
+    EndSection(panel, y)
 end
 
--- Shared social settings section (URL templates, tag grouping)
-local function AddSocialSettingsSection(c, r, y)
-    y = AddHeader(c, y, "Custom URL Templates")
-    y = AddDescription(c, y, "Shared across Friends, Guild, and Communities. Use <name>, <realm>, <region> as placeholders.")
-    y = AddEditBox(c, y, "Custom URL 1",
+---------------------------------------------------------------------------
+-- Social settings (shared across Friends/Guild/Communities)
+---------------------------------------------------------------------------
+
+--- Build shared social settings as a collapsed section.
+local function AddSocialSettingsSection(panel, r)
+    local body = AddSection(panel, "Social Settings", true)
+    local y = 0
+    y = AddHeader(body, y, "Custom URL Templates")
+    y = AddDescription(body, y, "Shared across Friends, Guild, and Communities. Use <name>, <realm>, <region> as placeholders.")
+    y = AddEditBox(body, y, "Custom URL 1",
         function() return ns.db.global.customUrl1 end,
         function(v) ns.db.global.customUrl1 = v end, r)
-    y = AddEditBox(c, y, "Custom URL 2",
+    y = AddEditBox(body, y, "Custom URL 2",
         function() return ns.db.global.customUrl2 end,
         function(v) ns.db.global.customUrl2 = v end, r)
 
-    y = AddHeader(c, y, "Tag Grouping")
-    y = AddDescription(c, y, "Tags in player notes are used for note-based grouping.")
-    y = AddEditBox(c, y, "Tag Separator Character",
+    y = AddHeader(body, y, "Tag Grouping")
+    y = AddDescription(body, y, "Tags in player notes are used for note-based grouping.")
+    y = AddEditBox(body, y, "Tag Separator Character",
         function() return ns.db.global.tagSeparator end,
         function(v) if v ~= "" then ns.db.global.tagSeparator = v end end, r)
-    y = AddCheckbox(c, y, "Show Members in All Matching Tag Groups",
+    y = AddCheckbox(body, y, "Show Members in All Matching Tag Groups",
         function() return ns.db.global.noteShowInAllGroups end,
         function(v) ns.db.global.noteShowInAllGroups = v end, r)
-    return y
+    EndSection(panel, y)
 end
 
 ---------------------------------------------------------------------------
@@ -725,70 +961,80 @@ end
 ---------------------------------------------------------------------------
 
 local function BuildFriendsPanel(panel)
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.friends end
     local refresh = function() if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end
 
-    y = AddHeader(c, y, "Label Template")
-    y = AddLabelEditBox(c, y, "online total offline",
+    -- Label Template
+    local body = AddSection(panel, "Label Template")
+    local y = 0
+    y = AddLabelEditBox(body, y, "online total offline",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",  "Friends: <online>/<total>" },
         { "Short",    "F: <online>" },
         { "Detailed", "Friends: <online> on / <offline> off" },
     })
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Tooltip")
-    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = AddSlider(c, y, "Width", 300, 800, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
-    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
-        function() return db().rowSpacing end,
-        function(v) db().rowSpacing = v end, r)
-    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
-        function() return db().tooltipMaxHeight end,
-        function(v) db().tooltipMaxHeight = v end, r)
+    -- Tooltip (collapsed)
+    body = AddSection(panel, "Tooltip", true)
+    y = 0
+    y = AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Display Filters")
-    y = AddCheckbox(c, y, "Show Character Friends",
-        function() return ns.db.friends.showWoWFriends end,
-        function(v) ns.db.friends.showWoWFriends = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Show Battle.net Friends",
-        function() return ns.db.friends.showBNetFriends end,
-        function(v) ns.db.friends.showBNetFriends = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Class-Colored Names",
-        function() return ns.db.friends.classColorNames end,
-        function(v) ns.db.friends.classColorNames = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Show Hint Bar",
-        function() return ns.db.friends.showHintBar end,
-        function(v) ns.db.friends.showHintBar = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
+    -- Display
+    body = AddSection(panel, "Display")
+    y = 0
+    y = AddCheckboxPair(body, y, "Show Character Friends",
+        function() return db().showWoWFriends end,
+        function(v) db().showWoWFriends = v; refresh() end,
+        "Show Battle.net Friends",
+        function() return db().showBNetFriends end,
+        function(v) db().showBNetFriends = v; refresh() end, r)
+    y = AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Grouping")
-    y = AddDropdown(c, y, "Group By", ns.FRIENDS_GROUP_VALUES,
-        function() return ns.db.friends.groupBy end,
-        function(v) ns.db.friends.groupBy = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
-    y = AddDropdown(c, y, "Then By", ns.FRIENDS_GROUP_VALUES,
-        function() return ns.db.friends.groupBy2 end,
-        function(v) ns.db.friends.groupBy2 = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
+    -- Grouping & Sorting
+    body = AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = AddDropdown(body, y, "Group By", ns.FRIENDS_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = AddDropdown(body, y, "Then By", ns.FRIENDS_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Sorting")
-    y = AddDropdown(c, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
-        function() return ns.db.friends.sortBy end,
-        function(v) ns.db.friends.sortBy = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Ascending Order",
-        function() return ns.db.friends.sortAscending end,
-        function(v) ns.db.friends.sortAscending = v; if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end, r)
+    -- Click Actions (collapsed)
+    AddClickActionsSection(panel, r, "friends")
 
-    y = AddClickActionsSection(c, r, y, "friends")
-
-    y = AddSocialSettingsSection(c, r, y)
-
-    c:SetHeight(math.abs(y) + 20)
+    -- Social Settings (collapsed)
+    AddSocialSettingsSection(panel, r)
 end
 
 ---------------------------------------------------------------------------
@@ -796,14 +1042,14 @@ end
 ---------------------------------------------------------------------------
 
 local function BuildGuildPanel(panel)
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.guild end
     local refresh = function() if ns.GuildBroker then ns.GuildBroker:UpdateData() end end
 
-    y = AddHeader(c, y, "Label Template")
-    y = AddLabelEditBox(c, y, "online total offline guildname",
+    -- Label Template
+    local body = AddSection(panel, "Label Template")
+    local y = 0
+    y = AddLabelEditBox(body, y, "online total offline guildname",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",    "Guild: <online>/<total>" },
@@ -811,54 +1057,64 @@ local function BuildGuildPanel(panel)
         { "Short",      "G: <online>" },
         { "Named",      "<guildname> (<online>)" },
     })
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Tooltip")
-    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = AddSlider(c, y, "Width", 300, 800, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
-    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
-        function() return db().rowSpacing end,
-        function(v) db().rowSpacing = v end, r)
-    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
-        function() return db().tooltipMaxHeight end,
-        function(v) db().tooltipMaxHeight = v end, r)
+    -- Tooltip (collapsed)
+    body = AddSection(panel, "Tooltip", true)
+    y = 0
+    y = AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Display Options")
-    y = AddCheckbox(c, y, "Class-Colored Names",
-        function() return ns.db.guild.classColorNames end,
-        function(v) ns.db.guild.classColorNames = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Show Officer Notes (inline)",
-        function() return ns.db.guild.showOfficerNotes end,
-        function(v) ns.db.guild.showOfficerNotes = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
-    y = AddDescription(c, y, "Requires guild rank permission to view officer notes.")
-    y = AddCheckbox(c, y, "Show Hint Bar",
-        function() return ns.db.guild.showHintBar end,
-        function(v) ns.db.guild.showHintBar = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
+    -- Display
+    body = AddSection(panel, "Display")
+    y = 0
+    y = AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    y = AddCheckbox(body, y, "Show Officer Notes (inline)",
+        function() return db().showOfficerNotes end,
+        function(v) db().showOfficerNotes = v; refresh() end, r)
+    y = AddDescription(body, y, "Requires guild rank permission to view officer notes.")
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Grouping")
-    y = AddDropdown(c, y, "Group By", ns.GUILD_GROUP_VALUES,
-        function() return ns.db.guild.groupBy end,
-        function(v) ns.db.guild.groupBy = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
-    y = AddDropdown(c, y, "Then By", ns.GUILD_GROUP_VALUES,
-        function() return ns.db.guild.groupBy2 end,
-        function(v) ns.db.guild.groupBy2 = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
+    -- Grouping & Sorting
+    body = AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = AddDropdown(body, y, "Group By", ns.GUILD_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = AddDropdown(body, y, "Then By", ns.GUILD_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", rank = "Rank", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Sorting")
-    y = AddDropdown(c, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", rank = "Rank", status = "Status" },
-        function() return ns.db.guild.sortBy end,
-        function(v) ns.db.guild.sortBy = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Ascending Order",
-        function() return ns.db.guild.sortAscending end,
-        function(v) ns.db.guild.sortAscending = v; if ns.GuildBroker then ns.GuildBroker:UpdateData() end end, r)
+    -- Click Actions (collapsed)
+    AddClickActionsSection(panel, r, "guild")
 
-    y = AddClickActionsSection(c, r, y, "guild")
-
-    y = AddSocialSettingsSection(c, r, y)
-
-    c:SetHeight(math.abs(y) + 20)
+    -- Social Settings (collapsed)
+    AddSocialSettingsSection(panel, r)
 end
 
 ---------------------------------------------------------------------------
@@ -866,67 +1122,81 @@ end
 ---------------------------------------------------------------------------
 
 local function BuildCommunitiesPanel(panel)
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.communities end
     local refresh = function() if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end
 
-    y = AddHeader(c, y, "Label Template")
-    y = AddLabelEditBox(c, y, "online",
+    -- Label Template
+    local body = AddSection(panel, "Label Template")
+    local y = 0
+    y = AddLabelEditBox(body, y, "online",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",  "Communities: <online>" },
         { "Short",    "Comm: <online>" },
         { "Labeled",  "<online> online" },
     })
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Tooltip")
-    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = AddSlider(c, y, "Width", 300, 800, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
-    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
-        function() return db().rowSpacing end,
-        function(v) db().rowSpacing = v end, r)
-    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
-        function() return db().tooltipMaxHeight end,
-        function(v) db().tooltipMaxHeight = v end, r)
+    -- Tooltip (collapsed)
+    body = AddSection(panel, "Tooltip", true)
+    y = 0
+    y = AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Display Options")
-    y = AddCheckbox(c, y, "Class-Colored Names",
-        function() return ns.db.communities.classColorNames end,
-        function(v) ns.db.communities.classColorNames = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Show Hint Bar",
-        function() return ns.db.communities.showHintBar end,
-        function(v) ns.db.communities.showHintBar = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
+    -- Display
+    body = AddSection(panel, "Display")
+    y = 0
+    y = AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Grouping")
-    y = AddDropdown(c, y, "Group By", ns.COMMUNITIES_GROUP_VALUES,
-        function() return ns.db.communities.groupBy end,
-        function(v) ns.db.communities.groupBy = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
-    y = AddDropdown(c, y, "Then By", ns.COMMUNITIES_GROUP_VALUES,
-        function() return ns.db.communities.groupBy2 end,
-        function(v) ns.db.communities.groupBy2 = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
+    -- Grouping & Sorting
+    body = AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = AddDropdown(body, y, "Group By", ns.COMMUNITIES_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = AddDropdown(body, y, "Then By", ns.COMMUNITIES_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    EndSection(panel, y)
 
-    y = AddHeader(c, y, "Sorting")
-    y = AddDropdown(c, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
-        function() return ns.db.communities.sortBy end,
-        function(v) ns.db.communities.sortBy = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
-    y = AddCheckbox(c, y, "Ascending Order",
-        function() return ns.db.communities.sortAscending end,
-        function(v) ns.db.communities.sortAscending = v; if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end, r)
+    -- Click Actions (collapsed)
+    AddClickActionsSection(panel, r, "communities")
 
-    y = AddClickActionsSection(c, r, y, "communities")
+    -- Social Settings (collapsed)
+    AddSocialSettingsSection(panel, r)
 
-    y = AddSocialSettingsSection(c, r, y)
+    -- Dynamic section: Enabled Communities
+    body = AddSection(panel, "Enabled Communities")
+    y = 0
+    y = AddDescription(body, y, "Uncheck a community to hide it from the tooltip. New communities are shown by default.")
 
-    -- Dynamic section: community checkboxes
-    y = AddHeader(c, y, "Enabled Communities")
-    y = AddDescription(c, y, "Uncheck a community to hide it from the tooltip. New communities are shown by default.")
-
+    local dynamicSection = panel.currentSection
     local dynamicStart = y
     local dynamicWidgets = {}
 
@@ -951,19 +1221,19 @@ local function BuildCommunitiesPanel(panel)
         table.sort(communityClubs, function(a, b) return (a.name or "") < (b.name or "") end)
 
         if #communityClubs == 0 then
-            local noClubs = c:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-            noClubs:SetPoint("TOPLEFT", c, "TOPLEFT", 18, dy)
+            local noClubs = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+            noClubs:SetPoint("TOPLEFT", body, "TOPLEFT", 18, dy)
             noClubs:SetText("No communities found.")
             table.insert(dynamicWidgets, noClubs)
             dy = dy - 20
         else
             for _, clubInfo in ipairs(communityClubs) do
-                local cb = CreateFrame("CheckButton", nil, c, "UICheckButtonTemplate")
-                cb:SetPoint("TOPLEFT", c, "TOPLEFT", 14, dy)
+                local cb = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
+                cb:SetPoint("TOPLEFT", body, "TOPLEFT", 14, dy)
 
-                local text = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-                text:SetText(clubInfo.name)
+                local cbText = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                cbText:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+                cbText:SetText(clubInfo.name)
 
                 local clubId = clubInfo.clubId
                 cb:SetChecked(not ns.db.communities.disabledClubs[clubId])
@@ -977,15 +1247,19 @@ local function BuildCommunitiesPanel(panel)
                 end)
 
                 table.insert(dynamicWidgets, cb)
-                table.insert(dynamicWidgets, text)
+                table.insert(dynamicWidgets, cbText)
                 dy = dy - 26
             end
         end
 
-        c:SetHeight(math.abs(dy) + 20)
+        -- Update section height dynamically
+        dynamicSection.bodyHeight = math.abs(dy) + 8
+        dynamicSection.body:SetHeight(dynamicSection.bodyHeight)
+        dynamicSection:UpdateLayout()
     end
 
     RebuildClubList()
+    panel.currentSection = nil  -- manual EndSection since height is dynamic
 
     panel:HookScript("OnShow", function()
         RebuildClubList()

@@ -670,13 +670,12 @@ local UPDATE_INTERVAL_VALUES = {
 
 function MoveSpeed:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.movementspeed end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "speed run fly swim mode",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "speed run fly swim mode",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<speed>%" },
@@ -684,36 +683,41 @@ function MoveSpeed:BuildSettingsPanel(panel)
         { "Labeled",    "Speed: <speed>%" },
         { "Run/Fly",    "R:<run>% F:<fly>%" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Performance")
-    y = W.AddDropdown(c, y, "Update Frequency", UPDATE_INTERVAL_VALUES,
+    body = W.AddSection(panel, "Performance")
+    y = 0
+    y = W.AddDropdown(body, y, "Update Frequency", UPDATE_INTERVAL_VALUES,
         function() return tostring(db().updateInterval) end,
         function(v) db().updateInterval = tonumber(v) end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Controls how often speed is polled (OnUpdate interval).\n" ..
         "Higher frequency = smoother display but more CPU usage.\n" ..
         "Lower frequency = less CPU, slight display delay.")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Show speed buffs and sources in tooltip",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show speed buffs and sources in tooltip",
         function() return db().showSpeedBuffs end,
         function(v) db().showSpeedBuffs = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 250, 600, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 250, max = 600, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "movementspeed", CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
+    ns.AddModuleClickActionsSection(panel, r, "movementspeed", CLICK_ACTIONS,
         "Shopping actions create an Auctionator shopping list\n" ..
         "or copy a TSM search string to the chat input.\n" ..
         "Requires Auctionator or TradeSkillMaster.")
-
-    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

@@ -316,30 +316,30 @@ MicroMenu.settingsLabel = "Micro Menu"
 
 function MicroMenu:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.micromenu end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Static label — no dynamic tags for this module.")
-    y = W.AddEditBox(c, y, "Template",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddDescription(body, y, "Static label — no dynamic tags for this module.")
+    y = W.AddEditBox(body, y, "Template",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 150, 400, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 150, max = 400, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "micromenu", CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
+    ns.AddModuleClickActionsSection(panel, r, "micromenu", CLICK_ACTIONS,
         "Click any row in the tooltip to open the corresponding panel.")
-
-    c:SetHeight(math.abs(y) + 20)
 end
 
 ---------------------------------------------------------------------------

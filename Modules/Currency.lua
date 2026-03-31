@@ -484,7 +484,7 @@ local function GetRowFrame(f, index)
         f.rowFrames[index]:Show()
         return f.rowFrames[index]
     end
-    local row = CreateFrame("Button", nil, f)
+    local row = CreateFrame("Button", nil, f, "BackdropTemplate")
     row:SetHeight(ROW_HEIGHT)
     row:EnableMouse(true)
     row:RegisterForClicks("AnyUp")
@@ -920,13 +920,12 @@ Currency.settingsLabel = "Currency"
 
 function Currency:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.currency end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "gold session token warbank auctions",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "gold session token warbank auctions",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<gold>" },
@@ -935,62 +934,71 @@ function Currency:BuildSettingsPanel(panel)
         { "Warband",    "<gold>  WB: <warbank>" },
         { "Full",       "<gold> (<session>)  <auctions> auctions" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Gold")
-    y = W.AddCheckbox(c, y, "Show session gold change",
+    body = W.AddSection(panel, "Gold")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show session gold change",
         function() return db().showSessionChange end,
         function(v) db().showSessionChange = v end, r)
-    y = W.AddCheckbox(c, y, "Show alt character gold",
+    y = W.AddCheckbox(body, y, "Show alt character gold",
         function() return db().showAltGold end,
         function(v) db().showAltGold = v end, r)
-    y = W.AddCheckbox(c, y, "Show WoW Token price",
+    y = W.AddCheckbox(body, y, "Show WoW Token price",
         function() return db().showTokenPrice end,
         function(v) db().showTokenPrice = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Warband Bank")
-    y = W.AddCheckbox(c, y, "Show warband bank gold and access status",
+    body = W.AddSection(panel, "Warband Bank")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show warband bank gold and access status",
         function() return db().showWarbankGold end,
         function(v) db().showWarbankGold = v end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Shows warband bank gold (available anytime) and\n" ..
         "access lock status for multi-account setups.\n" ..
         "'Locked' means another WoW client on the same\n" ..
         "Battle.net account currently has exclusive access.")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Auctions")
-    y = W.AddCheckbox(c, y, "Show posted auction count and value",
+    body = W.AddSection(panel, "Auctions")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show posted auction count and value",
         function() return db().showPostedAuctions end,
         function(v) db().showPostedAuctions = v end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Auction data is scanned when you visit the AH.\n" ..
         "Cached data is shown when away from the AH\n" ..
         "with a 'last scanned' indicator.")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Currencies")
-    y = W.AddCheckbox(c, y, "Show tracked currencies",
+    body = W.AddSection(panel, "Currencies")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show tracked currencies",
         function() return db().showCurrencies end,
         function(v) db().showCurrencies = v end, r)
-    y = W.AddSlider(c, y, "Max currencies to show", 5, 30, 1,
+    y = W.AddSlider(body, y, "Max currencies to show", 5, 30, 1,
         function() return db().maxCurrencies end,
         function(v) db().maxCurrencies = v end, r)
-    y = W.AddDropdown(c, y, "Sort Order", CURRENCY_SORT_VALUES,
+    y = W.AddDropdown(body, y, "Sort Order", CURRENCY_SORT_VALUES,
         function() return db().currencySortOrder end,
         function(v) db().currencySortOrder = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 250, 600, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 250, max = 600, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "currency", CLICK_ACTIONS)
-    y = ns.AddRowClickActionsSection(c, r, y, "currency", ROW_CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
+    ns.AddModuleClickActionsSection(panel, r, "currency", CLICK_ACTIONS,
         "Alt gold is tracked per-character across sessions.")
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddRowClickActionsSection(panel, r, "currency", ROW_CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

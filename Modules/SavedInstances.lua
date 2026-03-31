@@ -1560,16 +1560,15 @@ SavedInst.settingsLabel = "Saved Instances"
 
 function SavedInst:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.savedinstances end
     local refreshTT = function()
         if tooltipFrame and tooltipFrame:IsShown() then self:BuildTooltipContent() end
     end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "summary raids dungeons mplus total",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "summary raids dungeons mplus total",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<summary>" },
@@ -1577,42 +1576,51 @@ function SavedInst:BuildSettingsPanel(panel)
         { "M+ Focus",   "M+: <mplus>  Saved: <total>" },
         { "Count",      "<total> lockouts" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Condensed raid view (group difficulties per instance)",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckbox(body, y, "Condensed raid view (group difficulties per instance)",
         function() return db().condensedRaids end,
         function(v) db().condensedRaids = v; refreshTT() end, r)
-    y = W.AddCheckbox(c, y, "Condensed M+ view (group by dungeon)",
+    y = W.AddCheckbox(body, y, "Condensed M+ view (group by dungeon)",
         function() return db().condensedMPlus end,
         function(v) db().condensedMPlus = v; refreshTT() end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Sorting")
-    y = W.AddDropdown(c, y, "Raid / Dungeon Order", RAID_SORT_VALUES,
+    body = W.AddSection(panel, "Sorting")
+    y = 0
+    y = W.AddDropdown(body, y, "Raid / Dungeon Order", RAID_SORT_VALUES,
         function() return db().raidSortOrder end,
         function(v) db().raidSortOrder = v; refreshTT() end, r)
-    y = W.AddDropdown(c, y, "Mythic+ Order", MPLUS_SORT_VALUES,
+    y = W.AddDropdown(body, y, "Mythic+ Order", MPLUS_SORT_VALUES,
         function() return db().mplusSortOrder end,
         function(v) db().mplusSortOrder = v; refreshTT() end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 300, 600, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v; refreshTT() end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 600, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v; refreshTT() end }, r)
+    W.EndSection(panel, y)
 
     -- Alt Lockouts (before click actions so it's easier to find)
-    y = W.AddHeader(c, y, "Alt Lockouts")
-    y = W.AddCheckbox(c, y, "Show alt lockout section in tooltip",
+    body = W.AddSection(panel, "Alt Lockouts")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show alt lockout section in tooltip",
         function() return db().showAlts end,
         function(v) db().showAlts = v; refreshTT() end, r)
-    y = W.AddCheckbox(c, y, "Show alt progress columns alongside current character",
+    y = W.AddCheckbox(body, y, "Show alt progress columns alongside current character",
         function() return db().altColumns end,
         function(v) db().altColumns = v; refreshTT() end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "|cff888888When column view is active, the expandable alt section is hidden.|r")
-    y = W.AddSlider(c, y, "Column name length (0 = full name)", 0, 12, 1,
+    y = W.AddSlider(body, y, "Column name length (0 = full name)", 0, 12, 1,
         function() return db().altNameLength end,
         function(v) db().altNameLength = v; refreshTT() end, r)
 
@@ -1626,69 +1634,112 @@ function SavedInst:BuildSettingsPanel(panel)
         ANCHOR_BOTTOMRIGHT = "Bottom-Right",
         ANCHOR_BOTTOMLEFT  = "Bottom-Left",
     }
-    y = W.AddDescription(c, y, "Column header hover details:")
-    y = W.AddDropdown(c, y, "Hover tooltip direction", HOVER_ANCHOR_VALUES,
+    y = W.AddDescription(body, y, "Column header hover details:")
+    y = W.AddDropdown(body, y, "Hover tooltip direction", HOVER_ANCHOR_VALUES,
         function() return db().altHoverAnchor end,
         function(v) db().altHoverAnchor = v end, r)
-    y = W.AddCheckbox(c, y, "Show realm",
+    y = W.AddCheckboxPair(body, y, "Show realm",
         function() return db().altHoverRealm end,
-        function(v) db().altHoverRealm = v end, r)
-    y = W.AddCheckbox(c, y, "Show class",
+        function(v) db().altHoverRealm = v end,
+        "Show class",
         function() return db().altHoverClass end,
         function(v) db().altHoverClass = v end, r)
-    y = W.AddCheckbox(c, y, "Show specialization",
+    y = W.AddCheckboxPair(body, y, "Show specialization",
         function() return db().altHoverSpec end,
-        function(v) db().altHoverSpec = v end, r)
-    y = W.AddCheckbox(c, y, "Show role",
+        function(v) db().altHoverSpec = v end,
+        "Show role",
         function() return db().altHoverRole end,
         function(v) db().altHoverRole = v end, r)
 
-    y = W.AddDropdown(c, y, "Show alts matching", ALT_FILTER_VALUES,
+    y = W.AddDropdown(body, y, "Show alts matching", ALT_FILTER_VALUES,
         function() return db().altFilter end,
         function(v) db().altFilter = v; refreshTT() end, r)
 
     -- Manual alt selection: always shown so users can pre-configure before switching to manual
-    y = W.AddDescription(c, y, "Manual selection (used when filter = \"Manual selection\"):")
+    y = W.AddDescription(body, y, "Manual selection (used when filter = \"Manual selection\"):")
 
-    local altDB = ns.db and ns.db.altLockouts
-    local playerName  = UnitName("player")
-    local playerRealm = GetRealmName()
-    local currentKey  = playerName .. " - " .. playerRealm
+    local dynamicSection = panel.currentSection
+    local dynamicStart = y
+    local dynamicWidgets = {}
 
-    if altDB then
-        local knownAlts = {}
-        for key, altData in pairs(altDB) do
-            if key ~= currentKey and type(altData) == "table" then
-                table.insert(knownAlts, { key = key, data = altData })
-            end
+    local function RebuildAltList()
+        for _, widget in ipairs(dynamicWidgets) do
+            widget:Hide()
+            widget:SetParent(nil)
         end
-        table.sort(knownAlts, function(a, b)
-            local la, lb = a.data.level or 0, b.data.level or 0
-            if la ~= lb then return la > lb end
-            return (a.data.name or a.key) < (b.data.name or b.key)
-        end)
+        wipe(dynamicWidgets)
 
-        if #knownAlts == 0 then
-            y = W.AddDescription(c, y, "|cff888888No alts recorded yet. Log in to each alt to populate.|r")
+        local dy = dynamicStart
+        local altDB = ns.db and ns.db.altLockouts
+        local playerName  = UnitName("player")
+        local playerRealm = GetRealmName()
+        local currentKey  = playerName .. " - " .. playerRealm
+
+        if altDB then
+            local knownAlts = {}
+            for key, altData in pairs(altDB) do
+                if key ~= currentKey and type(altData) == "table" then
+                    table.insert(knownAlts, { key = key, data = altData })
+                end
+            end
+            table.sort(knownAlts, function(a, b)
+                local la, lb = a.data.level or 0, b.data.level or 0
+                if la ~= lb then return la > lb end
+                return (a.data.name or a.key) < (b.data.name or b.key)
+            end)
+
+            if #knownAlts == 0 then
+                local noAlts = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+                noAlts:SetPoint("TOPLEFT", body, "TOPLEFT", 18, dy)
+                noAlts:SetText("No alts recorded yet. Log in to each alt to populate.")
+                table.insert(dynamicWidgets, noAlts)
+                dy = dy - 20
+            else
+                for _, alt in ipairs(knownAlts) do
+                    local cb = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
+                    cb:SetPoint("TOPLEFT", body, "TOPLEFT", 14, dy)
+
+                    local cbText = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                    cbText:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+                    local label = DDT:ClassColorText(alt.data.name or alt.key, (alt.data.class or ""):upper())
+                                  .. " |cff888888(Lv " .. (alt.data.level or "?") .. ")|r"
+                    cbText:SetText(label)
+
+                    local capturedKey = alt.key
+                    cb:SetChecked(db().altManualList[capturedKey] == true)
+                    cb:SetScript("OnClick", function(self)
+                        db().altManualList[capturedKey] = self:GetChecked() or nil
+                        refreshTT()
+                    end)
+
+                    table.insert(dynamicWidgets, cb)
+                    table.insert(dynamicWidgets, cbText)
+                    dy = dy - 26
+                end
+            end
         else
-            for _, alt in ipairs(knownAlts) do
-                local label = DDT:ClassColorText(alt.data.name or alt.key, (alt.data.class or ""):upper())
-                              .. " |cff888888(Lv " .. (alt.data.level or "?") .. ")|r"
-                local capturedKey = alt.key
-                y = W.AddCheckbox(c, y, label,
-                    function() return db().altManualList[capturedKey] == true end,
-                    function(v) db().altManualList[capturedKey] = v or nil; refreshTT() end, r)
-            end
+            local noAlts = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+            noAlts:SetPoint("TOPLEFT", body, "TOPLEFT", 18, dy)
+            noAlts:SetText("No alts recorded yet. Log in to each alt to populate.")
+            table.insert(dynamicWidgets, noAlts)
+            dy = dy - 20
         end
-    else
-        y = W.AddDescription(c, y, "|cff888888No alts recorded yet. Log in to each alt to populate.|r")
+
+        -- Update section height dynamically
+        dynamicSection.bodyHeight = math.abs(dy) + 8
+        dynamicSection.body:SetHeight(dynamicSection.bodyHeight)
+        dynamicSection:UpdateLayout()
     end
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "savedinstances", CLICK_ACTIONS)
-    y = W.AddDescription(c, y,
-        "Click a lockout row: Expand/collapse boss details")
+    RebuildAltList()
+    panel.currentSection = nil  -- manual EndSection since height is dynamic
 
-    c:SetHeight(math.abs(y) + 20)
+    panel:HookScript("OnShow", function()
+        RebuildAltList()
+    end)
+
+    ns.AddModuleClickActionsSection(panel, r, "savedinstances", CLICK_ACTIONS,
+        "Click a lockout row: Expand/collapse boss details")
 end
 
 ---------------------------------------------------------------------------

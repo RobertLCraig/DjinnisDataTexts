@@ -456,13 +456,12 @@ CharInfo.settingsLabel = "Character Info"
 
 function CharInfo:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.characterinfo end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "name realm class level ilvl race shard",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "name realm class level ilvl race shard",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<name>" },
@@ -471,18 +470,20 @@ function CharInfo:BuildSettingsPanel(panel)
         { "Realm",      "<name> - <realm>" },
         { "Full",       "<name> <level> <class> (<ilvl>)" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Show item level",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckbox(body, y, "Show item level",
         function() return db().showItemLevel end,
         function(v) db().showItemLevel = v end, r)
-    y = W.AddCheckbox(c, y, "Show guild name",
+    y = W.AddCheckbox(body, y, "Show guild name",
         function() return db().showGuild end,
         function(v) db().showGuild = v end, r)
-    y = W.AddCheckbox(c, y, "Show shard ID (best-effort)",
+    y = W.AddCheckbox(body, y, "Show shard ID (best-effort)",
         function() return db().showShardID end,
         function(v) db().showShardID = v end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Shard ID Detection (Limitations):\n" ..
         "Blizzard does not expose shard/server IDs to addons.\n" ..
         "DDT extracts an approximate shard identifier by parsing\n" ..
@@ -492,18 +493,20 @@ function CharInfo:BuildSettingsPanel(panel)
         "  \226\128\162 Shows 'Unknown' in empty areas with no NPCs\n" ..
         "  \226\128\162 May be inaccurate during shard transitions\n" ..
         "  \226\128\162 Blizzard may change GUID format at any time")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 200, 500, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 200, max = 500, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "characterinfo", CLICK_ACTIONS)
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddModuleClickActionsSection(panel, r, "characterinfo", CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

@@ -397,7 +397,7 @@ local function GetRowFrame(f, index)
         f.rowFrames[index]:Show()
         return f.rowFrames[index]
     end
-    local row = CreateFrame("Button", nil, f)
+    local row = CreateFrame("Button", nil, f, "BackdropTemplate")
     row:SetHeight(ROW_HEIGHT)
     row:EnableMouse(true)
     row:RegisterForClicks("AnyUp")
@@ -629,13 +629,12 @@ BagVal.settingsLabel = "Bag Value"
 
 function BagVal:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.bagvalue end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "value vendor free total used",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "value vendor free total used",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:ScanBags() end, r, {
         { "Default",    "<value>" },
@@ -643,42 +642,48 @@ function BagVal:BuildSettingsPanel(panel)
         { "Vendor",     "AH: <value>  Vendor: <vendor>" },
         { "Bags Only",  "<free>/<total> slots" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Price Source")
-    y = W.AddDropdown(c, y, "TSM Price Source", TSM_SOURCE_VALUES,
+    body = W.AddSection(panel, "Price Source")
+    y = 0
+    y = W.AddDropdown(body, y, "TSM Price Source", TSM_SOURCE_VALUES,
         function() return db().tsmPriceSource end,
         function(v) db().tsmPriceSource = v; self:ScanBags() end, r)
-    y = W.AddDescription(c, y,
+    y = W.AddDescription(body, y,
         "Requires TradeSkillMaster (TSM) to be installed.\n" ..
         "Without TSM, vendor sell prices are used as fallback.\n\n" ..
         "Future support planned: Auctionator, Auctioneer, Oribos Exchange.")
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddCheckbox(c, y, "Show free bag slots",
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckboxPair(body, y, "Show free bag slots",
         function() return db().showFreeSlots end,
-        function(v) db().showFreeSlots = v end, r)
-    y = W.AddCheckbox(c, y, "Show top items by value",
+        function(v) db().showFreeSlots = v end,
+        "Show top items by value",
         function() return db().showTopItems end,
         function(v) db().showTopItems = v end, r)
-    y = W.AddSlider(c, y, "Number of items to show", 5, 25, 1,
+    y = W.AddSlider(body, y, "Number of items to show", 5, 25, 1,
         function() return db().numTopItems end,
         function(v) db().numTopItems = v end, r)
-    y = W.AddDropdown(c, y, "Item Sort Order", ITEM_SORT_VALUES,
+    y = W.AddDropdown(body, y, "Item Sort Order", ITEM_SORT_VALUES,
         function() return db().itemSortOrder end,
         function(v) db().itemSortOrder = v end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 250, 600, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 250, max = 600, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "bagvalue", CLICK_ACTIONS)
-    y = ns.AddRowClickActionsSection(c, r, y, "bagvalue", ROW_CLICK_ACTIONS)
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddModuleClickActionsSection(panel, r, "bagvalue", CLICK_ACTIONS)
+    ns.AddRowClickActionsSection(panel, r, "bagvalue", ROW_CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

@@ -426,13 +426,12 @@ Coordinates.settingsLabel = "Coordinates"
 
 function Coordinates:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
-    local c = panel.content
     local r = panel.refreshCallbacks
-    local y = -10
     local db = function() return ns.db.coordinates end
 
-    y = W.AddHeader(c, y, "Label Template")
-    y = W.AddLabelEditBox(c, y, "coords zone subzone map",
+    local body = W.AddSection(panel, "Label Template")
+    local y = 0
+    y = W.AddLabelEditBox(body, y, "coords zone subzone map",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
         { "Coords Only",  "<coords>" },
@@ -440,23 +439,27 @@ function Coordinates:BuildSettingsPanel(panel)
         { "Full Location", "<zone> - <subzone> (<coords>)" },
         { "Map Name",      "<map>: <coords>" },
     })
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Display")
-    y = W.AddSlider(c, y, "Decimal places", 0, 4, 1,
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddSlider(body, y, "Decimal places", 0, 4, 1,
         function() return db().coordDecimals end,
         function(v) db().coordDecimals = v; self:UpdateDisplay() end, r)
+    W.EndSection(panel, y)
 
-    y = W.AddHeader(c, y, "Tooltip")
-    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
-        function() return db().tooltipScale end,
-        function(v) db().tooltipScale = v end, r)
-    y = W.AddSlider(c, y, "Width", 200, 500, 10,
-        function() return db().tooltipWidth end,
-        function(v) db().tooltipWidth = v end, r)
+    body = W.AddSection(panel, "Tooltip", true)
+    y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 200, max = 500, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    W.EndSection(panel, y)
 
-    y = ns.AddModuleClickActionsSection(c, r, y, "coordinates", CLICK_ACTIONS)
-
-    c:SetHeight(math.abs(y) + 20)
+    ns.AddModuleClickActionsSection(panel, r, "coordinates", CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------
