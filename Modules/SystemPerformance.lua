@@ -1,5 +1,5 @@
 -- Djinni's Data Texts — System Performance
--- FPS, latency (home/world), memory usage, and top addon memory consumers.
+-- FPS, latency (home/world), memory usage, and top addon memory/CPU consumers.
 local addonName, ns = ...
 local DDT = ns.addon
 local LDB = LibStub("LibDataBroker-1.1")
@@ -29,9 +29,11 @@ local latencyWorld = 0
 local memoryTotal = 0      -- KB, all addons
 local addonMemory = {}     -- { { name, memory } } sorted desc
 local NUM_TOP_ADDONS = 10
-local cpuEnabled = false    -- whether CPU profiling is active in this session
-local addonCPU = {}         -- { { name, cpu } } sorted desc
-local cpuTotal = 0          -- total CPU (ms) across all addons
+
+-- CPU profiler state (C_AddOnProfiler)
+local profilerAvailable = false
+local overallCPU = { current = 0, average = 0, encounter = 0, peak = 0 }
+local addonCPU = {}        -- { { name, current, average, encounter, peak } }
 
 ---------------------------------------------------------------------------
 -- Defaults
@@ -42,7 +44,8 @@ local DEFAULTS = {
     showTopAddons    = true,
     numTopAddons     = 10,
     addonSortOrder   = "memory_desc",  -- memory_desc, memory_asc, name
-    showCpuUsage     = false,
+    showCpuUsage     = true,
+    cpuSortMetric    = "current",      -- current, average, peak, encounter
     numTopCpuAddons  = 10,
     tooltipScale     = 1.0,
     tooltipWidth     = 320,
@@ -57,7 +60,6 @@ local CLICK_ACTIONS = {
     refresh        = "Refresh Memory",
     gamemenu       = "Game Menu",
     reloadui       = "Reload UI",
-    cputoggle      = "Toggle CPU Profiler",
     opensettings   = "Open DDT Settings",
     none           = "None",
 }
@@ -66,6 +68,13 @@ local ADDON_SORT_VALUES = {
     memory_desc = "Memory (High > Low)",
     memory_asc  = "Memory (Low > High)",
     name        = "Name (A-Z)",
+}
+
+local CPU_SORT_VALUES = {
+    current   = "Current CPU",
+    average   = "Average CPU",
+    peak      = "Peak CPU",
+    encounter = "Encounter CPU",
 }
 
 local function SortAddonMemory(list, order)
@@ -84,6 +93,14 @@ local function SortAddonMemory(list, order)
             return a.name < b.name
         end)
     end
+end
+
+local function SortAddonCPU(list, metric)
+    local key = metric or "current"
+    table.sort(list, function(a, b)
+        if a[key] ~= b[key] then return a[key] > b[key] end
+        return a.name < b.name
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -109,16 +126,88 @@ local function FPSColor(val)
     return 1.0, 0.2, 0.2
 end
 
+local function CPUColor(pct)
+    if pct > 50 then return 1.0, 0.2, 0.2 end
+    if pct > 25 then return 1.0, 0.6, 0.2 end
+    if pct > 10 then return 1.0, 0.82, 0.0 end
+    return 1.0, 1.0, 1.0
+end
+
+local function FormatCPU(pct)
+    if pct <= 0 then return "—" end
+    return string.format("%.2f%%", pct)
+end
+
+---------------------------------------------------------------------------
+-- CPU Profiler (C_AddOnProfiler)
+---------------------------------------------------------------------------
+
+local function IsProfilerEnabled()
+    return C_AddOnProfiler and C_AddOnProfiler.IsEnabled()
+end
+
+--- Get overall CPU% for a metric (all addons combined / application total)
+local function GetOverallPercent(metric)
+    if not C_AddOnProfiler.GetApplicationMetric then return 0 end
+    local app = C_AddOnProfiler.GetApplicationMetric(metric)
+    if not app or app <= 0 then return 0 end
+    local overall = C_AddOnProfiler.GetOverallMetric(metric)
+    return (overall / app) * 100
+end
+
+--- Get per-addon CPU% for a metric
+local function GetAddonPercent(addonNameOrIndex, metric)
+    local overall = C_AddOnProfiler.GetOverallMetric(metric)
+    local addon = C_AddOnProfiler.GetAddOnMetric(addonNameOrIndex, metric)
+    local relative = overall
+    if C_AddOnProfiler.GetApplicationMetric then
+        local app = C_AddOnProfiler.GetApplicationMetric(metric)
+        relative = app - overall + addon
+    end
+    if relative <= 0 then return 0 end
+    return (addon / relative) * 100
+end
+
+local function CollectCPU()
+    profilerAvailable = IsProfilerEnabled()
+    wipe(addonCPU)
+
+    if not profilerAvailable then
+        overallCPU.current   = 0
+        overallCPU.average   = 0
+        overallCPU.encounter = 0
+        overallCPU.peak      = 0
+        return
+    end
+
+    local M = Enum.AddOnProfilerMetric
+    overallCPU.current   = GetOverallPercent(M.RecentAverageTime)
+    overallCPU.average   = GetOverallPercent(M.SessionAverageTime)
+    overallCPU.encounter = GetOverallPercent(M.EncounterAverageTime)
+    overallCPU.peak      = GetOverallPercent(M.PeakTime)
+
+    local numAddons = C_AddOns.GetNumAddOns()
+    for i = 1, numAddons do
+        local cur  = GetAddonPercent(i, M.RecentAverageTime)
+        local avg  = GetAddonPercent(i, M.SessionAverageTime)
+        local enc  = GetAddonPercent(i, M.EncounterAverageTime)
+        local pk   = GetAddonPercent(i, M.PeakTime)
+        if cur > 0 or avg > 0 or pk > 0 then
+            local name = C_AddOns.GetAddOnInfo(i)
+            table.insert(addonCPU, {
+                name      = name,
+                current   = cur,
+                average   = avg,
+                encounter = enc,
+                peak      = pk,
+            })
+        end
+    end
+end
+
 ---------------------------------------------------------------------------
 -- Label template expansion
 ---------------------------------------------------------------------------
-
-local function FormatCPU(ms)
-    if ms >= 1000 then
-        return string.format("%.1f s", ms / 1000)
-    end
-    return string.format("%.0f ms", ms)
-end
 
 local function ExpandLabel(template)
     local result = template
@@ -126,7 +215,7 @@ local function ExpandLabel(template)
     result = result:gsub("<latency>", tostring(latencyHome))
     result = result:gsub("<world>", tostring(latencyWorld))
     result = result:gsub("<memory>", FormatMemory(memoryTotal))
-    result = result:gsub("<cpu>", cpuEnabled and FormatCPU(cpuTotal) or "N/A")
+    result = result:gsub("<cpu>", profilerAvailable and FormatCPU(overallCPU.current) or "N/A")
     return result
 end
 
@@ -158,10 +247,6 @@ local dataobj = LDB:NewDataObject("DDT-SystemPerformance", {
             ToggleGameMenuFrame()
         elseif action == "reloadui" then
             ReloadUI()
-        elseif action == "cputoggle" then
-            local current = GetCVarBool("scriptProfile")
-            SetCVar("scriptProfile", current and "0" or "1")
-            DDT:Print("CPU Profiler " .. (current and "disabled" or "enabled") .. ". /reload required to take effect.")
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
@@ -224,21 +309,9 @@ function SysPerf:UpdateData()
         end
     end
 
-    -- CPU profiling (requires scriptProfile CVar = "1")
-    cpuEnabled = GetCVarBool("scriptProfile") or false
-    wipe(addonCPU)
-    cpuTotal = 0
-    if cpuEnabled and db.showCpuUsage then
-        ResetCPUUsage()
-        UpdateAddOnCPUUsage()
-        for i = 1, numAddons do
-            local cpuTime = GetAddOnCPUUsage(i)
-            cpuTotal = cpuTotal + cpuTime
-            if cpuTime > 0 then
-                local name = C_AddOns.GetAddOnInfo(i)
-                table.insert(addonCPU, { name = name, cpu = cpuTime })
-            end
-        end
+    -- CPU profiling (C_AddOnProfiler)
+    if db.showCpuUsage then
+        CollectCPU()
     end
 
     -- Update LDB text
@@ -369,7 +442,7 @@ function SysPerf:BuildTooltipContent()
     memLine.value:SetTextColor(0.4, 0.78, 1)
     y = y - ROW_HEIGHT
 
-    -- Top addons
+    -- Top addons (memory)
     if db.showTopAddons and #addonMemory > 0 then
         SortAddonMemory(addonMemory, db.addonSortOrder)
         y = y - 4
@@ -377,7 +450,7 @@ function SysPerf:BuildTooltipContent()
         lineIdx = lineIdx + 1
         local hdr = GetLine(f, lineIdx)
         hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        hdr.label:SetText("|cffffd100Top Addons|r")
+        hdr.label:SetText("|cffffd100Top Addons (Memory)|r")
         hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
         hdr.value:SetText("")
         y = y - HEADER_HEIGHT
@@ -397,48 +470,113 @@ function SysPerf:BuildTooltipContent()
         end
     end
 
-    -- CPU profiling section
+    -------------------------------------------------------------------
+    -- CPU Profiler section
+    -------------------------------------------------------------------
     if db.showCpuUsage then
         y = y - 4
-        lineIdx = lineIdx + 1
-        local cpuHdr = GetLine(f, lineIdx)
-        cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
 
-        if not cpuEnabled then
+        if not profilerAvailable then
+            -- Profiler not available
+            lineIdx = lineIdx + 1
+            local cpuHdr = GetLine(f, lineIdx)
+            cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
             cpuHdr.label:SetText("|cffffd100CPU Profiling|r")
-            cpuHdr.value:SetText("|cffff3333Disabled|r")
+            cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            cpuHdr.value:SetText("|cffff3333Not Available|r")
             y = y - ROW_HEIGHT
 
             lineIdx = lineIdx + 1
-            local cpuNote = GetLine(f, lineIdx)
-            cpuNote.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
-            cpuNote.label:SetText("|cff888888Enable via: /console scriptProfile 1|r")
-            cpuNote.label:SetTextColor(0.5, 0.5, 0.5)
-            cpuNote.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
-            cpuNote.value:SetText("|cff888888(requires /reload)|r")
-            cpuNote.value:SetTextColor(0.5, 0.5, 0.5)
+            local note = GetLine(f, lineIdx)
+            note.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            note.label:SetText("|cff888888C_AddOnProfiler not enabled in this session.|r")
+            note.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            note.value:SetText("")
             y = y - ROW_HEIGHT
         else
-            cpuHdr.label:SetText("|cffffd100Top Addons (CPU)|r")
+            -- Overall CPU summary row
+            lineIdx = lineIdx + 1
+            local cpuHdr = GetLine(f, lineIdx)
+            cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            cpuHdr.label:SetText("|cffffd100CPU Usage (All Addons)|r")
+            cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
             cpuHdr.value:SetText("")
             y = y - HEADER_HEIGHT
 
-            -- Sort CPU list
-            table.sort(addonCPU, function(a, b) return a.cpu > b.cpu end)
+            -- Overall metrics: Current | Average | Encounter | Peak
+            lineIdx = lineIdx + 1
+            local curLine = GetLine(f, lineIdx)
+            curLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            curLine.label:SetText("|cffffffffCurrent|r")
+            curLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            curLine.value:SetText(FormatCPU(overallCPU.current))
+            curLine.value:SetTextColor(CPUColor(overallCPU.current))
+            y = y - ROW_HEIGHT
 
-            local cpuCount = math.min(db.numTopCpuAddons or 10, #addonCPU)
-            for i = 1, cpuCount do
-                local addon = addonCPU[i]
+            lineIdx = lineIdx + 1
+            local avgLine = GetLine(f, lineIdx)
+            avgLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            avgLine.label:SetText("|cffffffffAverage|r")
+            avgLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            avgLine.value:SetText(FormatCPU(overallCPU.average))
+            avgLine.value:SetTextColor(CPUColor(overallCPU.average))
+            y = y - ROW_HEIGHT
+
+            lineIdx = lineIdx + 1
+            local encLine = GetLine(f, lineIdx)
+            encLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            encLine.label:SetText("|cffffffffEncounter|r")
+            encLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            local encText = overallCPU.encounter > 0 and FormatCPU(overallCPU.encounter) or "—"
+            encLine.value:SetText(encText)
+            if overallCPU.encounter > 0 then
+                encLine.value:SetTextColor(CPUColor(overallCPU.encounter))
+            else
+                encLine.value:SetTextColor(0.5, 0.5, 0.5)
+            end
+            y = y - ROW_HEIGHT
+
+            lineIdx = lineIdx + 1
+            local pkLine = GetLine(f, lineIdx)
+            pkLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            pkLine.label:SetText("|cffffffffPeak|r")
+            pkLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            pkLine.value:SetText(FormatCPU(overallCPU.peak))
+            pkLine.value:SetTextColor(CPUColor(overallCPU.peak))
+            y = y - ROW_HEIGHT
+
+            -- Per-addon CPU breakdown
+            if #addonCPU > 0 then
+                local sortMetric = db.cpuSortMetric or "current"
+                SortAddonCPU(addonCPU, sortMetric)
+                y = y - 4
+
+                -- Column header
+                local metricLabel = CPU_SORT_VALUES[sortMetric] or "Current CPU"
                 lineIdx = lineIdx + 1
-                local row = GetLine(f, lineIdx)
-                row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
-                row.label:SetText(addon.name)
-                row.label:SetTextColor(0.8, 0.8, 0.8)
-                row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
-                row.value:SetText(FormatCPU(addon.cpu))
-                row.value:SetTextColor(0.9, 0.6, 0.3)
-                y = y - ROW_HEIGHT
+                local listHdr = GetLine(f, lineIdx)
+                listHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                listHdr.label:SetText("|cffffd100Top Addons (CPU)|r")
+                listHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                listHdr.value:SetText("|cff888888" .. metricLabel .. "|r")
+                y = y - HEADER_HEIGHT
+
+                local cpuCount = math.min(db.numTopCpuAddons or 10, #addonCPU)
+                for i = 1, cpuCount do
+                    local addon = addonCPU[i]
+                    local val = addon[sortMetric] or 0
+                    if val <= 0 then break end
+
+                    lineIdx = lineIdx + 1
+                    local row = GetLine(f, lineIdx)
+                    row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                    row.label:SetText(addon.name)
+                    row.label:SetTextColor(0.8, 0.8, 0.8)
+                    row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                    row.value:SetText(FormatCPU(val))
+                    row.value:SetTextColor(CPUColor(val))
+                    y = y - ROW_HEIGHT
+                end
             end
         end
     end
@@ -524,15 +662,17 @@ function SysPerf:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Show CPU usage per addon",
         function() return db().showCpuUsage end,
         function(v) db().showCpuUsage = v end, r)
+    y = W.AddDropdown(c, y, "Sort By", CPU_SORT_VALUES,
+        function() return db().cpuSortMetric end,
+        function(v) db().cpuSortMetric = v end, r)
     y = W.AddSlider(c, y, "Number of CPU addons to show", 5, 25, 1,
         function() return db().numTopCpuAddons end,
         function(v) db().numTopCpuAddons = v end, r)
     y = W.AddDescription(c, y,
-        "Requires WoW's CPU profiler to be enabled.\n" ..
-        "Enable: /console scriptProfile 1\n" ..
-        "Disable: /console scriptProfile 0\n" ..
-        "A /reload is required after changing this CVar.\n" ..
-        "CPU profiling adds minor overhead; disable when not needed.")
+        "Uses the C_AddOnProfiler API to display per-addon CPU\n" ..
+        "usage as a percentage of total frame time.\n" ..
+        "Shows Current, Average, Encounter, and Peak metrics\n" ..
+        "similar to Simple Addon Manager's profiler view.")
 
     y = ns.AddModuleClickActionsSection(c, r, y, "systemperformance", CLICK_ACTIONS)
 
