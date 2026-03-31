@@ -333,6 +333,31 @@ function TimeDate:CancelHideTimer()
 end
 
 ---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+TimeDate.settingsLabel = "Time / Date"
+
+function TimeDate:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local c = panel.content
+    local r = panel.refreshCallbacks
+    local y = -10
+    local db = function() return ns.db.timedate end
+
+    y = W.AddHeader(c, y, "Display")
+    y = W.AddCheckbox(c, y, "Use 24-hour format",
+        function() return db().use24h end,
+        function(v) db().use24h = v; self:UpdateDisplay() end, r)
+    y = W.AddCheckbox(c, y, "Show seconds",
+        function() return db().showSeconds end,
+        function(v) db().showSeconds = v; self:UpdateDisplay() end, r)
+    y = W.AddCheckbox(c, y, "Show local time on DataText (instead of server time)",
+        function() return db().showLocal end,
+        function(v) db().showLocal = v; self:UpdateDisplay() end, r)
+end
+
+---------------------------------------------------------------------------
 -- Module registration
 ---------------------------------------------------------------------------
 

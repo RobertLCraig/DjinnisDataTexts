@@ -692,6 +692,24 @@ function SavedInst:CancelHideTimer()
 end
 
 ---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+SavedInst.settingsLabel = "Saved Instances"
+
+function SavedInst:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local c = panel.content
+    local y = -10
+
+    y = W.AddHeader(c, y, "Saved Instances")
+    y = W.AddDescription(c, y,
+        "Shows your current raid and dungeon lockouts.\n\n" ..
+        "Click a lockout row in the tooltip to expand/collapse boss kill details.\n\n" ..
+        "If the SavedInstances addon is installed, alt lockouts will also be shown.")
+end
+
+---------------------------------------------------------------------------
 -- Module registration
 ---------------------------------------------------------------------------
 

@@ -332,6 +332,28 @@ function Coordinates:CancelHideTimer()
 end
 
 ---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+Coordinates.settingsLabel = "Coordinates"
+
+function Coordinates:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local c = panel.content
+    local r = panel.refreshCallbacks
+    local y = -10
+    local db = function() return ns.db.coordinates end
+
+    y = W.AddHeader(c, y, "Display")
+    y = W.AddSlider(c, y, "Decimal places", 0, 4, 1,
+        function() return db().coordDecimals end,
+        function(v) db().coordDecimals = v; self:UpdateDisplay() end, r)
+    y = W.AddCheckbox(c, y, "Show zone name on DataText",
+        function() return db().showZoneInLDB end,
+        function(v) db().showZoneInLDB = v; self:UpdateDisplay() end, r)
+end
+
+---------------------------------------------------------------------------
 -- Module registration
 ---------------------------------------------------------------------------
 

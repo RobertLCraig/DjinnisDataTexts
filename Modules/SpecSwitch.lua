@@ -102,8 +102,8 @@ end
 
 ---------------------------------------------------------------------------
 -- Spec switching helper
--- Routes through C_ClassTalents.LoadConfig (which works reliably in
--- Midnight) instead of the often-broken SetSpecialization().
+-- Uses C_SpecializationInfo.SetSpecialization (the working API in
+-- Midnight) — matches ElvUI / EnhanceQoL implementations.
 ---------------------------------------------------------------------------
 
 local function SwitchToSpec(specIndex)
@@ -115,15 +115,7 @@ local function SwitchToSpec(specIndex)
     if not spec then return end
     if specIndex == SpecSwitch.currentSpecIndex then return end
 
-    -- Prefer LoadConfig: switching to a loadout from a different spec
-    -- implicitly switches the specialization.
-    local configID = SpecSwitch.lastConfigBySpec[spec.id]
-    if configID and C_ClassTalents and C_ClassTalents.LoadConfig then
-        C_ClassTalents.LoadConfig(configID, true)
-    else
-        -- Fallback for specs with no saved loadouts
-        SetSpecialization(specIndex)
-    end
+    C_SpecializationInfo.SetSpecialization(specIndex)
 end
 
 ---------------------------------------------------------------------------
@@ -837,6 +829,45 @@ function SpecSwitch:CancelHideTimer()
     if hideTimer then
         hideTimer:Cancel()
         hideTimer = nil
+    end
+end
+
+---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+local SPEC_CLICK_KEYS = {
+    { key = "leftClick",       label = "Left Click" },
+    { key = "rightClick",      label = "Right Click" },
+    { key = "shiftLeftClick",  label = "Shift + Left Click" },
+    { key = "shiftRightClick", label = "Shift + Right Click" },
+    { key = "ctrlLeftClick",   label = "Ctrl + Left Click" },
+    { key = "ctrlRightClick",  label = "Ctrl + Right Click" },
+    { key = "altLeftClick",    label = "Alt + Left Click" },
+    { key = "altRightClick",   label = "Alt + Right Click" },
+}
+
+SpecSwitch.settingsLabel = "Spec Switch"
+
+function SpecSwitch:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local c = panel.content
+    local r = panel.refreshCallbacks
+    local y = -10
+    local db = function() return ns.db.specswitch end
+
+    y = W.AddHeader(c, y, "Label Template")
+    y = W.AddDescription(c, y, "Tags: <spec> <loadout> <lootspec> <role>")
+    y = W.AddEditBox(c, y, "Template",
+        function() return db().labelTemplate end,
+        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+
+    y = W.AddHeader(c, y, "DataText Click Actions")
+    y = W.AddDescription(c, y, "Configure what happens when you click the DataText label.")
+    for _, entry in ipairs(SPEC_CLICK_KEYS) do
+        y = W.AddDropdown(c, y, entry.label, SPEC_ACTION_VALUES,
+            function() return db().clickActions[entry.key] end,
+            function(v) db().clickActions[entry.key] = v end, r)
     end
 end
 
