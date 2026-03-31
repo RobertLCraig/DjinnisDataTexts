@@ -31,9 +31,12 @@ local displayMin  = 0
 ---------------------------------------------------------------------------
 
 local DEFAULTS = {
-    use24h       = true,
-    showLocal    = false,   -- false = server time on LDB, true = local time
-    showSeconds  = false,
+    use24h        = true,
+    showLocal     = false,   -- false = server time on LDB, true = local time
+    showSeconds   = false,
+    labelTemplate = "<time>",
+    tooltipScale  = 1.0,
+    tooltipWidth  = 260,
 }
 
 ---------------------------------------------------------------------------
@@ -84,6 +87,29 @@ local function GetDateString()
 end
 
 ---------------------------------------------------------------------------
+-- Label template expansion
+---------------------------------------------------------------------------
+
+local function ExpandLabel(template, db)
+    local result = template
+    local use24h = db.use24h ~= false
+    local showSec = db.showSeconds
+
+    local sHour, sMin = GetGameTime()
+    local lTime = date("*t")
+
+    if db.showLocal then
+        result = result:gsub("<time>", FormatTime(lTime.hour, lTime.min, showSec and lTime.sec or nil, use24h, showSec))
+    else
+        result = result:gsub("<time>", FormatTime(sHour, sMin, nil, use24h, false))
+    end
+    result = result:gsub("<server>", FormatTime(sHour, sMin, nil, use24h, false))
+    result = result:gsub("<local>", FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
+    result = result:gsub("<date>", GetDateString())
+    return result
+end
+
+---------------------------------------------------------------------------
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
@@ -121,7 +147,15 @@ local elapsed = 0
 
 function TimeDate:Init()
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    eventFrame:SetScript("OnEvent", function()
+    eventFrame:RegisterEvent("CALENDAR_UPDATE_EVENT_LIST")
+    eventFrame:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_ENTERING_WORLD" then
+            C_Timer.After(3, function()
+                if C_Calendar and C_Calendar.OpenCalendar then
+                    C_Calendar.OpenCalendar()
+                end
+            end)
+        end
         TimeDate:UpdateDisplay()
     end)
 
@@ -141,18 +175,7 @@ end
 
 function TimeDate:UpdateDisplay()
     local db = self:GetDB()
-    local use24h = db.use24h ~= false
-    local showSec = db.showSeconds
-
-    local sHour, sMin = GetGameTime()
-    local lTime = date("*t")
-    local lHour, lMin, lSec = lTime.hour, lTime.min, lTime.sec
-
-    if db.showLocal then
-        dataobj.text = FormatTime(lHour, lMin, showSec and lSec or nil, use24h, showSec)
-    else
-        dataobj.text = FormatTime(sHour, sMin, nil, use24h, false)
-    end
+    dataobj.text = ExpandLabel(db.labelTemplate, db)
 
     -- Refresh tooltip if visible
     if tooltipFrame and tooltipFrame:IsShown() then
@@ -296,11 +319,60 @@ function TimeDate:BuildTooltipContent()
     weeklyLine.value:SetTextColor(1.0, 0.82, 0.0)
     y = y - ROW_HEIGHT
 
+    -- Calendar events / holidays
+    if C_Calendar and C_Calendar.GetNumDayEvents then
+        local calTime = C_DateAndTime.GetCurrentCalendarTime()
+        if calTime then
+            local numEvents = C_Calendar.GetNumDayEvents(0, calTime.monthDay)
+            local events = {}
+            for i = 1, numEvents do
+                local event = C_Calendar.GetDayEvent(0, calTime.monthDay, i)
+                if event and event.title then
+                    local ct = event.calendarType
+                    if ct == "HOLIDAY" or ct == "RAID_LOCKOUT" or ct == "RAID_RESET" then
+                        table.insert(events, {
+                            title = event.title,
+                            calendarType = ct,
+                        })
+                    end
+                end
+            end
+
+            if #events > 0 then
+                y = y - 4
+
+                lineIdx = lineIdx + 1
+                local evHdr = GetLine(f, lineIdx)
+                evHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                evHdr.label:SetText("|cffffd100Today's Events|r")
+                evHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                evHdr.value:SetText("")
+                y = y - HEADER_HEIGHT
+
+                for _, ev in ipairs(events) do
+                    lineIdx = lineIdx + 1
+                    local evLine = GetLine(f, lineIdx)
+                    evLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                    evLine.label:SetText(ev.title)
+                    if ev.calendarType == "HOLIDAY" then
+                        evLine.label:SetTextColor(0.0, 0.8, 0.0)
+                    else
+                        evLine.label:SetTextColor(0.7, 0.7, 0.7)
+                    end
+                    evLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                    evLine.value:SetText("")
+                    y = y - ROW_HEIGHT
+                end
+            end
+        end
+    end
+
     -- Hint
     f.hint:SetText("|cff888888LClick: Calendar  |  RClick: Toggle Server/Local|r")
 
+    local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(TOOLTIP_WIDTH, totalHeight)
+    f:SetSize(ttWidth, totalHeight)
 end
 
 function TimeDate:ShowTooltip(anchor)
@@ -310,8 +382,10 @@ function TimeDate:ShowTooltip(anchor)
         tooltipFrame = CreateTooltipFrame()
     end
 
+    local db = self:GetDB()
     tooltipFrame:ClearAllPoints()
     tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:BuildTooltipContent()
     tooltipFrame:Show()
@@ -345,6 +419,12 @@ function TimeDate:BuildSettingsPanel(panel)
     local y = -10
     local db = function() return ns.db.timedate end
 
+    y = W.AddHeader(c, y, "Label Template")
+    y = W.AddDescription(c, y, "Tags: <time> <server> <local> <date>")
+    y = W.AddEditBox(c, y, "Template",
+        function() return db().labelTemplate end,
+        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+
     y = W.AddHeader(c, y, "Display")
     y = W.AddCheckbox(c, y, "Use 24-hour format",
         function() return db().use24h end,
@@ -355,6 +435,14 @@ function TimeDate:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Show local time on DataText (instead of server time)",
         function() return db().showLocal end,
         function(v) db().showLocal = v; self:UpdateDisplay() end, r)
+
+    y = W.AddHeader(c, y, "Tooltip")
+    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = W.AddSlider(c, y, "Width", 200, 500, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
 
     y = W.AddHeader(c, y, "Interactions")
     y = W.AddDescription(c, y,

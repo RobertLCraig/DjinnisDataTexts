@@ -60,16 +60,45 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - OnUpdate at 0.1s interval
   - Events: ZONE_CHANGED, ZONE_CHANGED_INDOORS, ZONE_CHANGED_NEW_AREA, LOADING_SCREEN_DISABLED
 
-## Phase 4: System + Played + Mail — PENDING
-- [ ] Modules/SystemPerformance.lua
-- [ ] Modules/PlayedTime.lua
-- [ ] Modules/Mail.lua
+## Phase 4: System + Played + Mail — COMPLETE
+- [x] Modules/SystemPerformance.lua
+  - FPS, home/world latency, total addon memory
+  - Top addon memory consumers list (configurable count, default 10)
+  - Color-coded values (green/yellow/red thresholds for FPS and latency)
+  - Left-click: garbage collect, right-click: refresh memory stats
+  - OnUpdate at 1s interval
+  - Events: PLAYER_ENTERING_WORLD
+- [x] Modules/PlayedTime.lua
+  - Session timer (real-time), total /played, level /played
+  - Requests TIME_PLAYED_MSG silently on login
+  - Long-form duration in tooltip (days, hours, minutes)
+  - Character name (class-colored) and level in tooltip
+  - Left-click: refresh /played data
+  - OnUpdate at 1s interval
+  - Events: PLAYER_ENTERING_WORLD, TIME_PLAYED_MSG
+- [x] Modules/Mail.lua
+  - Unread mail indicator via HasNewMail()
+  - Mailbox contents scanned on MAIL_SHOW/MAIL_INBOX_UPDATE
+  - Tooltip shows sender, subject, money, attachments, expiry
+  - Icon changes based on mail status
+  - Events: UPDATE_PENDING_MAIL, MAIL_SHOW, MAIL_CLOSED, MAIL_INBOX_UPDATE
 
-## Phase 5: Micro Menu + XP/Rep + Time Phases 2-3 — PENDING
-- [ ] Modules/MicroMenu.lua
-- [ ] Modules/Experience.lua
-- [ ] TimeDate Phase 2 (calendar events, holidays)
-- [ ] TimeDate Phase 3 (multi-timezone)
+## Phase 5: Micro Menu + XP/Rep + Time Enhancements — COMPLETE
+- [x] Modules/MicroMenu.lua
+  - Quick-access clickable rows for all game panels (character, spellbook, talents, achievements, etc.)
+  - 12 menu entries with icons, click to open and auto-dismiss tooltip
+  - Left-click DataText: Game Menu
+- [x] Modules/Experience.lua
+  - XP progress with visual bar (purple fill + blue rested overlay)
+  - Rested XP display
+  - Remaining XP to level
+  - At max level: shows watched reputation with standing and progress bar
+  - Events: PLAYER_XP_UPDATE, PLAYER_LEVEL_UP, UPDATE_EXHAUSTION, UPDATE_FACTION
+- [x] TimeDate Phase 2 (calendar events, holidays)
+  - Tooltip shows today's calendar events (holidays, raid resets)
+  - C_Calendar.OpenCalendar() on login to populate data
+  - CALENDAR_UPDATE_EVENT_LIST event registered
+- [ ] TimeDate Phase 3 (multi-timezone) — deferred
 
 ## Deprioritised
 - Currency/Gold — EnhanceQoL is sufficient; implement later with guild bank, token price, alt gold, expansion-grouped currencies
@@ -84,13 +113,18 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 - Tooltip: dark bg (0.05, 0.05, 0.05, 0.92), gold headers, class-colored names, gray hint bar
 
 ## Current State
-Phase 3 complete. Addon has 7 modules:
+Phase 5 complete. Addon has 12 modules:
 - Guild, Friends, Communities (ported from DGF)
-- SpecSwitch (new — talent/loadout/loot spec switching)
-- SavedInstances (new — lockout summary with boss details and alt integration)
-- TimeDate (new — server/local time, reset countdowns)
-- Coordinates (new — player map coordinates with zone info)
-Ready to begin Phase 4 (System Performance, Played Time, Mail).
+- SpecSwitch (talent/loadout/loot spec switching)
+- SavedInstances (lockout summary with boss details, M+ runs, condensed views, alt integration)
+- TimeDate (server/local time, reset countdowns, calendar events/holidays)
+- Coordinates (player map coordinates with zone info)
+- SystemPerformance (FPS, latency, addon memory)
+- PlayedTime (session timer, total/level played)
+- Mail (unread mail indicator, mailbox contents)
+- MicroMenu (quick-access game panel launcher)
+- Experience (XP progress, rested XP, watched reputation)
+All modules have configurable label templates, tooltip sizing, and settings panels.
 
 ## Blockers
 None.

@@ -185,6 +185,7 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
     editbox:SetSize(380, 20)
     editbox:SetAutoFocus(false)
     editbox:SetText(getter())
+    editbox:SetTextColor(0, 0, 0, 0) -- hide native text; valText overlay renders instead
 
     -- FontString overlay -- always renders reliably inside scroll children
     local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -195,11 +196,13 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
 
     editbox:SetScript("OnEditFocusGained", function(self)
         valText:Hide()
+        self:SetTextColor(1, 1, 1, 1)
         self:SetText(getter())
         self:HighlightText()
     end)
     editbox:SetScript("OnEditFocusLost", function(self)
         self:HighlightText(0, 0)
+        self:SetTextColor(0, 0, 0, 0)
         valText:SetText(getter())
         valText:Show()
     end)
@@ -359,21 +362,6 @@ local function BuildGeneralPanel(panel)
     local r = panel.refreshCallbacks
     local y = -10
 
-    y = AddTooltipSection(c, r, y,
-        "Friends Tooltip", "<online> <total> <offline>",
-        "friends", function() return ns.FriendsBroker end,
-        { label = "Guild", key = "guild" })
-
-    y = AddTooltipSection(c, r, y,
-        "Guild Tooltip", "<online> <total> <offline> <guildname>",
-        "guild", function() return ns.GuildBroker end,
-        { label = "Friends", key = "friends" })
-
-    y = AddTooltipSection(c, r, y,
-        "Communities Tooltip", "<online>",
-        "communities", function() return ns.CommunitiesBroker end,
-        { label = "Friends", key = "friends" })
-
     y = AddHeader(c, y, "Custom URL Templates")
     y = AddDescription(c, y, "Define URL templates for the \"Copy Custom URL\" click actions. Use <name>, <realm>, and <region> as placeholders.  Example: https://www.warcraftlogs.com/character/<region>/<realm>/<name>")
     y = AddEditBox(c, y, "Custom URL 1",
@@ -404,6 +392,27 @@ local function BuildFriendsPanel(panel)
     local c = panel.content
     local r = panel.refreshCallbacks
     local y = -10
+    local db = function() return ns.db.friends end
+    local refresh = function() if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end
+
+    y = AddHeader(c, y, "Label Template")
+    y = AddEditBox(c, y, "Panel Text  (tokens: <online> <total> <offline>)",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r)
+
+    y = AddHeader(c, y, "Tooltip")
+    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = AddSlider(c, y, "Width", 300, 800, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
+    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
+        function() return db().rowSpacing end,
+        function(v) db().rowSpacing = v end, r)
+    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
+        function() return db().tooltipMaxHeight end,
+        function(v) db().tooltipMaxHeight = v end, r)
 
     y = AddHeader(c, y, "Display Filters")
     y = AddCheckbox(c, y, "Show Character Friends",
@@ -448,6 +457,27 @@ local function BuildGuildPanel(panel)
     local c = panel.content
     local r = panel.refreshCallbacks
     local y = -10
+    local db = function() return ns.db.guild end
+    local refresh = function() if ns.GuildBroker then ns.GuildBroker:UpdateData() end end
+
+    y = AddHeader(c, y, "Label Template")
+    y = AddEditBox(c, y, "Panel Text  (tokens: <online> <total> <offline> <guildname>)",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r)
+
+    y = AddHeader(c, y, "Tooltip")
+    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = AddSlider(c, y, "Width", 300, 800, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
+    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
+        function() return db().rowSpacing end,
+        function(v) db().rowSpacing = v end, r)
+    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
+        function() return db().tooltipMaxHeight end,
+        function(v) db().tooltipMaxHeight = v end, r)
 
     y = AddHeader(c, y, "Display Options")
     y = AddCheckbox(c, y, "Class-Colored Names",
@@ -490,6 +520,27 @@ local function BuildCommunitiesPanel(panel)
     local c = panel.content
     local r = panel.refreshCallbacks
     local y = -10
+    local db = function() return ns.db.communities end
+    local refresh = function() if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end
+
+    y = AddHeader(c, y, "Label Template")
+    y = AddEditBox(c, y, "Panel Text  (tokens: <online>)",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r)
+
+    y = AddHeader(c, y, "Tooltip")
+    y = AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = AddSlider(c, y, "Width", 300, 800, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
+    y = AddSlider(c, y, "Row Spacing", 0, 16, 1,
+        function() return db().rowSpacing end,
+        function(v) db().rowSpacing = v end, r)
+    y = AddSlider(c, y, "Max Height", 100, 1000, 10,
+        function() return db().tooltipMaxHeight end,
+        function(v) db().tooltipMaxHeight = v end, r)
 
     y = AddHeader(c, y, "Display Options")
     y = AddCheckbox(c, y, "Class-Colored Names",

@@ -48,6 +48,8 @@ local HINT_HEIGHT    = 18
 
 local DEFAULTS = {
     labelTemplate = "<spec>",
+    tooltipScale  = 1.0,
+    tooltipWidth  = 280,
     clickActions = {
         leftClick      = "opentalents",
         rightClick     = "none",
@@ -204,6 +206,14 @@ local function ExpandLabel(template)
     end
     result = result:gsub("<lootspec>", lootName)
     result = result:gsub("<role>", ROLE_ICONS[SpecSwitch.currentRole] or "")
+
+    -- Spec icon texture
+    local iconStr = ""
+    if SpecSwitch.currentSpecIcon then
+        iconStr = "|T" .. SpecSwitch.currentSpecIcon .. ":14:14:0:0|t"
+    end
+    result = result:gsub("<icon>", iconStr)
+
     return result
 end
 
@@ -791,8 +801,9 @@ function SpecSwitch:BuildTooltipContent()
     f.hint:SetText(BuildSpecHintText(db.clickActions))
 
     -- Size the frame
+    local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
-    f:SetSize(TOOLTIP_WIDTH, totalHeight)
+    f:SetSize(ttWidth, totalHeight)
 end
 
 ---------------------------------------------------------------------------
@@ -806,9 +817,11 @@ function SpecSwitch:ShowTooltip(anchor)
         tooltipFrame = CreateTooltipFrame()
     end
 
-    -- Anchor
+    -- Anchor & scale
+    local db = self:GetDB()
     tooltipFrame:ClearAllPoints()
     tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     -- Build content
     self:UpdateData()
@@ -857,10 +870,18 @@ function SpecSwitch:BuildSettingsPanel(panel)
     local db = function() return ns.db.specswitch end
 
     y = W.AddHeader(c, y, "Label Template")
-    y = W.AddDescription(c, y, "Tags: <spec> <loadout> <lootspec> <role>")
+    y = W.AddDescription(c, y, "Tags: <spec> <loadout> <lootspec> <role> <icon>")
     y = W.AddEditBox(c, y, "Template",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
+
+    y = W.AddHeader(c, y, "Tooltip")
+    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = W.AddSlider(c, y, "Width", 200, 500, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
 
     y = W.AddHeader(c, y, "DataText Click Actions")
     y = W.AddDescription(c, y, "Configure what happens when you click the DataText label.")

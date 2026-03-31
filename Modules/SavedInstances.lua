@@ -58,6 +58,18 @@ local DIFFICULTY_TAGS = {
     [149] = "H",   -- War of the Thorns Heroic
 }
 
+---------------------------------------------------------------------------
+-- Defaults
+---------------------------------------------------------------------------
+
+local DEFAULTS = {
+    labelTemplate   = "<summary>",
+    condensedRaids  = false,
+    condensedMPlus  = false,
+    tooltipScale    = 1.0,
+    tooltipWidth    = 380,
+}
+
 -- Difficulty colors
 local DIFFICULTY_COLORS = {
     N   = { 0.12, 1.00, 0.00 },     -- Green
@@ -127,6 +139,31 @@ function SavedInst:Init()
     eventFrame:RegisterEvent("INSTANCE_LOCK_STOP")
     eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     eventFrame:RegisterEvent("WEEKLY_REWARDS_UPDATE")
+end
+
+function SavedInst:GetDB()
+    return ns.db and ns.db.savedinstances or DEFAULTS
+end
+
+---------------------------------------------------------------------------
+-- Label template expansion
+---------------------------------------------------------------------------
+
+local function ExpandLabel(template)
+    local total = raidCount + dungeonCount
+    local parts = {}
+    if raidCount > 0 then table.insert(parts, raidCount .. "R") end
+    if dungeonCount > 0 then table.insert(parts, dungeonCount .. "D") end
+    if mythicPlusCount > 0 then table.insert(parts, mythicPlusCount .. "M+") end
+    local summary = #parts > 0 and ("Lockouts: " .. table.concat(parts, " ")) or "No Lockouts"
+
+    local result = template
+    result = result:gsub("<summary>", summary)
+    result = result:gsub("<raids>", tostring(raidCount))
+    result = result:gsub("<dungeons>", tostring(dungeonCount))
+    result = result:gsub("<mplus>", tostring(mythicPlusCount))
+    result = result:gsub("<total>", tostring(total))
+    return result
 end
 
 ---------------------------------------------------------------------------
@@ -256,16 +293,8 @@ function SavedInst:UpdateData()
     end
 
     -- Update LDB text
-    local total = raidCount + dungeonCount
-    local parts = {}
-    if raidCount > 0 then table.insert(parts, raidCount .. "R") end
-    if dungeonCount > 0 then table.insert(parts, dungeonCount .. "D") end
-    if mythicPlusCount > 0 then table.insert(parts, mythicPlusCount .. "M+") end
-    if #parts == 0 then
-        dataobj.text = "No Lockouts"
-    else
-        dataobj.text = "Lockouts: " .. table.concat(parts, " ")
-    end
+    local db = self:GetDB()
+    dataobj.text = ExpandLabel(db.labelTemplate)
 
     -- Refresh tooltip if visible
     if tooltipFrame and tooltipFrame:IsShown() then
@@ -504,6 +533,7 @@ function SavedInst:BuildTooltipContent()
     HideAllPooled()
 
     local f = tooltipFrame
+    local db = self:GetDB()
     f.title:SetText("Saved Instances")
 
     local rowIndex = 0
@@ -528,44 +558,108 @@ function SavedInst:BuildTooltipContent()
         colHdr:SetTextColor(0.53, 0.53, 0.53)
         y = y - (HEADER_HEIGHT - 4)
 
-        local showingRaids = false
-        local showingDungeons = false
-
+        -- Separate raids and dungeons
+        local raids, dungeons = {}, {}
         for _, entry in ipairs(lockoutCache) do
-            -- Section header for Raids / Dungeons
-            if entry.isRaid and not showingRaids then
-                showingRaids = true
-                headerIndex = headerIndex + 1
-                local raidHdr = GetHeader(f, headerIndex)
-                raidHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                raidHdr:SetText("Raids")
-                y = y - HEADER_HEIGHT
-            elseif not entry.isRaid and not showingDungeons then
-                showingDungeons = true
-                if showingRaids then
-                    y = y - 4
-                    sepIndex = sepIndex + 1
-                    local sep = GetSeparator(f, sepIndex)
-                    sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                    sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-                    y = y - 6
-                end
-                headerIndex = headerIndex + 1
-                local dungHdr = GetHeader(f, headerIndex)
-                dungHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                dungHdr:SetText("Dungeons")
-                y = y - HEADER_HEIGHT
+            if entry.isRaid then
+                table.insert(raids, entry)
+            else
+                table.insert(dungeons, entry)
             end
+        end
 
-            -- Instance row
-            rowIndex = rowIndex + 1
-            rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+        -- Raids section
+        if #raids > 0 then
+            headerIndex = headerIndex + 1
+            local raidHdr = GetHeader(f, headerIndex)
+            raidHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            raidHdr:SetText("Raids")
+            y = y - HEADER_HEIGHT
 
-            -- Expanded boss list
-            if entry.expanded and #entry.bosses > 0 then
-                for _, boss in ipairs(entry.bosses) do
+            if db.condensedRaids then
+                -- Condensed: group by instance name (same layout as condensed M+)
+                local raidGroups = {}
+                local raidOrder = {}
+                for _, entry in ipairs(raids) do
+                    if not raidGroups[entry.name] then
+                        raidGroups[entry.name] = {}
+                        table.insert(raidOrder, entry.name)
+                    end
+                    table.insert(raidGroups[entry.name], entry)
+                end
+
+                for _, raidName in ipairs(raidOrder) do
+                    local entries = raidGroups[raidName]
+                    local diffParts = {}
+                    for _, entry in ipairs(entries) do
+                        local colors = DIFFICULTY_COLORS[entry.difficultyTag] or { 0.7, 0.7, 0.7 }
+                        local hex = string.format("|cff%02x%02x%02x", colors[1] * 255, colors[2] * 255, colors[3] * 255)
+                        local prog = ""
+                        if entry.numEncounters > 0 then
+                            prog = " " .. entry.encounterProgress .. "/" .. entry.numEncounters
+                        end
+                        table.insert(diffParts, hex .. entry.difficultyTag .. prog .. "|r")
+                    end
+
                     rowIndex = rowIndex + 1
-                    rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                    local row = GetRow(f, rowIndex)
+                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    row:SetHeight(ROW_HEIGHT)
+
+                    row.nameText:SetText(raidName)
+                    row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                    row.diffText:SetText("x" .. #entries)
+                    row.diffText:SetTextColor(0.7, 0.7, 0.7)
+
+                    row.progressText:SetText(table.concat(diffParts, " "))
+                    row.progressText:SetTextColor(1, 1, 1)
+                    row.resetText:SetText("")
+                    row.extendedBar:Hide()
+                    row:SetScript("OnClick", nil)
+
+                    y = y - ROW_HEIGHT
+                end
+            else
+                -- Full view
+                for _, entry in ipairs(raids) do
+                    rowIndex = rowIndex + 1
+                    rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                    if entry.expanded and #entry.bosses > 0 then
+                        for _, boss in ipairs(entry.bosses) do
+                            rowIndex = rowIndex + 1
+                            rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                        end
+                    end
+                end
+            end
+        end
+
+        -- Dungeons section
+        if #dungeons > 0 then
+            if #raids > 0 then
+                y = y - 4
+                sepIndex = sepIndex + 1
+                local sep = GetSeparator(f, sepIndex)
+                sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                y = y - 6
+            end
+            headerIndex = headerIndex + 1
+            local dungHdr = GetHeader(f, headerIndex)
+            dungHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            dungHdr:SetText("Dungeons")
+            y = y - HEADER_HEIGHT
+
+            for _, entry in ipairs(dungeons) do
+                rowIndex = rowIndex + 1
+                rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                if entry.expanded and #entry.bosses > 0 then
+                    for _, boss in ipairs(entry.bosses) do
+                        rowIndex = rowIndex + 1
+                        rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                    end
                 end
             end
         end
@@ -600,33 +694,76 @@ function SavedInst:BuildTooltipContent()
         mpHdr:SetText("Mythic+ This Week (" .. mythicPlusCount .. ")" .. vaultText)
         y = y - HEADER_HEIGHT
 
-        for _, run in ipairs(mythicPlusRuns) do
-            rowIndex = rowIndex + 1
-            local row = GetRow(f, rowIndex)
-            row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-            row:SetHeight(ROW_HEIGHT)
-
-            row.nameText:SetText(run.name)
-            row.nameText:SetTextColor(0.9, 0.9, 0.9)
-
-            -- Level with M+ color
-            local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
-            row.diffText:SetText("+" .. run.level)
-            row.diffText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
-
-            -- Completed / Failed
-            if run.completed then
-                row.progressText:SetText("|cff00cc00Timed|r")
-            else
-                row.progressText:SetText("|cffcc0000Over|r")
+        if db.condensedMPlus then
+            -- Condensed view: group runs by dungeon
+            local dungeonGroups = {}
+            local dungeonOrder = {}
+            for _, run in ipairs(mythicPlusRuns) do
+                if not dungeonGroups[run.name] then
+                    dungeonGroups[run.name] = {}
+                    table.insert(dungeonOrder, run.name)
+                end
+                table.insert(dungeonGroups[run.name], run)
             end
 
-            row.resetText:SetText("")
-            row.extendedBar:Hide()
-            row:SetScript("OnClick", nil)
+            local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+            for _, dungeonName in ipairs(dungeonOrder) do
+                local runs = dungeonGroups[dungeonName]
+                -- Build level list (already sorted desc from mythicPlusRuns)
+                local levels = {}
+                for _, run in ipairs(runs) do
+                    local prefix = run.completed and "|cff00cc00" or "|cffcc0000"
+                    table.insert(levels, prefix .. "+" .. run.level .. "|r")
+                end
 
-            y = y - ROW_HEIGHT
+                rowIndex = rowIndex + 1
+                local row = GetRow(f, rowIndex)
+                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                row:SetHeight(ROW_HEIGHT)
+
+                row.nameText:SetText(dungeonName)
+                row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                row.diffText:SetText("x" .. #runs)
+                row.diffText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+
+                row.progressText:SetText(table.concat(levels, " "))
+                row.progressText:SetTextColor(1, 1, 1)
+                row.resetText:SetText("")
+                row.extendedBar:Hide()
+                row:SetScript("OnClick", nil)
+
+                y = y - ROW_HEIGHT
+            end
+        else
+            -- Full view: one row per run
+            for _, run in ipairs(mythicPlusRuns) do
+                rowIndex = rowIndex + 1
+                local row = GetRow(f, rowIndex)
+                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                row:SetHeight(ROW_HEIGHT)
+
+                row.nameText:SetText(run.name)
+                row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+                row.diffText:SetText("+" .. run.level)
+                row.diffText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+
+                if run.completed then
+                    row.progressText:SetText("|cff00cc00Timed|r")
+                else
+                    row.progressText:SetText("|cffcc0000Over|r")
+                end
+
+                row.resetText:SetText("")
+                row.extendedBar:Hide()
+                row:SetScript("OnClick", nil)
+
+                y = y - ROW_HEIGHT
+            end
         end
     end
 
@@ -640,8 +777,9 @@ function SavedInst:BuildTooltipContent()
     f.hint:SetText("|cff888888LClick: Refresh  |  Shift+LClick: Raid Info  |  Click Row: Bosses|r")
 
     -- Size
+    local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
-    f:SetSize(TOOLTIP_WIDTH, totalHeight)
+    f:SetSize(ttWidth, totalHeight)
 end
 
 ---------------------------------------------------------------------------
@@ -778,9 +916,11 @@ function SavedInst:ShowTooltip(anchor)
         tooltipFrame = CreateTooltipFrame()
     end
 
-    -- Anchor
+    -- Anchor & scale
+    local db = self:GetDB()
     tooltipFrame:ClearAllPoints()
     tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     -- Ensure data is fresh
     self:UpdateData()
@@ -813,13 +953,40 @@ SavedInst.settingsLabel = "Saved Instances"
 function SavedInst:BuildSettingsPanel(panel)
     local W = ns.SettingsWidgets
     local c = panel.content
+    local r = panel.refreshCallbacks
     local y = -10
+    local db = function() return ns.db.savedinstances end
+    local refreshTT = function()
+        if tooltipFrame and tooltipFrame:IsShown() then self:BuildTooltipContent() end
+    end
 
-    y = W.AddHeader(c, y, "Saved Instances")
+    y = W.AddHeader(c, y, "Label Template")
+    y = W.AddDescription(c, y, "Tags: <summary> <raids> <dungeons> <mplus> <total>")
+    y = W.AddEditBox(c, y, "Template",
+        function() return db().labelTemplate end,
+        function(v) db().labelTemplate = v; self:UpdateData() end, r)
+
+    y = W.AddHeader(c, y, "Display")
+    y = W.AddCheckbox(c, y, "Condensed raid view (group difficulties per instance)",
+        function() return db().condensedRaids end,
+        function(v) db().condensedRaids = v; refreshTT() end, r)
+    y = W.AddCheckbox(c, y, "Condensed M+ view (group by dungeon)",
+        function() return db().condensedMPlus end,
+        function(v) db().condensedMPlus = v; refreshTT() end, r)
+
+    y = W.AddHeader(c, y, "Tooltip")
+    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = W.AddSlider(c, y, "Width", 300, 600, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v; refreshTT() end, r)
+
+    y = W.AddHeader(c, y, "Interactions")
     y = W.AddDescription(c, y,
-        "Shows your current raid and dungeon lockouts.\n\n" ..
-        "Click a lockout row in the tooltip to expand/collapse boss kill details.\n\n" ..
-        "If the SavedInstances addon is installed, alt lockouts will also be shown.")
+        "Left-click: Refresh lockout data\n" ..
+        "Shift+Left-click: Open Raid Info\n" ..
+        "Click a lockout row: Expand/collapse boss details")
 
     c:SetHeight(math.abs(y) + 20)
 end
@@ -828,4 +995,4 @@ end
 -- Module registration
 ---------------------------------------------------------------------------
 
-ns:RegisterModule("savedinstances", SavedInst)
+ns:RegisterModule("savedinstances", SavedInst, DEFAULTS)

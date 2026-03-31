@@ -34,8 +34,10 @@ local currentMapID   = nil
 ---------------------------------------------------------------------------
 
 local DEFAULTS = {
-    coordDecimals = 2,
-    showZoneInLDB = false,  -- show zone name alongside coords on LDB text
+    coordDecimals  = 2,
+    labelTemplate  = "<coords>",
+    tooltipScale   = 1.0,
+    tooltipWidth   = 280,
 }
 
 ---------------------------------------------------------------------------
@@ -69,6 +71,19 @@ local function UpdatePosition()
 
     currentZone    = GetZoneText() or ""
     currentSubZone = GetSubZoneText() or ""
+end
+
+---------------------------------------------------------------------------
+-- Label template expansion
+---------------------------------------------------------------------------
+
+local function ExpandLabel(template, db)
+    local result = template
+    result = result:gsub("<coords>", FormatCoords(playerX, playerY, db.coordDecimals))
+    result = result:gsub("<zone>", currentZone or "")
+    result = result:gsub("<subzone>", currentSubZone or "")
+    result = result:gsub("<map>", currentMapName or "")
+    return result
 end
 
 ---------------------------------------------------------------------------
@@ -142,13 +157,7 @@ function Coordinates:UpdateDisplay()
     UpdatePosition()
 
     local db = self:GetDB()
-    local coordStr = FormatCoords(playerX, playerY, db.coordDecimals)
-
-    if db.showZoneInLDB and currentZone ~= "" then
-        dataobj.text = currentZone .. "  " .. coordStr
-    else
-        dataobj.text = coordStr
-    end
+    dataobj.text = ExpandLabel(db.labelTemplate, db)
 
     -- Refresh tooltip if visible
     if tooltipFrame and tooltipFrame:IsShown() then
@@ -298,8 +307,10 @@ function Coordinates:BuildTooltipContent()
     -- Hint
     f.hint:SetText("|cff888888LClick: World Map  |  RClick: Copy to Chat|r")
 
+    local db = self:GetDB()
+    local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(TOOLTIP_WIDTH, totalHeight)
+    f:SetSize(ttWidth, totalHeight)
 end
 
 function Coordinates:ShowTooltip(anchor)
@@ -309,8 +320,10 @@ function Coordinates:ShowTooltip(anchor)
         tooltipFrame = CreateTooltipFrame()
     end
 
+    local db = self:GetDB()
     tooltipFrame:ClearAllPoints()
     tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:BuildTooltipContent()
     tooltipFrame:Show()
@@ -344,13 +357,24 @@ function Coordinates:BuildSettingsPanel(panel)
     local y = -10
     local db = function() return ns.db.coordinates end
 
+    y = W.AddHeader(c, y, "Label Template")
+    y = W.AddDescription(c, y, "Tags: <coords> <zone> <subzone> <map>")
+    y = W.AddEditBox(c, y, "Template",
+        function() return db().labelTemplate end,
+        function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)
+
     y = W.AddHeader(c, y, "Display")
     y = W.AddSlider(c, y, "Decimal places", 0, 4, 1,
         function() return db().coordDecimals end,
         function(v) db().coordDecimals = v; self:UpdateDisplay() end, r)
-    y = W.AddCheckbox(c, y, "Show zone name on DataText",
-        function() return db().showZoneInLDB end,
-        function(v) db().showZoneInLDB = v; self:UpdateDisplay() end, r)
+
+    y = W.AddHeader(c, y, "Tooltip")
+    y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,
+        function() return db().tooltipScale end,
+        function(v) db().tooltipScale = v end, r)
+    y = W.AddSlider(c, y, "Width", 200, 500, 10,
+        function() return db().tooltipWidth end,
+        function(v) db().tooltipWidth = v end, r)
 
     y = W.AddHeader(c, y, "Interactions")
     y = W.AddDescription(c, y,
