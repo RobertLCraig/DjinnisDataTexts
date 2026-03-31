@@ -63,6 +63,9 @@ local function FormatCoords(x, y, decimals)
     return string.format(fmt .. ", " .. fmt, x * 100, y * 100)
 end
 
+local prevX, prevY = -1, -1
+local COORD_THRESHOLD = 0.0001  -- ~0.01% map movement
+
 local function UpdatePosition()
     local mapID = C_Map.GetBestMapForUnit("player")
     currentMapID = mapID
@@ -70,7 +73,13 @@ local function UpdatePosition()
     if mapID then
         local pos = C_Map.GetPlayerMapPosition(mapID, "player")
         if pos then
-            playerX, playerY = pos:GetXY()
+            local newX, newY = pos:GetXY()
+            -- Skip full update if position hasn't meaningfully changed
+            if math.abs(newX - prevX) < COORD_THRESHOLD and math.abs(newY - prevY) < COORD_THRESHOLD then
+                return false  -- no meaningful change
+            end
+            playerX, playerY = newX, newY
+            prevX, prevY = newX, newY
         else
             playerX, playerY = 0, 0
         end
@@ -84,6 +93,7 @@ local function UpdatePosition()
 
     currentZone    = GetZoneText() or ""
     currentSubZone = GetSubZoneText() or ""
+    return true  -- data changed
 end
 
 ---------------------------------------------------------------------------
@@ -156,7 +166,7 @@ Coordinates.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 local elapsed = 0
-local UPDATE_INTERVAL = 0.1
+local UPDATE_INTERVAL = 0.5
 
 function Coordinates:Init()
     eventFrame:RegisterEvent("ZONE_CHANGED")
@@ -169,7 +179,6 @@ function Coordinates:Init()
         Coordinates:UpdateDisplay()
     end)
 
-    -- Coordinates need frequent OnUpdate for smooth display
     eventFrame:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed >= UPDATE_INTERVAL then
@@ -184,7 +193,8 @@ function Coordinates:GetDB()
 end
 
 function Coordinates:UpdateDisplay()
-    UpdatePosition()
+    local changed = UpdatePosition()
+    if not changed then return end
 
     local db = self:GetDB()
     dataobj.text = ExpandLabel(db.labelTemplate, db)

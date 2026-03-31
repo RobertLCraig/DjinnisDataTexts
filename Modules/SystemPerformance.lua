@@ -298,11 +298,17 @@ function SysPerf:Init()
         SysPerf:UpdateData()
     end)
 
+    -- OnUpdate only refreshes fps/latency for the label (cheap).
+    -- Full memory + CPU scan runs only when tooltip is shown.
     eventFrame:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed >= UPDATE_INTERVAL then
             elapsed = 0
-            SysPerf:UpdateData()
+            if tooltipFrame and tooltipFrame:IsShown() then
+                SysPerf:UpdateData()
+            else
+                SysPerf:UpdateLabel()
+            end
         end
     end)
 end
@@ -315,6 +321,15 @@ end
 -- Data collection
 ---------------------------------------------------------------------------
 
+-- Lightweight update: only fps/latency for the LDB label (runs every 1s)
+function SysPerf:UpdateLabel()
+    fps = GetFramerate()
+    latencyHome, latencyWorld = select(3, GetNetStats())
+    local db = self:GetDB()
+    dataobj.text = ExpandLabel(db.labelTemplate)
+end
+
+-- Heavy update: memory + CPU scan (only when tooltip is visible or manually triggered)
 function SysPerf:UpdateData()
     fps = GetFramerate()
     latencyHome, latencyWorld = select(3, GetNetStats())

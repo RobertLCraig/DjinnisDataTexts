@@ -255,6 +255,8 @@ Experience.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 
+local questXPDirty = true  -- flag to re-scan quest XP only when needed
+
 function Experience:Init()
     sessionStartTime = GetTime()
     sessionStartXP = UnitXP("player") or 0
@@ -265,6 +267,8 @@ function Experience:Init()
             if newXP > currentXP then
                 totalXPGained = totalXPGained + (newXP - currentXP)
             end
+        elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_TURNED_IN" or event == "PLAYER_ENTERING_WORLD" then
+            questXPDirty = true
         end
         Experience:UpdateData()
     end)
@@ -301,7 +305,10 @@ function Experience:UpdateData()
         maxXP = UnitXPMax("player") or 1
         restedXP = GetXPExhaustion() or 0
         xpPerHour = CalcXPPerHour()
-        ScanQuestXP()
+        if questXPDirty then
+            ScanQuestXP()
+            questXPDirty = false
+        end
     end
 
     -- Watched faction

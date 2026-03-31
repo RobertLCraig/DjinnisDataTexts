@@ -258,13 +258,14 @@ function MoveSpeed:Init()
         MoveSpeed:UpdateData()
     end)
 
+    -- OnUpdate only polls speed values (cheap). Buff scanning is event-driven via UNIT_AURA.
     eventFrame:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         local db = MoveSpeed:GetDB()
         local interval = db.updateInterval or 0.2
         if elapsed >= interval then
             elapsed = 0
-            MoveSpeed:UpdateData()
+            MoveSpeed:UpdateSpeed()
         end
     end)
 end
@@ -276,6 +277,51 @@ end
 ---------------------------------------------------------------------------
 -- Data collection
 ---------------------------------------------------------------------------
+
+-- Lightweight speed-only poll for OnUpdate (no buff scan)
+function MoveSpeed:UpdateSpeed()
+    local prevPercent = currentPercent
+    currentSpeed, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
+
+    isFlying = IsFlying() or false
+    isSwimming = IsSwimming() or false
+    isGliding = false
+    glideSpeed = 0
+
+    if C_PlayerInfo and C_PlayerInfo.GetGlidingInfo then
+        local gliding, _, fwdSpeed = C_PlayerInfo.GetGlidingInfo()
+        if gliding then
+            isGliding = true
+            glideSpeed = fwdSpeed or 0
+        end
+    end
+
+    runPercent = runSpeed / BASE_SPEED * 100
+    flyPercent = flightSpeed / BASE_SPEED * 100
+    swimPercent = swimSpeed / BASE_SPEED * 100
+
+    if isGliding and glideSpeed > 0 then
+        currentPercent = glideSpeed / BASE_SPEED * 100
+    elseif currentSpeed > 0 then
+        currentPercent = currentSpeed / BASE_SPEED * 100
+    elseif isFlying then
+        currentPercent = flyPercent
+    elseif isSwimming then
+        currentPercent = swimPercent
+    else
+        currentPercent = runPercent
+    end
+
+    -- Only update label/tooltip if speed actually changed
+    if math.abs(currentPercent - prevPercent) < 0.5 then return end
+
+    local db = self:GetDB()
+    dataobj.text = ExpandLabel(db.labelTemplate)
+
+    if tooltipFrame and tooltipFrame:IsShown() then
+        self:BuildTooltipContent()
+    end
+end
 
 function MoveSpeed:UpdateData()
     currentSpeed, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
