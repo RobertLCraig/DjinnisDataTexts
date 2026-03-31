@@ -69,6 +69,7 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 - [x] Modules/SystemPerformance.lua
   - FPS, home/world latency, total addon memory
   - Top addon memory consumers list (configurable count, default 10)
+  - Configurable sort order for addon list (memory asc/desc, name)
   - Color-coded values (green/yellow/red thresholds for FPS and latency)
   - Left-click: garbage collect, right-click: refresh memory stats
   - OnUpdate at 1s interval
@@ -85,6 +86,7 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - Unread mail indicator via HasNewMail()
   - Mailbox contents scanned on MAIL_SHOW/MAIL_INBOX_UPDATE
   - Tooltip shows sender, subject, money, attachments, expiry
+  - Configurable sort order (sender, subject, expiry, unread first)
   - Icon changes based on mail status
   - Events: UPDATE_PENDING_MAIL, MAIL_SHOW, MAIL_CLOSED, MAIL_INBOX_UPDATE
 

@@ -33,10 +33,33 @@ local mailboxOpen = false
 ---------------------------------------------------------------------------
 
 local DEFAULTS = {
-    labelTemplate = "<status>",
-    tooltipScale  = 1.0,
-    tooltipWidth  = 300,
+    labelTemplate  = "<status>",
+    mailSortOrder  = "sender",  -- sender, subject, expiry, unread
+    tooltipScale   = 1.0,
+    tooltipWidth   = 300,
 }
+
+local MAIL_SORT_VALUES = {
+    sender  = "Sender (A-Z)",
+    subject = "Subject (A-Z)",
+    expiry  = "Expiry (Soonest First)",
+    unread  = "Unread First",
+}
+
+local function SortMailItems(items, order)
+    if order == "sender" then
+        table.sort(items, function(a, b) return a.sender < b.sender end)
+    elseif order == "subject" then
+        table.sort(items, function(a, b) return a.subject < b.subject end)
+    elseif order == "expiry" then
+        table.sort(items, function(a, b) return a.daysLeft < b.daysLeft end)
+    elseif order == "unread" then
+        table.sort(items, function(a, b)
+            if a.wasRead ~= b.wasRead then return not a.wasRead end
+            return a.sender < b.sender
+        end)
+    end
+end
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -270,7 +293,9 @@ function Mail:BuildTooltipContent()
     y = y - ROW_HEIGHT
 
     -- Mail items (only available when mailbox has been opened)
+    local db = self:GetDB()
     if #mailItems > 0 then
+        SortMailItems(mailItems, db.mailSortOrder)
         y = y - 4
 
         lineIdx = lineIdx + 1
@@ -348,7 +373,6 @@ function Mail:BuildTooltipContent()
     -- Hint
     f.hint:SetText("|cff888888Visit a mailbox to see mail details|r")
 
-    local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
     f:SetSize(ttWidth, totalHeight)
@@ -403,6 +427,11 @@ function Mail:BuildSettingsPanel(panel)
     y = W.AddEditBox(c, y, "Template",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r)
+
+    y = W.AddHeader(c, y, "Sorting")
+    y = W.AddDropdown(c, y, "Mail Order", MAIL_SORT_VALUES,
+        function() return db().mailSortOrder end,
+        function(v) db().mailSortOrder = v end, r)
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

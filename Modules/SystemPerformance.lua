@@ -38,9 +38,34 @@ local DEFAULTS = {
     labelTemplate    = "<fps> fps  <latency>ms",
     showTopAddons    = true,
     numTopAddons     = 10,
+    addonSortOrder   = "memory_desc",  -- memory_desc, memory_asc, name
     tooltipScale     = 1.0,
     tooltipWidth     = 320,
 }
+
+local ADDON_SORT_VALUES = {
+    memory_desc = "Memory (High \226\134\146 Low)",
+    memory_asc  = "Memory (Low \226\134\146 High)",
+    name        = "Name (A-Z)",
+}
+
+local function SortAddonMemory(list, order)
+    if order == "memory_asc" then
+        table.sort(list, function(a, b)
+            if a.memory ~= b.memory then return a.memory < b.memory end
+            return a.name < b.name
+        end)
+    elseif order == "name" then
+        table.sort(list, function(a, b)
+            return a.name < b.name
+        end)
+    else -- memory_desc (default)
+        table.sort(list, function(a, b)
+            if a.memory ~= b.memory then return a.memory > b.memory end
+            return a.name < b.name
+        end)
+    end
+end
 
 ---------------------------------------------------------------------------
 -- Helpers
@@ -156,8 +181,6 @@ function SysPerf:UpdateData()
             table.insert(addonMemory, { name = name, memory = mem })
         end
     end
-
-    table.sort(addonMemory, function(a, b) return a.memory > b.memory end)
 
     -- Update LDB text
     local db = self:GetDB()
@@ -290,6 +313,7 @@ function SysPerf:BuildTooltipContent()
 
     -- Top addons
     if db.showTopAddons and #addonMemory > 0 then
+        SortAddonMemory(addonMemory, db.addonSortOrder)
         y = y - 4
 
         lineIdx = lineIdx + 1
@@ -318,7 +342,6 @@ function SysPerf:BuildTooltipContent()
     -- Hint
     f.hint:SetText("|cff888888LClick: Collect Garbage  |  RClick: Refresh Memory|r")
 
-    local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
     f:SetSize(ttWidth, totalHeight)
@@ -382,12 +405,16 @@ function SysPerf:BuildSettingsPanel(panel)
     y = W.AddSlider(c, y, "Width", 250, 600, 10,
         function() return db().tooltipWidth end,
         function(v) db().tooltipWidth = v end, r)
+    y = W.AddHeader(c, y, "Addon Memory")
     y = W.AddCheckbox(c, y, "Show top addon memory usage",
         function() return db().showTopAddons end,
         function(v) db().showTopAddons = v end, r)
     y = W.AddSlider(c, y, "Number of addons to show", 5, 25, 1,
         function() return db().numTopAddons end,
         function(v) db().numTopAddons = v end, r)
+    y = W.AddDropdown(c, y, "Sort Order", ADDON_SORT_VALUES,
+        function() return db().addonSortOrder end,
+        function(v) db().addonSortOrder = v end, r)
 
     y = W.AddHeader(c, y, "Interactions")
     y = W.AddDescription(c, y,
