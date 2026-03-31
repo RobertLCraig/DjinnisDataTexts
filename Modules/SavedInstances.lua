@@ -66,6 +66,8 @@ local DEFAULTS = {
     labelTemplate   = "<summary>",
     condensedRaids  = false,
     condensedMPlus  = false,
+    raidSortOrder   = "diff_asc",   -- diff_asc, diff_desc, name, api
+    mplusSortOrder  = "level_asc",  -- level_asc, level_desc, name, api
     tooltipScale    = 1.0,
     tooltipWidth    = 380,
 }
@@ -84,6 +86,80 @@ DIFFICULTY_COLORS["25N"] = DIFFICULTY_COLORS.N
 DIFFICULTY_COLORS["10H"] = DIFFICULTY_COLORS.H
 DIFFICULTY_COLORS["25H"] = DIFFICULTY_COLORS.H
 DIFFICULTY_COLORS["40"]  = DIFFICULTY_COLORS.N
+
+-- Difficulty rank for sort ordering
+local DIFFICULTY_RANK = {
+    T   = 0,
+    LFR = 1,
+    N   = 2,
+    H   = 3,
+    M   = 4,
+    ["M+"]  = 4,
+    ["10N"] = 2, ["25N"] = 2,
+    ["10H"] = 3, ["25H"] = 3,
+    ["40"]  = 1,
+}
+
+-- Sort dropdown values
+local RAID_SORT_VALUES = {
+    diff_asc  = "Difficulty (LFR \226\134\146 Mythic)",
+    diff_desc = "Difficulty (Mythic \226\134\146 LFR)",
+    name      = "Name (A-Z)",
+    api       = "As Received",
+}
+local MPLUS_SORT_VALUES = {
+    level_asc  = "Level (Low \226\134\146 High)",
+    level_desc = "Level (High \226\134\146 Low)",
+    name       = "Name (A-Z)",
+    api        = "As Received",
+}
+
+---------------------------------------------------------------------------
+-- Sort helpers
+---------------------------------------------------------------------------
+
+local function SortRaidEntries(entries, order)
+    if order == "diff_asc" then
+        table.sort(entries, function(a, b)
+            if a.name ~= b.name then return a.name < b.name end
+            local ra, rb = DIFFICULTY_RANK[a.difficultyTag] or 0, DIFFICULTY_RANK[b.difficultyTag] or 0
+            return ra < rb
+        end)
+    elseif order == "diff_desc" then
+        table.sort(entries, function(a, b)
+            if a.name ~= b.name then return a.name < b.name end
+            local ra, rb = DIFFICULTY_RANK[a.difficultyTag] or 0, DIFFICULTY_RANK[b.difficultyTag] or 0
+            return ra > rb
+        end)
+    elseif order == "name" then
+        table.sort(entries, function(a, b)
+            if a.name ~= b.name then return a.name < b.name end
+            local ra, rb = DIFFICULTY_RANK[a.difficultyTag] or 0, DIFFICULTY_RANK[b.difficultyTag] or 0
+            return ra < rb
+        end)
+    end
+    -- "api" = no sort, keep original order
+end
+
+local function SortMPlusRuns(runs, order)
+    if order == "level_desc" then
+        table.sort(runs, function(a, b)
+            if a.level ~= b.level then return a.level > b.level end
+            return a.name < b.name
+        end)
+    elseif order == "level_asc" then
+        table.sort(runs, function(a, b)
+            if a.level ~= b.level then return a.level < b.level end
+            return a.name < b.name
+        end)
+    elseif order == "name" then
+        table.sort(runs, function(a, b)
+            if a.name ~= b.name then return a.name < b.name end
+            return a.level > b.level
+        end)
+    end
+    -- "api" = no sort, keep original order
+end
 
 ---------------------------------------------------------------------------
 -- LDB Data Object
@@ -215,6 +291,7 @@ function SavedInst:UpdateData()
                 end
             end
 
+            local apiIdx = #lockoutCache + 1
             table.insert(lockoutCache, {
                 name             = name or "Unknown",
                 id               = id,
@@ -230,6 +307,7 @@ function SavedInst:UpdateData()
                 encounterProgress = encounterProgress or 0,
                 bosses           = bosses,
                 expanded         = false,
+                apiOrder         = apiIdx,
             })
 
             if isRaid then
@@ -240,15 +318,6 @@ function SavedInst:UpdateData()
         end
     end
 
-    -- Sort: raids first, then alphabetical within each group
-    table.sort(lockoutCache, function(a, b)
-        if a.isRaid ~= b.isRaid then return a.isRaid end
-        if a.name == b.name then
-            return (a.difficultyTag or "") < (b.difficultyTag or "")
-        end
-        return a.name < b.name
-    end)
-
     -- M+ run history (weekly)
     wipe(mythicPlusRuns)
     mythicPlusCount = 0
@@ -257,23 +326,19 @@ function SavedInst:UpdateData()
     if C_MythicPlus and C_MythicPlus.GetRunHistory then
         local runHistory = C_MythicPlus.GetRunHistory(false, true)
         if runHistory then
-            for _, run in ipairs(runHistory) do
+            for idx, run in ipairs(runHistory) do
                 local dungeonName = C_ChallengeMode and C_ChallengeMode.GetMapUIInfo
                     and C_ChallengeMode.GetMapUIInfo(run.mapChallengeModeID) or "Unknown"
                 table.insert(mythicPlusRuns, {
                     name      = dungeonName,
                     level     = run.level,
                     completed = run.completed,
+                    apiOrder  = idx,
                 })
                 if run.completed then
                     mythicPlusCount = mythicPlusCount + 1
                 end
             end
-            -- Sort by level descending
-            table.sort(mythicPlusRuns, function(a, b)
-                if a.level ~= b.level then return a.level > b.level end
-                return a.name < b.name
-            end)
         end
     end
 
@@ -364,29 +429,31 @@ local function GetRow(parent, index)
     row.highlight:SetAllPoints()
     row.highlight:SetColorTexture(1, 1, 1, 0.06)
 
-    -- Instance name (left)
+    -- Instance name (left side, ~35-40% of row)
     row.nameText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.nameText:SetPoint("LEFT", row, "LEFT", 6, 0)
+    row.nameText:SetPoint("RIGHT", row, "CENTER", -35, 0)
     row.nameText:SetJustifyH("LEFT")
+    row.nameText:SetWordWrap(false)
 
-    -- Difficulty tag
-    row.diffText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.diffText:SetJustifyH("CENTER")
-    row.diffText:SetWidth(36)
-
-    -- Progress (e.g. "4/8")
-    row.progressText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    row.progressText:SetJustifyH("CENTER")
-    row.progressText:SetWidth(40)
-
-    -- Reset timer (right)
+    -- Reset timer (far right, fixed width) — created first so others can anchor to it
     row.resetText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     row.resetText:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.resetText:SetJustifyH("RIGHT")
+    row.resetText:SetWidth(56)
 
-    -- Layout: name ... diff ... progress ... reset
-    row.diffText:SetPoint("RIGHT", row.progressText, "LEFT", -4, 0)
-    row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -8, 0)
+    -- Difficulty tag (right of name)
+    row.diffText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.diffText:SetPoint("LEFT", row, "CENTER", -35, 0)
+    row.diffText:SetJustifyH("CENTER")
+    row.diffText:SetWidth(36)
+
+    -- Progress (e.g. "4/8" or condensed "N 4/8  H 2/8") — fills space between diff and reset
+    row.progressText = row:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    row.progressText:SetPoint("LEFT", row.diffText, "RIGHT", 4, 0)
+    row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
+    row.progressText:SetJustifyH("LEFT")
+    row.progressText:SetWordWrap(false)
 
     -- Extended indicator (left bar)
     row.extendedBar = row:CreateTexture(nil, "BACKGROUND")
@@ -558,7 +625,7 @@ function SavedInst:BuildTooltipContent()
         colHdr:SetTextColor(0.53, 0.53, 0.53)
         y = y - (HEADER_HEIGHT - 4)
 
-        -- Separate raids and dungeons
+        -- Separate raids and dungeons, then sort per user setting
         local raids, dungeons = {}, {}
         for _, entry in ipairs(lockoutCache) do
             if entry.isRaid then
@@ -567,6 +634,8 @@ function SavedInst:BuildTooltipContent()
                 table.insert(dungeons, entry)
             end
         end
+        SortRaidEntries(raids, db.raidSortOrder)
+        SortRaidEntries(dungeons, db.raidSortOrder)
 
         -- Raids section
         if #raids > 0 then
@@ -693,6 +762,8 @@ function SavedInst:BuildTooltipContent()
         mpHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
         mpHdr:SetText("Mythic+ This Week (" .. mythicPlusCount .. ")" .. vaultText)
         y = y - HEADER_HEIGHT
+
+        SortMPlusRuns(mythicPlusRuns, db.mplusSortOrder)
 
         if db.condensedMPlus then
             -- Condensed view: group runs by dungeon
@@ -973,6 +1044,14 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddCheckbox(c, y, "Condensed M+ view (group by dungeon)",
         function() return db().condensedMPlus end,
         function(v) db().condensedMPlus = v; refreshTT() end, r)
+
+    y = W.AddHeader(c, y, "Sorting")
+    y = W.AddDropdown(c, y, "Raid / Dungeon Order", RAID_SORT_VALUES,
+        function() return db().raidSortOrder end,
+        function(v) db().raidSortOrder = v; refreshTT() end, r)
+    y = W.AddDropdown(c, y, "Mythic+ Order", MPLUS_SORT_VALUES,
+        function() return db().mplusSortOrder end,
+        function(v) db().mplusSortOrder = v; refreshTT() end, r)
 
     y = W.AddHeader(c, y, "Tooltip")
     y = W.AddSlider(c, y, "Scale", 0.5, 2.0, 0.05,

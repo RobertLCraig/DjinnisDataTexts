@@ -38,8 +38,13 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
   - Difficulty tags with color coding (N/H/M/LFR/M+/legacy)
   - Progress display with color (green=cleared, gold=partial, gray=none)
   - Extended lockout indicator (green left bar)
+  - Configurable sort order for raids/dungeons (difficulty asc/desc, name, API order)
+  - Configurable sort order for M+ runs (level asc/desc, name, API order)
+  - Condensed raid view (group difficulties per instance)
+  - Condensed M+ view (group runs by dungeon)
   - Alt lockouts from SavedInstances addon DB (if present)
   - Alt sorting: max-level first, then alphabetical
+  - Row layout: name (left ~35%), diff+progress+reset (right ~65%)
   - LDB text: "Lockouts: 2R 1D" format
   - Events: UPDATE_INSTANCE_INFO, BOSS_KILL, INSTANCE_LOCK_START/STOP
 
@@ -116,7 +121,7 @@ Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style toolti
 Phase 5 complete. Addon has 12 modules:
 - Guild, Friends, Communities (ported from DGF)
 - SpecSwitch (talent/loadout/loot spec switching)
-- SavedInstances (lockout summary with boss details, M+ runs, condensed views, alt integration)
+- SavedInstances (lockout summary with boss details, M+ runs, condensed views, configurable sort order, alt integration)
 - TimeDate (server/local time, reset countdowns, calendar events/holidays)
 - Coordinates (player map coordinates with zone info)
 - SystemPerformance (FPS, latency, addon memory)
