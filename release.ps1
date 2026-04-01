@@ -1,9 +1,9 @@
 param(
     [string]$OutputDir   = (Join-Path (Split-Path -Parent $MyInvocation.MyCommand.Definition) "releases"),
-    # release (default), beta, or alpha — controls git tag suffix so CurseForge sets the right file type
-    # Release: v1.2.3  →  CurseForge "Release"
-    # Beta:    v1.2.3-beta  →  CurseForge "Beta"
-    # Alpha:   v1.2.3-alpha  →  CurseForge "Alpha"
+    # release (default), beta, or alpha -- controls git tag suffix so CurseForge sets the right file type
+    # Release: v1.2.3        -> CurseForge "Release"
+    # Beta:    v1.2.3-beta   -> CurseForge "Beta"
+    # Alpha:   v1.2.3-alpha  -> CurseForge "Alpha"
     [ValidateSet("release","beta","alpha")]
     [string]$ReleaseType = "release",
     [switch]$DryRun,
@@ -18,7 +18,7 @@ $TocFile          = Join-Path $Root "$AddonName.toc"
 $ReleaseNotesFile = Join-Path $Root "RELEASE_NOTES.md"
 $ChangelogFile    = Join-Path $Root "CHANGELOG.md"
 
-# Resolve gh CLI — check PATH first, then common install locations
+# Resolve gh CLI -- check PATH first, then common install locations
 $_ghCmd = Get-Command "gh" -ErrorAction SilentlyContinue
 $GhExe  = if ($_ghCmd) { $_ghCmd.Source } else { $null }
 if (-not $GhExe) {
@@ -272,7 +272,7 @@ if (-not $DryRun) {
         Write-Success "  Pushed commits"
         if (-not $SkipTag) {
             & git -C $Root push origin $Tag
-            Write-Success "  Pushed tag $Tag  →  CurseForge webhook will trigger packaging as [$ReleaseType]"
+            Write-Success "  Pushed tag $Tag -> CurseForge webhook will trigger packaging as [$ReleaseType]"
         }
     } else {
         Write-Warn "  SkipPush set - run manually: git push origin HEAD && git push origin $Tag"
@@ -289,7 +289,7 @@ $ghAvailable = $null -ne $GhExe
 
 if (-not $ghAvailable) {
     Write-Warn ""
-    Write-Warn "  GitHub CLI (gh) not found — skipping GitHub Release creation."
+    Write-Warn "  GitHub CLI (gh) not found -- skipping GitHub Release creation."
     Write-Warn "  Install from https://cli.github.com then run 'gh auth login'."
     Write-Warn "  To create the release manually:"
     Write-Warn "    gh release create $Tag '$ZipPath' --title '$Tag' --notes-file '$ReleaseNotesFile'"
@@ -320,7 +320,7 @@ if (-not $ghAvailable) {
     if ($LASTEXITCODE -eq 0) {
         Write-Success "  GitHub Release created: https://github.com/RobertLCraig/DjinnisDataTexts/releases/tag/$Tag"
     } else {
-        Write-Warn "  gh release create failed (exit $LASTEXITCODE) — create it manually:"
+        Write-Warn "  gh release create failed (exit $LASTEXITCODE) -- create it manually:"
         Write-Warn "    & '$GhExe' release create $Tag '$ZipPath' --title '$Tag' --notes-file RELEASE_NOTES.md"
     }
 }
