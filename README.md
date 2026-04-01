@@ -146,6 +146,7 @@ Every module supports configurable click actions across 9 modifier combinations:
 - [GreatVaultKeyInfo](https://www.curseforge.com/wow/addons/greatvaultkeyinfo) — Delve tracking inspiration
 - [SavedInstances](https://www.curseforge.com/wow/addons/saved_instances) — Alt lockout data integration
 - [TradeSkillMaster](https://www.tradeskillmaster.com/) — Bag value pricing and shopping list APIs
+- [GoblinToolbox](https://github.com/user/GoblinToolbox) — Warband bank access patterns
 - [Auctionator](https://www.curseforge.com/wow/addons/auctionator) — Shopping list API
 - [SimulationCraft](https://www.simulationcraft.org/) — SimC string generation and addon export
 

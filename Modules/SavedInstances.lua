@@ -546,7 +546,7 @@ function SavedInst:SaveCurrentCharData()
         mythicPlusCount      = mythicPlusCount,
         delveRuns            = dvRuns,
         delveCount           = delveCount,
-        delveTrackedRuns     = delveTrackedRuns,  -- individual completions with names
+        delveTrackedRuns     = CopyTable(delveTrackedRuns),
         -- Updated only when M+ runs exist; used for mplus30/60/90/180 filters
         mythicPlusLastActive = (mythicPlusCount > 0) and now or (existing.mythicPlusLastActive or 0),
     }

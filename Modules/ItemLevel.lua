@@ -263,18 +263,26 @@ ItemLevel.dataobj = dataobj
 ---------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
+local pendingItemInfoUpdate = nil  -- debounce timer for GET_ITEM_INFO_RECEIVED
 
 function ItemLevel:Init()
-    eventFrame:SetScript("OnEvent", function(_, event)
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then
             C_Timer.After(2, function() ItemLevel:UpdateData() end)
+        elseif event == "GET_ITEM_INFO_RECEIVED" then
+            -- Fires for ALL items in the game; debounce to avoid spamming UpdateData
+            if not pendingItemInfoUpdate then
+                pendingItemInfoUpdate = C_Timer.NewTimer(0.5, function()
+                    pendingItemInfoUpdate = nil
+                    ItemLevel:UpdateData()
+                end)
+            end
         else
             ItemLevel:UpdateData()
         end
     end)
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
-    eventFrame:RegisterEvent("ITEM_LOCK_CHANGED")
     eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
 end
 

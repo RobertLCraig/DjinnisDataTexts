@@ -515,17 +515,22 @@ function ns.FormatGold(copper, colorize, opts)
             if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
             if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
         else
-            str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
+            local goldStr = InsertSeparators(tostring(gold), fmt.sep)
+            str = goldStr .. "g"
+            if showSilver then str = str .. string.format(" %ds", silver) end
+            if showCopper then str = str .. string.format(" %dc", cop) end
         end
     else
         -- Full number gold
+        local goldStr = InsertSeparators(tostring(gold), fmt.sep)
         if colorize then
-            local goldStr = InsertSeparators(tostring(gold), fmt.sep)
             str = string.format("|cffe6cc80%s|r|cffe6cc80g|r", goldStr)
             if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
             if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
         else
-            str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
+            str = goldStr .. "g"
+            if showSilver then str = str .. string.format(" %ds", silver) end
+            if showCopper then str = str .. string.format(" %dc", cop) end
         end
     end
 
