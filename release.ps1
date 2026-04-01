@@ -108,10 +108,11 @@ if ($tagExists -contains $Tag) {
     Write-Warn "  Tag '$Tag' already exists - auto-bumping patch version..."
 
     # Parse numeric version and increment patch until a free tag is found
+    # Strip any pre-release suffix (e.g. "0-beta" -> "0") before casting to int
     $parts = $Version.Split('.')
     $major = [int]$parts[0]
     $minor = [int]$parts[1]
-    $patch = [int]$parts[2]
+    $patch = [int]($parts[2] -replace '[^0-9].*', '')
 
     do {
         $patch++
