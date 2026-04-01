@@ -765,8 +765,8 @@ local FACTORY_PADDING     = 10
 local FACTORY_HEADER_H    = 20
 local FACTORY_SEP_GAP     = 3   -- gap below header before separator
 local FACTORY_CONTENT_GAP = 6   -- gap below separator before content
-local FACTORY_HINT_H      = 22  -- hint bar height reservation
-local FACTORY_HINT_H_NONE = 4   -- bottom padding when no hint
+local FACTORY_HINT_H      = 28  -- hint bar height reservation (minimum, grows with wrap)
+local FACTORY_HINT_H_NONE = 8   -- bottom padding when no hint
 
 --- Create a scrollable tooltip frame with standard DDT styling.
 --- All content should be placed on f.content (the scroll child).
@@ -806,10 +806,18 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     f.titleSep:SetHeight(1)
     f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
 
+    -- Hint bar separator line (repositioned in FinalizeLayout)
+    f.hintSep = f:CreateTexture(nil, "ARTWORK")
+    f.hintSep:SetPoint("LEFT", f, "LEFT", FACTORY_PADDING, 0)
+    f.hintSep:SetPoint("RIGHT", f, "RIGHT", -FACTORY_PADDING, 0)
+    f.hintSep:SetHeight(1)
+    f.hintSep:SetColorTexture(0.3, 0.3, 0.3, 0.5)
+    f.hintSep:Hide()
+
     -- Hint bar (anchored to bottom of outer frame)
     f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", FACTORY_PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -FACTORY_PADDING, 8)
+    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", FACTORY_PADDING, 10)
+    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -FACTORY_PADDING, 10)
     f.hint:SetJustifyH("CENTER")
     f.hint:SetTextColor(0.53, 0.53, 0.53)
 
@@ -906,7 +914,15 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
                          + self.headerExtra
         local hintText = self.hint:GetText()
         local hasHint  = hintText and hintText ~= ""
-        local hintH    = hasHint and FACTORY_HINT_H or FACTORY_HINT_H_NONE
+        local hintH
+        if hasHint then
+            -- Measure actual wrapped height by pre-sizing the hint to the tooltip's inner width
+            self.hint:SetWidth(innerWidth)
+            hintH = math.max(FACTORY_HINT_H, math.ceil(self.hint:GetStringHeight()) + 14)
+            self.hint:SetWidth(0)  -- clear; anchors will control it once frame is sized
+        else
+            hintH = FACTORY_HINT_H_NONE
+        end
 
         -- Determine max scroll area height
         local db = moduleRef.GetDB and moduleRef:GetDB() or {}
@@ -930,6 +946,16 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
 
         -- Set outer frame size
         self:SetSize(width, fixedTop + scrollAreaH + hintH)
+
+        -- Position hint separator at top of hint zone
+        if hasHint then
+            self.hintSep:ClearAllPoints()
+            self.hintSep:SetPoint("BOTTOMLEFT", self, "BOTTOMLEFT", padding, hintH - 1)
+            self.hintSep:SetPoint("BOTTOMRIGHT", self, "BOTTOMRIGHT", -padding, hintH - 1)
+            self.hintSep:Show()
+        else
+            self.hintSep:Hide()
+        end
 
         -- Update scrollbar visibility
         DDT:UpdateScrollbar(self)
