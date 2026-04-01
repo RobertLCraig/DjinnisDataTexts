@@ -312,13 +312,20 @@ if (-not $ghAvailable) {
     $tmpNotes = [System.IO.Path]::GetTempFileName()
     [System.IO.File]::WriteAllText($tmpNotes, $notesBody, (New-Object System.Text.UTF8Encoding $false))
 
+    # Attach zip with a versioned display label (shown as download filename on the release page)
+    $ZipLabel  = "$AddonName-$Tag.zip"
+    $ZipAsset  = "${ZipPath}#${ZipLabel}"
+
     $ghArgs = @(
         "release", "create", $Tag,
-        $ZipPath,
+        $ZipAsset,
         "--title", $Tag,
         "--notes-file", $tmpNotes
     )
-    if ($isPrerelease) { $ghArgs += "--prerelease" }
+    if ($isPrerelease) {
+        $ghArgs += "--prerelease"
+        $ghArgs += "--latest=false"
+    }
 
     & $GhExe @ghArgs
     Remove-Item $tmpNotes -Force
