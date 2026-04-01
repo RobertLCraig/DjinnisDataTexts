@@ -119,8 +119,8 @@ end
 -- Helpers
 ---------------------------------------------------------------------------
 
-local function FormatGold(copper, colorize)
-    return ns.FormatGold(copper, colorize)
+local function FormatGold(copper, colorize, opts)
+    return ns.FormatGold(copper, colorize, opts)
 end
 
 local function FormatGoldShort(copper)
@@ -581,7 +581,7 @@ function Currency:BuildTooltipContent()
     goldLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
     goldLine.label:SetText("|cffffffffGold|r")
     goldLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
-    goldLine.value:SetText(FormatGold(currentGold, true))
+    goldLine.value:SetText(FormatGold(currentGold, nil))
     goldLine.value:SetTextColor(1, 1, 1)
     y = y - ROW_HEIGHT
 
@@ -923,7 +923,7 @@ function Currency:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.currency end
 
-    local body = W.AddSection(panel, "Label Template")
+    local body = W.AddSection(panel, "Label & Gold Display")
     local y = 0
     y = W.AddLabelEditBox(body, y, "gold session token warbank auctions",
         function() return db().labelTemplate end,
@@ -934,10 +934,23 @@ function Currency:BuildSettingsPanel(panel)
         { "Warband",    "<gold>  WB: <warbank>" },
         { "Full",       "<gold> (<session>)  <auctions> auctions" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Gold")
-    y = 0
+    -- Live label preview
+    local labelPreview = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    labelPreview:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
+    labelPreview:SetText("Label preview:")
+    local labelPreviewVal = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    labelPreviewVal:SetPoint("LEFT", labelPreview, "RIGHT", 8, 0)
+    local function UpdateLabelPreview()
+        labelPreviewVal:SetText("|cff66c7ff" .. (self.dataobj.text or "") .. "|r")
+    end
+    UpdateLabelPreview()
+    table.insert(r, UpdateLabelPreview)
+    y = y - 20
+
+    y = W.AddDescription(body, y,
+        "|cff888888Gold formatting (colors, silver/copper, separators) is\n" ..
+        "configured in the main DDT settings > Gold Display.|r")
     y = W.AddCheckbox(body, y, "Show session gold change",
         function() return db().showSessionChange end,
         function(v) db().showSessionChange = v end, r)

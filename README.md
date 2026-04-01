@@ -5,13 +5,13 @@ Works with any LDB display addon (ElvUI, Titan Panel, Bazooka, ChocolateBar, etc
 
 ## Summary
 
-Djinni's Data Texts (DDT) provides 19 information-rich DataText modules covering social, character, economy, instance, time/location, and system categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
+Djinni's Data Texts (DDT) provides 20 information-rich DataText modules covering social, character, economy, instance, time/location, and system categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
 
 DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing settings on first load.
 
 ## Features
 
-- **19 DataText modules** covering every major information category
+- **20 DataText modules** covering every major information category
 - **Configurable label templates** with `<tag>` syntax, clickable tag-insert buttons, and preset suggestions in settings
 - **Global number formatting** with 8 locale presets (US, EU, French/SI, plain, custom) -- configurable thousands separator, decimal point, and abbreviation (k/m/b vs full numbers)
 - **Configurable click actions** with 9 modifier combinations (Left, Right, Middle, Shift, Ctrl, Alt) on every module
@@ -44,6 +44,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Account Status** | At-a-glance warband bank access and pet journal unlock indicators for multiboxers. |
 | **Character Info** | Name, realm, class, race, level, item level. Optional shard ID detection (opt-in). |
 | **Experience** | XP bar with rested overlay, XP/hr tracking, quest XP sum, time-to-level estimate. Shows watched reputation at max level. |
+| **Item Level** | Equipped item level, per-slot breakdown with quality colors. Missing enchants/gems detection. SimC string copy, Auctionator/TSM shopping lists for missing enhancements. AH gear upgrade search. |
 | **Spec Switch** | Active spec, talent loadout switching, loot spec selection. Shows all specs with role icons and loadouts. |
 | **Movement Speed** | Current/base speed as %, ground/fly/swim/skyriding speeds, active speed buff detection. Shopping list integration (Auctionator/TSM) for Midnight-era speed consumables. |
 
@@ -66,7 +67,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | Module | Description |
 |--------|-------------|
 | **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Assigned role tracking shows which role you were accepted as. Live wait time and elapsed counters. Icon changes based on queue state. |
-| **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. |
+| **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, delve tracking with instance names and tiers. Difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. Column hover highlighting for improved alt data readability. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 
 ![Saved Instances](Docs/SavedInstances.png) ![Saved Instances (extended)](Docs/SavedInstances2.png) ![Saved Instances (condensed)](Docs/SavedInstances3.png)
@@ -125,7 +126,7 @@ Every module supports configurable click actions across 9 modifier combinations:
 ## Dependencies
 
 - **Required**: LibStub, CallbackHandler-1.0, LibDataBroker-1.1 (bundled)
-- **Optional**: ElvUI (LDB display), TradeSkillMaster (bag value pricing), SavedInstances (alt lockout data), Auctionator (shopping lists), TomTom (waypoints)
+- **Optional**: ElvUI (LDB display), TradeSkillMaster (bag value pricing, TSM shopping lists), SavedInstances (alt lockout data), Auctionator (shopping lists), SimulationCraft (ItemLevel SimC export), TomTom (waypoints)
 
 ## Slash Commands
 
@@ -142,9 +143,11 @@ Every module supports configurable click actions across 9 modifier combinations:
 - [Shadow & Light](https://www.tukui.org/addons.php?id=38) — Extended DataText ideas
 - [WindTools](https://github.com/wind-addons/ElvUI_WindTools) — Additional DataText modules
 - [EnhanceQoL](https://www.curseforge.com/wow/addons/enhanceqol) — System/performance DataText patterns
+- [GreatVaultKeyInfo](https://www.curseforge.com/wow/addons/greatvaultkeyinfo) — Delve tracking inspiration
 - [SavedInstances](https://www.curseforge.com/wow/addons/saved_instances) — Alt lockout data integration
-- [TradeSkillMaster](https://www.tradeskillmaster.com/) — Bag value pricing API
-- [GoblinToolbox](https://github.com/user/GoblinToolbox) — Warband bank access patterns
+- [TradeSkillMaster](https://www.tradeskillmaster.com/) — Bag value pricing and shopping list APIs
+- [Auctionator](https://www.curseforge.com/wow/addons/auctionator) — Shopping list API
+- [SimulationCraft](https://www.simulationcraft.org/) — SimC string generation and addon export
 
 ## License
 

@@ -106,6 +106,9 @@ ns.defaults = {
         numberSep = ",",
         numberDec = ".",
         numberAbbr = true,
+        goldColorize = true,
+        goldShowSilver = true,
+        goldShowCopper = true,
     },
     communities = {
         labelFormat = "Communities: <online>",
@@ -469,18 +472,31 @@ end
 
 --- Format gold/silver/copper, respecting global format settings.
 --- @param copper number  Amount in copper
---- @param colorize boolean|nil  Add WoW color codes (for tooltips)
+--- @param colorize boolean|nil  Add WoW color codes (for tooltips). Uses global goldColorize when nil.
 --- @return string
-function ns.FormatGold(copper, colorize)
+--- @param opts table|nil  Optional: { showSilver = bool, showCopper = bool }. Uses global settings when nil.
+function ns.FormatGold(copper, colorize, opts)
     if not copper then return "0g" end
     local negative = copper < 0
     if negative then copper = -copper end
 
-    local gold = math.floor(copper / 10000)
+    local gold   = math.floor(copper / 10000)
     local silver = math.floor((copper % 10000) / 100)
-    local cop = copper % 100
+    local cop    = copper % 100
 
-    local fmt = GetFormatSettings()
+    local fmt        = GetFormatSettings()
+    local gdb        = ns.db and ns.db.global or {}
+    -- Use opts overrides if provided, otherwise fall back to global settings
+    local showSilver, showCopper
+    if opts then
+        showSilver = opts.showSilver ~= false
+        showCopper = opts.showCopper ~= false
+    else
+        showSilver = gdb.goldShowSilver ~= false
+        showCopper = gdb.goldShowCopper ~= false
+    end
+    -- Colorize: explicit param wins, then global setting
+    if colorize == nil then colorize = gdb.goldColorize ~= false end
     local str
 
     if fmt.abbr then
@@ -495,8 +511,9 @@ function ns.FormatGold(copper, colorize)
             str = val .. "K g"
         elseif colorize then
             local goldStr = gold >= 1 and InsertSeparators(tostring(gold), fmt.sep) or "0"
-            str = string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
-                goldStr, silver, cop)
+            str = string.format("|cffe6cc80%s|r|cffe6cc80g|r", goldStr)
+            if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
+            if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
         else
             str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
         end
@@ -504,8 +521,9 @@ function ns.FormatGold(copper, colorize)
         -- Full number gold
         if colorize then
             local goldStr = InsertSeparators(tostring(gold), fmt.sep)
-            str = string.format("|cffffff00%s|r|cffe6cc80g|r |cffc0c0c0%d|r|cffc0c0c0s|r |cffcc7722%d|r|cffcc7722c|r",
-                goldStr, silver, cop)
+            str = string.format("|cffe6cc80%s|r|cffe6cc80g|r", goldStr)
+            if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
+            if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
         else
             str = string.format("%sg %ds %dc", InsertSeparators(tostring(gold), fmt.sep), silver, cop)
         end
@@ -959,6 +977,67 @@ function ns.CopyURL(url)
         ns.addon:Print("Copied: " .. url)
     else
         ChatFrameUtil.OpenChat(url)
+    end
+end
+
+--- Copy text to clipboard with an optional popup for multi-line text.
+--- @param text string  Text to copy
+--- @param label string|nil  Label shown in print message
+function DDT:CopyToClipboard(text, label)
+    if C_Clipboard and C_Clipboard.SetText then
+        C_Clipboard.SetText(text)
+        self:Print("Copied " .. (label or "text") .. " to clipboard.")
+    else
+        -- Fallback: show a popup with selectable text
+        if not DDTCopyFrame then
+            local f = CreateFrame("Frame", "DDTCopyFrame", UIParent, "BackdropTemplate")
+            f:SetSize(500, 300)
+            f:SetPoint("CENTER")
+            f:SetFrameStrata("DIALOG")
+            f:SetBackdrop({
+                bgFile = "Interface\\ChatFrame\\ChatFrameBackground",
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                edgeSize = 14, insets = { left = 3, right = 3, top = 3, bottom = 3 },
+            })
+            f:SetBackdropColor(0.1, 0.1, 0.1, 0.95)
+            f:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+            f:EnableMouse(true)
+            f:SetMovable(true)
+            f:RegisterForDrag("LeftButton")
+            f:SetScript("OnDragStart", f.StartMoving)
+            f:SetScript("OnDragStop", f.StopMovingOrSizing)
+
+            local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+            title:SetPoint("TOP", 0, -10)
+            title:SetText("DDT — Copy Text")
+            f.titleText = title
+
+            local scroll = CreateFrame("ScrollFrame", "DDTCopyScroll", f, "UIPanelScrollFrameTemplate")
+            scroll:SetPoint("TOPLEFT", 12, -34)
+            scroll:SetPoint("BOTTOMRIGHT", -30, 36)
+
+            local edit = CreateFrame("EditBox", "DDTCopyEditBox", scroll)
+            edit:SetMultiLine(true)
+            edit:SetAutoFocus(true)
+            edit:SetFontObject("GameFontHighlight")
+            edit:SetWidth(440)
+            edit:SetScript("OnEscapePressed", function() f:Hide() end)
+            scroll:SetScrollChild(edit)
+            f.editBox = edit
+
+            local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
+            close:SetPoint("TOPRIGHT", -2, -2)
+
+            local hint = f:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+            hint:SetPoint("BOTTOM", 0, 12)
+            hint:SetText("Ctrl+A to select all, Ctrl+C to copy, Escape to close")
+        end
+
+        DDTCopyFrame.titleText:SetText("DDT — " .. (label or "Copy Text"))
+        DDTCopyFrame.editBox:SetText(text)
+        DDTCopyFrame:Show()
+        DDTCopyFrame.editBox:HighlightText()
+        DDTCopyFrame.editBox:SetFocus()
     end
 end
 

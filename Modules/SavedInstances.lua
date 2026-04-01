@@ -21,6 +21,17 @@ local mythicPlusRuns = {}   -- { { name, level, completed } }  sorted by level d
 local mythicPlusCount = 0   -- total completed M+ runs this week
 local vaultProgress = {}    -- { { progress, threshold, level } }  Great Vault tiers
 
+-- Delve run history cache (uses Great Vault "World" threshold type)
+local delveRuns = {}        -- { { tier, count } }  sorted by tier desc
+local delveCount = 0        -- total delve completions this week
+local delveVaultProgress = {} -- { { progress, threshold, level } }  Great Vault World tiers
+
+-- Delve self-tracking: captures individual completions with instance names
+-- Stored in DjinnisDataTextsDB.delveHistory[charKey] = { weekStart = N, runs = { { name, tier, timestamp }, ... } }
+local delveTrackedRuns = {}     -- { { name, tier, timestamp } }  individual completions this week
+local preDelveVaultSnapshot = nil   -- snapshot of vault data taken on zone-in, used to determine tier on completion
+local isInDelve = false         -- true when inside a delve instance
+
 -- Tooltip
 local tooltipFrame = nil
 local hideTimer = nil
@@ -69,6 +80,9 @@ local DEFAULTS = {
     labelTemplate   = "<summary>",
     condensedRaids  = false,
     condensedMPlus  = false,
+    showDelves      = true,
+    condensedDelves = false,
+    delveSortOrder  = "tier_desc",  -- tier_desc, tier_asc, count_desc, count_asc
     raidSortOrder   = "diff_asc",   -- diff_asc, diff_desc, name, api
     mplusSortOrder  = "level_asc",  -- level_asc, level_desc, name, api
     tooltipScale    = 1.0,
@@ -159,6 +173,12 @@ local MPLUS_SORT_VALUES = {
     name       = "Name (A-Z)",
     api        = "As Received",
 }
+local DELVE_SORT_VALUES = {
+    tier_desc  = "Tier (High > Low)",
+    tier_asc   = "Tier (Low > High)",
+    count_desc = "Count (High > Low)",
+    count_asc  = "Count (Low > High)",
+}
 
 ---------------------------------------------------------------------------
 -- Sort helpers
@@ -205,6 +225,155 @@ local function SortMPlusRuns(runs, order)
         end)
     end
     -- "api" = no sort, keep original order
+end
+
+local function SortDelveRuns(runs, order)
+    if order == "tier_desc" then
+        table.sort(runs, function(a, b) return a.tier > b.tier end)
+    elseif order == "tier_asc" then
+        table.sort(runs, function(a, b) return a.tier < b.tier end)
+    elseif order == "count_desc" then
+        table.sort(runs, function(a, b)
+            if a.count ~= b.count then return a.count > b.count end
+            return a.tier > b.tier
+        end)
+    elseif order == "count_asc" then
+        table.sort(runs, function(a, b)
+            if a.count ~= b.count then return a.count < b.count end
+            return a.tier > b.tier
+        end)
+    end
+end
+
+---------------------------------------------------------------------------
+-- Delve self-tracking helpers
+---------------------------------------------------------------------------
+
+-- Get the weekly reset timestamp (start of current week)
+local function GetCurrentWeekStart()
+    if C_DateAndTime and C_DateAndTime.GetSecondsUntilWeeklyReset then
+        local secsLeft = C_DateAndTime.GetSecondsUntilWeeklyReset()
+        -- Weekly reset is 7 days from now minus remaining seconds
+        return time() + secsLeft - (7 * 86400)
+    end
+    return 0
+end
+
+-- Load tracked delve runs from SavedVariables for this character
+local function LoadDelveHistory()
+    wipe(delveTrackedRuns)
+    if not ns.db then return end
+    if not ns.db.delveHistory then ns.db.delveHistory = {} end
+
+    local playerKey = UnitName("player") .. " - " .. GetRealmName()
+    local charData = ns.db.delveHistory[playerKey]
+    if not charData then return end
+
+    -- Check weekly reset — clear stale data
+    local weekStart = GetCurrentWeekStart()
+    if (charData.weekStart or 0) < weekStart then
+        charData.runs = {}
+        charData.weekStart = weekStart
+        return
+    end
+
+    for _, run in ipairs(charData.runs or {}) do
+        table.insert(delveTrackedRuns, { name = run.name, tier = run.tier, timestamp = run.timestamp })
+    end
+end
+
+-- Save tracked delve runs to SavedVariables
+local function SaveDelveHistory()
+    if not ns.db then return end
+    if not ns.db.delveHistory then ns.db.delveHistory = {} end
+
+    local playerKey = UnitName("player") .. " - " .. GetRealmName()
+    local runs = {}
+    for _, run in ipairs(delveTrackedRuns) do
+        table.insert(runs, { name = run.name, tier = run.tier, timestamp = run.timestamp })
+    end
+    ns.db.delveHistory[playerKey] = {
+        weekStart = GetCurrentWeekStart(),
+        runs = runs,
+    }
+end
+
+-- Take a snapshot of the vault's World progress before a delve starts
+local function SnapshotVaultProgress()
+    if not (C_WeeklyRewards and C_WeeklyRewards.GetSortedProgressForActivity) then return nil end
+    local sorted = C_WeeklyRewards.GetSortedProgressForActivity(Enum.WeeklyRewardChestThresholdType.World, true)
+    if not sorted then return nil end
+    local snap = {}
+    for _, entry in ipairs(sorted) do
+        snap[entry.difficulty] = (snap[entry.difficulty] or 0) + entry.numPoints
+    end
+    return snap
+end
+
+-- Determine the tier of the delve just completed by diffing vault snapshots
+local function DetermineCompletedTier(priorSnap)
+    if not (C_WeeklyRewards and C_WeeklyRewards.GetSortedProgressForActivity) then return nil end
+    local sorted = C_WeeklyRewards.GetSortedProgressForActivity(Enum.WeeklyRewardChestThresholdType.World, true)
+    if not sorted then return nil end
+
+    local currentSnap = {}
+    for _, entry in ipairs(sorted) do
+        currentSnap[entry.difficulty] = (currentSnap[entry.difficulty] or 0) + entry.numPoints
+    end
+
+    if not priorSnap then return nil end
+    -- Find the tier where count increased
+    for tier, count in pairs(currentSnap) do
+        local priorCount = priorSnap[tier] or 0
+        if count > priorCount then
+            return tier
+        end
+    end
+    return nil
+end
+
+-- Check if we're currently in a delve instance
+local function CheckIsInDelve()
+    if C_DelvesUI and C_DelvesUI.HasActiveDelve then
+        local _, _, _, mapID = UnitPosition("player")
+        if mapID then
+            return C_DelvesUI.HasActiveDelve(mapID)
+        end
+    end
+    -- Fallback: check C_PartyInfo
+    if C_PartyInfo and C_PartyInfo.IsDelveInProgress then
+        return C_PartyInfo.IsDelveInProgress()
+    end
+    return false
+end
+
+-- Called when SCENARIO_COMPLETED fires while in a delve
+local function OnDelveCompleted()
+    local instanceName = GetInstanceInfo()
+    local tier = DetermineCompletedTier(preDelveVaultSnapshot)
+
+    -- If vault diff didn't work, try to estimate from the instance difficulty name
+    if not tier then
+        local _, _, difficultyID, difficultyName = GetInstanceInfo()
+        -- Blizzard source: difficulties above 1 are guaranteed to be Delves
+        -- difficultyName often contains the tier, e.g. "Level 8"
+        local levelMatch = difficultyName and difficultyName:match("(%d+)")
+        if levelMatch then
+            tier = tonumber(levelMatch)
+        end
+    end
+
+    tier = tier or 0
+
+    table.insert(delveTrackedRuns, {
+        name = instanceName or "Unknown Delve",
+        tier = tier,
+        timestamp = time(),
+    })
+    SaveDelveHistory()
+
+    -- Refresh data so tooltip updates
+    SavedInst:UpdateData()
 end
 
 ---------------------------------------------------------------------------
@@ -259,7 +428,7 @@ SavedInst.dataobj = dataobj
 local eventFrame = CreateFrame("Frame")
 
 function SavedInst:Init()
-    eventFrame:SetScript("OnEvent", function(_, event)
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then
             -- Delay initial request to avoid login congestion
             C_Timer.After(3, function()
@@ -267,7 +436,36 @@ function SavedInst:Init()
                 if C_MythicPlus and C_MythicPlus.RequestMapInfo then
                     C_MythicPlus.RequestMapInfo()
                 end
+                LoadDelveHistory()
+                SavedInst:UpdateData()
+                -- Also check delve state on login/reload
+                isInDelve = CheckIsInDelve()
+                if isInDelve then
+                    preDelveVaultSnapshot = SnapshotVaultProgress()
+                end
             end)
+        elseif event == "ZONE_CHANGED_NEW_AREA" then
+            -- Track delve zone-in: snapshot vault data for tier detection
+            C_Timer.After(1, function()
+                local wasInDelve = isInDelve
+                isInDelve = CheckIsInDelve()
+                if isInDelve and not wasInDelve then
+                    preDelveVaultSnapshot = SnapshotVaultProgress()
+                elseif not isInDelve then
+                    preDelveVaultSnapshot = nil
+                end
+            end)
+            SavedInst:UpdateData()
+        elseif event == "SCENARIO_COMPLETED" then
+            -- If we just completed a scenario while in a delve, record it
+            if isInDelve or CheckIsInDelve() then
+                -- Slight delay to let vault data update
+                C_Timer.After(2, function()
+                    OnDelveCompleted()
+                    isInDelve = false
+                    preDelveVaultSnapshot = nil
+                end)
+            end
         else
             SavedInst:UpdateData()
         end
@@ -279,6 +477,8 @@ function SavedInst:Init()
     eventFrame:RegisterEvent("INSTANCE_LOCK_STOP")
     eventFrame:RegisterEvent("CHALLENGE_MODE_COMPLETED")
     eventFrame:RegisterEvent("WEEKLY_REWARDS_UPDATE")
+    eventFrame:RegisterEvent("SCENARIO_COMPLETED")
+    eventFrame:RegisterEvent("ZONE_CHANGED_NEW_AREA")
 end
 
 function SavedInst:GetDB()
@@ -319,6 +519,12 @@ function SavedInst:SaveCurrentCharData()
         table.insert(mpRuns, { name = run.name, level = run.level, completed = run.completed })
     end
 
+    -- Delve run summary
+    local dvRuns = {}
+    for _, run in ipairs(delveRuns) do
+        table.insert(dvRuns, { tier = run.tier, count = run.count })
+    end
+
     -- Current spec and role
     local specName, specRole
     local specID = GetSpecialization and GetSpecialization()
@@ -338,6 +544,9 @@ function SavedInst:SaveCurrentCharData()
         hasRaids             = raidCount > 0,
         mythicPlusRuns       = mpRuns,
         mythicPlusCount      = mythicPlusCount,
+        delveRuns            = dvRuns,
+        delveCount           = delveCount,
+        delveTrackedRuns     = delveTrackedRuns,  -- individual completions with names
         -- Updated only when M+ runs exist; used for mplus30/60/90/180 filters
         mythicPlusLastActive = (mythicPlusCount > 0) and now or (existing.mythicPlusLastActive or 0),
     }
@@ -353,6 +562,7 @@ local function ExpandLabel(template)
     if raidCount > 0 then table.insert(parts, raidCount .. "R") end
     if dungeonCount > 0 then table.insert(parts, dungeonCount .. "D") end
     if mythicPlusCount > 0 then table.insert(parts, mythicPlusCount .. "M+") end
+    if delveCount > 0 then table.insert(parts, delveCount .. "Dv") end
     local summary = #parts > 0 and ("Lockouts: " .. table.concat(parts, " ")) or "No Lockouts"
 
     local result = template
@@ -361,6 +571,7 @@ local function ExpandLabel(template)
     result = E(result, "raids", raidCount)
     result = E(result, "dungeons", dungeonCount)
     result = E(result, "mplus", mythicPlusCount)
+    result = E(result, "delves", delveCount)
     result = E(result, "total", total)
     return result
 end
@@ -465,7 +676,7 @@ function SavedInst:UpdateData()
         end
     end
 
-    -- Great Vault progress
+    -- Great Vault progress (M+/Dungeons)
     if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
         local activities = C_WeeklyRewards.GetActivities(Enum.WeeklyRewardChestThresholdType.Activities)
         if activities then
@@ -476,6 +687,40 @@ function SavedInst:UpdateData()
                     threshold = info.threshold,
                     level     = info.level,
                 })
+            end
+        end
+    end
+
+    -- Delve / World activity progress (Great Vault "World" threshold type)
+    wipe(delveRuns)
+    delveCount = 0
+    wipe(delveVaultProgress)
+
+    if C_WeeklyRewards and C_WeeklyRewards.GetActivities then
+        -- Vault tier progress (progress/threshold per slot)
+        local worldActivities = C_WeeklyRewards.GetActivities(Enum.WeeklyRewardChestThresholdType.World)
+        if worldActivities then
+            table.sort(worldActivities, function(a, b) return a.index < b.index end)
+            for _, info in ipairs(worldActivities) do
+                table.insert(delveVaultProgress, {
+                    progress  = info.progress,
+                    threshold = info.threshold,
+                    level     = info.level,
+                })
+            end
+        end
+
+        -- Per-tier breakdown: difficulty = delve tier, numPoints = completions
+        if C_WeeklyRewards.GetSortedProgressForActivity then
+            local sorted = C_WeeklyRewards.GetSortedProgressForActivity(Enum.WeeklyRewardChestThresholdType.World, true)
+            if sorted then
+                for _, entry in ipairs(sorted) do
+                    table.insert(delveRuns, {
+                        tier  = entry.difficulty,
+                        count = entry.numPoints,
+                    })
+                    delveCount = delveCount + entry.numPoints
+                end
             end
         end
     end
@@ -688,12 +933,14 @@ local ALT_COL_WIDTH = 44
 local activeAltCols = {}  -- { { key, name, class }, ... } — rebuilt each tooltip render
 local altLockoutMap = {}  -- altLockoutMap[altKey]["InstanceName|DiffTag"] = { progress, total }
 local altMPlusMap   = {}  -- altMPlusMap[altKey]["DungeonName"] = highestLevel
+local altDelveMap   = {}  -- altDelveMap[altKey] = { delveCount, bestTier }
 
 -- Populate alt column state. Same filter logic as BuildAltSection.
 local function BuildAltColumnData(db, currentKey)
     wipe(activeAltCols)
     wipe(altLockoutMap)
     wipe(altMPlusMap)
+    wipe(altDelveMap)
 
     if not db.altColumns or not db.showAlts then return end
     if not ns.db or not ns.db.altLockouts then return end
@@ -707,7 +954,8 @@ local function BuildAltColumnData(db, currentKey)
         if key ~= currentKey and type(altData) == "table" then
             local hasLockouts = altData.lockouts and #altData.lockouts > 0
             local hasMPlus    = altData.mythicPlusRuns and #altData.mythicPlusRuns > 0
-            if hasLockouts or hasMPlus then
+            local hasDelves   = (altData.delveCount or 0) > 0
+            if hasLockouts or hasMPlus or hasDelves then
                 local pass = false
                 if     filter == "all"      then pass = true
                 elseif filter == "maxlevel" then pass = (altData.level or 0) >= maxLevel
@@ -754,12 +1002,32 @@ local function BuildAltColumnData(db, currentKey)
                 end
             end
         end
+
+        -- Delve summary for alt columns
+        local altDelveCount = altData.delveCount or 0
+        local altBestTier = 0
+        if altData.delveRuns then
+            for _, run in ipairs(altData.delveRuns) do
+                if run.tier > altBestTier then altBestTier = run.tier end
+            end
+        end
+        altDelveMap[alt.key] = { count = altDelveCount, bestTier = altBestTier }
     end
 end
 
--- Ensure a row has the right number of alt-column FontStrings, positioned and visible.
+-- Ensure a row has the right number of alt-column FontStrings + a "you" column, positioned and visible.
 local function EnsureAltColumns(row, count)
     if not row.altTexts then row.altTexts = {} end
+
+    -- "You" (current character) column — same style as alt columns
+    if not row.youText then
+        local yt = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+        yt:SetJustifyH("CENTER")
+        yt:SetWidth(ALT_COL_WIDTH)
+        row.youText = yt
+    end
+    row.youText:Show()
+
     for i = 1, count do
         if not row.altTexts[i] then
             local at = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
@@ -774,22 +1042,41 @@ local function EnsureAltColumns(row, count)
     end
 
     if count > 0 then
-        -- Chain right-to-left: altTexts[n] → resetText, altTexts[n-1] → altTexts[n], ...
+        -- Chain right-to-left: altTexts[n] → resetText, ..., altTexts[1], youText
         row.altTexts[count]:SetPoint("RIGHT", row.resetText, "LEFT", -2, 0)
         for i = count - 1, 1, -1 do
             row.altTexts[i]:SetPoint("RIGHT", row.altTexts[i + 1], "LEFT", -2, 0)
         end
-        -- Re-anchor progressText to end at first alt column
-        row.progressText:SetPoint("RIGHT", row.altTexts[1], "LEFT", -4, 0)
+        row.youText:SetPoint("RIGHT", row.altTexts[1], "LEFT", -2, 0)
     else
-        row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
+        -- No alts, but still show "you" column
+        row.youText:SetPoint("RIGHT", row.resetText, "LEFT", -2, 0)
     end
+    -- Re-anchor progressText to end at the "you" column
+    row.progressText:SetPoint("RIGHT", row.youText, "LEFT", -4, 0)
 end
 
 -- Set alt column data for an instance row (full view: show progress/total per alt).
-local function SetAltColumnsForInstance(row, instanceName, diffTag)
+local function SetAltColumnsForInstance(row, instanceName, diffTag, entry)
     local count = #activeAltCols
     EnsureAltColumns(row, count)
+
+    -- "You" column: current character's progress for this lockout
+    if entry then
+        row.youText:SetText(entry.encounterProgress .. "/" .. entry.numEncounters)
+        local ratio = entry.numEncounters > 0 and (entry.encounterProgress / entry.numEncounters) or 0
+        if ratio >= 1 then
+            row.youText:SetTextColor(0.0, 1.0, 0.0)
+        elseif ratio > 0 then
+            row.youText:SetTextColor(1.0, 0.82, 0.0)
+        else
+            row.youText:SetTextColor(0.5, 0.5, 0.5)
+        end
+    else
+        row.youText:SetText("-")
+        row.youText:SetTextColor(0.3, 0.3, 0.3)
+    end
+
     for i, alt in ipairs(activeAltCols) do
         local data = altLockoutMap[alt.key] and altLockoutMap[alt.key][instanceName .. "|" .. diffTag]
         if data then
@@ -810,9 +1097,19 @@ local function SetAltColumnsForInstance(row, instanceName, diffTag)
 end
 
 -- Set alt column data for a condensed raid row (show count of lockouts for that instance).
-local function SetAltColumnsForCondensedRaid(row, instanceName)
+local function SetAltColumnsForCondensedRaid(row, instanceName, youDiffCount)
     local count = #activeAltCols
     EnsureAltColumns(row, count)
+
+    -- "You" column: number of different difficulties the current char has for this instance
+    if youDiffCount and youDiffCount > 0 then
+        row.youText:SetText("x" .. youDiffCount)
+        row.youText:SetTextColor(0.7, 0.7, 0.7)
+    else
+        row.youText:SetText("-")
+        row.youText:SetTextColor(0.3, 0.3, 0.3)
+    end
+
     for i, alt in ipairs(activeAltCols) do
         local lockCount = 0
         for mapKey, _ in pairs(altLockoutMap[alt.key] or {}) do
@@ -832,9 +1129,20 @@ local function SetAltColumnsForCondensedRaid(row, instanceName)
 end
 
 -- Set alt column data for an M+ row (show highest key level for that dungeon).
-local function SetAltColumnsForMPlus(row, dungeonName)
+local function SetAltColumnsForMPlus(row, dungeonName, youHighest)
     local count = #activeAltCols
     EnsureAltColumns(row, count)
+
+    -- "You" column: current character's highest key for this dungeon
+    if youHighest then
+        row.youText:SetText("+" .. youHighest)
+        local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+        row.youText:SetTextColor(lvlColor[1], lvlColor[2], lvlColor[3])
+    else
+        row.youText:SetText("-")
+        row.youText:SetTextColor(0.3, 0.3, 0.3)
+    end
+
     for i, alt in ipairs(activeAltCols) do
         local level = altMPlusMap[alt.key] and altMPlusMap[alt.key][dungeonName]
         if level then
@@ -850,6 +1158,7 @@ end
 
 -- Clear alt columns on a row (e.g. boss sub-rows, headers).
 local function ClearAltColumns(row)
+    if row.youText then row.youText:Hide() end
     if row.altTexts then
         for _, at in ipairs(row.altTexts) do at:Hide() end
     end
@@ -857,10 +1166,11 @@ local function ClearAltColumns(row)
 end
 
 ---------------------------------------------------------------------------
--- Column header hover overlays
+-- Column header hover overlays & column highlights
 ---------------------------------------------------------------------------
 
 local colHdrOverlayPool = {}
+local colHighlightPool = {}   -- vertical highlight strips per column
 
 local function GetColHdrOverlay(parent, index)
     if colHdrOverlayPool[index] then
@@ -873,8 +1183,25 @@ local function GetColHdrOverlay(parent, index)
     return ov
 end
 
+local function GetColHighlight(parent, index)
+    if colHighlightPool[index] then
+        colHighlightPool[index]:Hide()
+        return colHighlightPool[index]
+    end
+    local hl = parent:CreateTexture(nil, "BACKGROUND", nil, 1)
+    hl:SetColorTexture(1, 1, 1, 0.06)
+    hl:Hide()
+    colHighlightPool[index] = hl
+    return hl
+end
+
+local function HideColHighlights()
+    for _, hl in pairs(colHighlightPool) do hl:Hide() end
+end
+
 local function HideColHdrOverlays()
     for _, ov in pairs(colHdrOverlayPool) do ov:Hide() end
+    HideColHighlights()
 end
 
 local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
@@ -1031,6 +1358,7 @@ function SavedInst:BuildTooltipContent()
         if numAltCols > 0 then
             local nameLen = db.altNameLength or 0
             local ovIdx = 0
+            local hlIdx = 0
 
             -- Current character header (positioned just left of alt columns)
             headerIndex = headerIndex + 1
@@ -1046,14 +1374,24 @@ function SavedInst:BuildTooltipContent()
             if nameLen > 0 then youDisplay = youDisplay:sub(1, nameLen) end
             youHdr:SetText(DDT:ClassColorText(youDisplay, youClass))
 
+            -- Column highlight for "you"
+            hlIdx = hlIdx + 1
+            local youHL = GetColHighlight(f, hlIdx)
+            youHL:ClearAllPoints()
+            youHL:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youHL:SetWidth(ALT_COL_WIDTH)
+            youHL:SetPoint("BOTTOM", f, "BOTTOM", 0, HINT_HEIGHT + 4)
+
             -- Hover overlay for current character
             ovIdx = ovIdx + 1
             local youOv = GetColHdrOverlay(f, ovIdx)
             youOv:ClearAllPoints()
             youOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
             youOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
+            local capturedYouHL = youHL
             youOv:SetScript("OnEnter", function(self)
                 SavedInst:CancelHideTimer()
+                capturedYouHL:Show()
                 local specID = GetSpecialization and GetSpecialization()
                 local specName, specRole
                 if specID then _, specName, _, _, specRole = GetSpecializationInfo(specID) end
@@ -1063,6 +1401,7 @@ function SavedInst:BuildTooltipContent()
                 })
             end)
             youOv:SetScript("OnLeave", function()
+                capturedYouHL:Hide()
                 GameTooltip:Hide()
                 SavedInst:StartHideTimer()
             end)
@@ -1080,6 +1419,14 @@ function SavedInst:BuildTooltipContent()
                 if nameLen > 0 then displayName = displayName:sub(1, nameLen) end
                 altNameHdr:SetText(DDT:ClassColorText(displayName, alt.class:upper()))
 
+                -- Column highlight for this alt
+                hlIdx = hlIdx + 1
+                local altHL = GetColHighlight(f, hlIdx)
+                altHL:ClearAllPoints()
+                altHL:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altHL:SetWidth(ALT_COL_WIDTH)
+                altHL:SetPoint("BOTTOM", f, "BOTTOM", 0, HINT_HEIGHT + 4)
+
                 -- Hover overlay for this alt
                 ovIdx = ovIdx + 1
                 local altOv = GetColHdrOverlay(f, ovIdx)
@@ -1087,8 +1434,10 @@ function SavedInst:BuildTooltipContent()
                 altOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
                 altOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
                 local capturedAlt = alt
+                local capturedAltHL = altHL
                 altOv:SetScript("OnEnter", function(self)
                     SavedInst:CancelHideTimer()
+                    capturedAltHL:Show()
                     local altData = ns.db.altLockouts and ns.db.altLockouts[capturedAlt.key] or {}
                     SavedInst:ShowCharTooltip(self, {
                         name = altData.name or capturedAlt.name,
@@ -1099,6 +1448,7 @@ function SavedInst:BuildTooltipContent()
                     })
                 end)
                 altOv:SetScript("OnLeave", function()
+                    capturedAltHL:Hide()
                     GameTooltip:Hide()
                     SavedInst:StartHideTimer()
                 end)
@@ -1169,7 +1519,7 @@ function SavedInst:BuildTooltipContent()
                     row.resetText:SetText("")
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
-                    if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName) end
+                    if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName, #entries) end
 
                     y = y - ROW_HEIGHT
                 end
@@ -1178,7 +1528,7 @@ function SavedInst:BuildTooltipContent()
                 for _, entry in ipairs(raids) do
                     rowIndex = rowIndex + 1
                     rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
-                    if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag) end
+                    if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag, entry) end
                     if entry.expanded and #entry.bosses > 0 then
                         for _, boss in ipairs(entry.bosses) do
                             rowIndex = rowIndex + 1
@@ -1209,7 +1559,7 @@ function SavedInst:BuildTooltipContent()
             for _, entry in ipairs(dungeons) do
                 rowIndex = rowIndex + 1
                 rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
-                if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag) end
+                if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag, entry) end
                 if entry.expanded and #entry.bosses > 0 then
                     for _, boss in ipairs(entry.bosses) do
                         rowIndex = rowIndex + 1
@@ -1291,7 +1641,8 @@ function SavedInst:BuildTooltipContent()
                 row.resetText:SetText("")
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
-                if numAltCols > 0 then SetAltColumnsForMPlus(row, dungeonName) end
+                -- Highest key for this dungeon (runs are sorted desc)
+                if numAltCols > 0 then SetAltColumnsForMPlus(row, dungeonName, runs[1].level) end
 
                 y = y - ROW_HEIGHT
             end
@@ -1320,9 +1671,194 @@ function SavedInst:BuildTooltipContent()
                 row.resetText:SetText("")
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
-                if numAltCols > 0 then SetAltColumnsForMPlus(row, run.name) end
+                if numAltCols > 0 then SetAltColumnsForMPlus(row, run.name, run.level) end
 
                 y = y - ROW_HEIGHT
+            end
+        end
+    end
+
+    -- Delves this week
+    local hasDelveData = #delveRuns > 0 or #delveTrackedRuns > 0
+    if hasDelveData and db.showDelves ~= false then
+        y = y - 4
+        sepIndex = sepIndex + 1
+        local dvSep = GetSeparator(f, sepIndex)
+        dvSep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        dvSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        y = y - 6
+
+        -- Vault progress summary
+        local dvVaultText = ""
+        if #delveVaultProgress > 0 then
+            local dvVaultParts = {}
+            for i, tier in ipairs(delveVaultProgress) do
+                if tier.progress >= tier.threshold then
+                    table.insert(dvVaultParts, "|cff00cc00" .. tier.progress .. "/" .. tier.threshold .. "|r")
+                else
+                    table.insert(dvVaultParts, tier.progress .. "/" .. tier.threshold)
+                end
+            end
+            dvVaultText = "  |cff888888(Vault: " .. table.concat(dvVaultParts, " ") .. ")|r"
+        end
+
+        headerIndex = headerIndex + 1
+        local dvHdr = GetHeader(f, headerIndex)
+        dvHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        dvHdr:SetText("Delves This Week (" .. delveCount .. ")" .. dvVaultText)
+        y = y - HEADER_HEIGHT
+
+        local dvColor = { 0.0, 0.76, 0.36 }  -- Emerald green for delves
+        local hasTrackedNames = #delveTrackedRuns > 0
+
+        if db.condensedDelves then
+            if hasTrackedNames then
+                -- Condensed with tracked names: group by delve name
+                local delveGroups = {}
+                local delveOrder = {}
+                for _, run in ipairs(delveTrackedRuns) do
+                    if not delveGroups[run.name] then
+                        delveGroups[run.name] = {}
+                        table.insert(delveOrder, run.name)
+                    end
+                    table.insert(delveGroups[run.name], run)
+                end
+
+                for _, delveName in ipairs(delveOrder) do
+                    local runs = delveGroups[delveName]
+                    local tierParts = {}
+                    for _, run in ipairs(runs) do
+                        table.insert(tierParts, string.format("|cff%02x%02x%02x%s|r",
+                            dvColor[1] * 255, dvColor[2] * 255, dvColor[3] * 255,
+                            "T" .. run.tier))
+                    end
+
+                    rowIndex = rowIndex + 1
+                    local row = GetRow(f, rowIndex)
+                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    row:SetHeight(ROW_HEIGHT)
+
+                    row.nameText:SetText(delveName)
+                    row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                    row.diffText:SetText("x" .. #runs)
+                    row.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+
+                    row.progressText:SetText(table.concat(tierParts, " "))
+                    row.progressText:SetTextColor(1, 1, 1)
+                    row.resetText:SetText("")
+                    row.extendedBar:Hide()
+                    row:SetScript("OnClick", nil)
+
+                    y = y - ROW_HEIGHT
+                end
+            else
+                -- Condensed without tracked names: single row with tier breakdown
+                SortDelveRuns(delveRuns, db.delveSortOrder)
+                local tierParts = {}
+                for _, run in ipairs(delveRuns) do
+                    for j = 1, run.count do
+                        table.insert(tierParts, string.format("|cff%02x%02x%02x%s|r",
+                            dvColor[1] * 255, dvColor[2] * 255, dvColor[3] * 255,
+                            "T" .. run.tier))
+                    end
+                end
+
+                rowIndex = rowIndex + 1
+                local row = GetRow(f, rowIndex)
+                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                row:SetHeight(ROW_HEIGHT)
+
+                row.nameText:SetText("All Delves")
+                row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                row.diffText:SetText("x" .. delveCount)
+                row.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+
+                row.progressText:SetText(table.concat(tierParts, " "))
+                row.progressText:SetTextColor(1, 1, 1)
+                row.resetText:SetText("")
+                row.extendedBar:Hide()
+                row:SetScript("OnClick", nil)
+
+                y = y - ROW_HEIGHT
+            end
+        else
+            if hasTrackedNames then
+                -- Full view with tracked names: one row per individual completion
+                -- Sort by the configured order
+                local sortedTracked = {}
+                for _, run in ipairs(delveTrackedRuns) do
+                    table.insert(sortedTracked, run)
+                end
+                local order = db.delveSortOrder
+                if order == "tier_desc" then
+                    table.sort(sortedTracked, function(a, b)
+                        if a.tier ~= b.tier then return a.tier > b.tier end
+                        return a.name < b.name
+                    end)
+                elseif order == "tier_asc" then
+                    table.sort(sortedTracked, function(a, b)
+                        if a.tier ~= b.tier then return a.tier < b.tier end
+                        return a.name < b.name
+                    end)
+                elseif order == "count_desc" or order == "count_asc" then
+                    -- For individual runs, sort by name then tier
+                    table.sort(sortedTracked, function(a, b)
+                        if a.name ~= b.name then return a.name < b.name end
+                        return a.tier > b.tier
+                    end)
+                end
+
+                for _, run in ipairs(sortedTracked) do
+                    rowIndex = rowIndex + 1
+                    local row = GetRow(f, rowIndex)
+                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    row:SetHeight(ROW_HEIGHT)
+
+                    row.nameText:SetText(run.name)
+                    row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                    row.diffText:SetText("T" .. run.tier)
+                    row.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+
+                    row.progressText:SetText("|cff00cc00Completed|r")
+                    row.progressText:SetTextColor(1, 1, 1)
+
+                    row.resetText:SetText("")
+                    row.extendedBar:Hide()
+                    row:SetScript("OnClick", nil)
+
+                    y = y - ROW_HEIGHT
+                end
+            else
+                -- Full view without tracked names: one row per tier (aggregate)
+                SortDelveRuns(delveRuns, db.delveSortOrder)
+                for _, run in ipairs(delveRuns) do
+                    rowIndex = rowIndex + 1
+                    local row = GetRow(f, rowIndex)
+                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    row:SetHeight(ROW_HEIGHT)
+
+                    row.nameText:SetText("Delve")
+                    row.nameText:SetTextColor(0.9, 0.9, 0.9)
+
+                    row.diffText:SetText("T" .. run.tier)
+                    row.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+
+                    row.progressText:SetText("x" .. run.count .. " completed")
+                    row.progressText:SetTextColor(0.9, 0.9, 0.9)
+
+                    row.resetText:SetText("")
+                    row.extendedBar:Hide()
+                    row:SetScript("OnClick", nil)
+
+                    y = y - ROW_HEIGHT
+                end
             end
         end
     end
@@ -1374,7 +1910,8 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
         if key ~= currentKey and type(altData) == "table" then
             local hasLockouts = altData.lockouts and #altData.lockouts > 0
             local hasMPlus    = altData.mythicPlusRuns and #altData.mythicPlusRuns > 0
-            if hasLockouts or hasMPlus then
+            local hasDelves   = (altData.delveCount or 0) > 0
+            if hasLockouts or hasMPlus or hasDelves then
                 local pass = false
                 if     filter == "all"      then pass = true
                 elseif filter == "maxlevel" then pass = (altData.level or 0) >= maxLevel
@@ -1422,8 +1959,8 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
         local mpRuns   = altData.mythicPlusRuns or {}
         local elapsed  = now - (altData.lastSeen or now)
 
-        -- Build summary badge: "2R 1D 3M+"
-        local rCt, dCt, mCt = 0, 0, altData.mythicPlusCount or 0
+        -- Build summary badge: "2R 1D 3M+ 5Dv"
+        local rCt, dCt, mCt, dvCt = 0, 0, altData.mythicPlusCount or 0, altData.delveCount or 0
         for _, lo in ipairs(lockouts) do
             if lo.isRaid then rCt = rCt + 1 else dCt = dCt + 1 end
         end
@@ -1431,6 +1968,7 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
         if rCt > 0 then table.insert(summaryParts, rCt .. "R") end
         if dCt > 0 then table.insert(summaryParts, dCt .. "D") end
         if mCt > 0 then table.insert(summaryParts, mCt .. "M+") end
+        if dvCt > 0 then table.insert(summaryParts, dvCt .. "Dv") end
         local summary = #summaryParts > 0 and table.concat(summaryParts, " ") or "No lockouts"
 
         local isExpanded = expandedAlts[alt.key]
@@ -1507,6 +2045,56 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
                     y = y - ROW_HEIGHT
                 end
             end
+
+            -- Delve runs
+            local altDvRuns = altData.delveRuns or {}
+            if #altDvRuns > 0 then
+                local dvColor = { 0.0, 0.76, 0.36 }
+                -- Show tracked names if available, otherwise aggregate
+                local altTracked = altData.delveTrackedRuns
+                if altTracked and #altTracked > 0 then
+                    for _, run in ipairs(altTracked) do
+                        rowIndex = rowIndex + 1
+                        local lrow = GetRow(f, rowIndex)
+                        lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
+                        lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                        lrow:SetHeight(ROW_HEIGHT)
+                        lrow.isBossRow = false
+
+                        lrow.nameText:SetText(run.name)
+                        lrow.nameText:SetTextColor(0.8, 0.8, 0.8)
+                        lrow.diffText:SetText("T" .. run.tier)
+                        lrow.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+                        lrow.progressText:SetText("|cff00cc00Completed|r")
+                        lrow.resetText:SetText("")
+                        lrow.extendedBar:Hide()
+                        lrow:SetScript("OnClick", nil)
+
+                        y = y - ROW_HEIGHT
+                    end
+                else
+                    for _, run in ipairs(altDvRuns) do
+                        rowIndex = rowIndex + 1
+                        local lrow = GetRow(f, rowIndex)
+                        lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
+                        lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                        lrow:SetHeight(ROW_HEIGHT)
+                        lrow.isBossRow = false
+
+                        lrow.nameText:SetText("Delve")
+                        lrow.nameText:SetTextColor(0.8, 0.8, 0.8)
+                        lrow.diffText:SetText("T" .. run.tier)
+                        lrow.diffText:SetTextColor(dvColor[1], dvColor[2], dvColor[3])
+                        lrow.progressText:SetText("x" .. run.count)
+                        lrow.progressText:SetTextColor(0.7, 0.7, 0.7)
+                        lrow.resetText:SetText("")
+                        lrow.extendedBar:Hide()
+                        lrow:SetScript("OnClick", nil)
+
+                        y = y - ROW_HEIGHT
+                    end
+                end
+            end
         end
     end
 
@@ -1568,12 +2156,13 @@ function SavedInst:BuildSettingsPanel(panel)
 
     local body = W.AddSection(panel, "Label Template")
     local y = 0
-    y = W.AddLabelEditBox(body, y, "summary raids dungeons mplus total",
+    y = W.AddLabelEditBox(body, y, "summary raids dungeons mplus delves total",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<summary>" },
         { "Split",      "R:<raids> D:<dungeons>" },
         { "M+ Focus",   "M+: <mplus>  Saved: <total>" },
+        { "Delves",     "M+: <mplus>  Dv: <delves>" },
         { "Count",      "<total> lockouts" },
     })
     W.EndSection(panel, y)
@@ -1586,6 +2175,13 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddCheckbox(body, y, "Condensed M+ view (group by dungeon)",
         function() return db().condensedMPlus end,
         function(v) db().condensedMPlus = v; refreshTT() end, r)
+    y = W.AddCheckboxPair(body, y,
+        "Show Delves",
+        function() return db().showDelves end,
+        function(v) db().showDelves = v; refreshTT() end,
+        "Condensed Delves",
+        function() return db().condensedDelves end,
+        function(v) db().condensedDelves = v; refreshTT() end, r)
     W.EndSection(panel, y)
 
     body = W.AddSection(panel, "Sorting")
@@ -1596,6 +2192,9 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddDropdown(body, y, "Mythic+ Order", MPLUS_SORT_VALUES,
         function() return db().mplusSortOrder end,
         function(v) db().mplusSortOrder = v; refreshTT() end, r)
+    y = W.AddDropdown(body, y, "Delve Order", DELVE_SORT_VALUES,
+        function() return db().delveSortOrder end,
+        function(v) db().delveSortOrder = v; refreshTT() end, r)
     W.EndSection(panel, y)
 
     body = W.AddSection(panel, "Tooltip", true)

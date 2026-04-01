@@ -310,6 +310,10 @@ function SpecSwitch:Init()
     eventFrame:RegisterEvent("PLAYER_LOOT_SPEC_UPDATED")
     eventFrame:RegisterEvent("TRAIT_CONFIG_DELETED")
     eventFrame:RegisterEvent("TRAIT_CONFIG_UPDATED")
+    eventFrame:RegisterEvent("TRAIT_CONFIG_CREATED")
+
+    -- Set label immediately rather than waiting for PLAYER_ENTERING_WORLD
+    self:UpdateData()
 end
 
 ---------------------------------------------------------------------------
@@ -349,54 +353,8 @@ function SpecSwitch:UpdateData()
     self.lootSpecID = GetLootSpecialization() or 0
 
     -- Loadouts (Mainline talent system)
-    wipe(self.loadoutCache)
-    self.activeLoadoutID = nil
-    self.activeLoadoutName = nil
-
-    if C_ClassTalents and PlayerUtil and PlayerUtil.CanUseClassTalents and PlayerUtil.CanUseClassTalents() then
-        for i, spec in pairs(self.specCache) do
-            local configIDs = C_ClassTalents.GetConfigIDsBySpecID(spec.id)
-            if configIDs then
-                self.loadoutCache[spec.id] = {}
-                for _, configID in ipairs(configIDs) do
-                    local configInfo = C_Traits and C_Traits.GetConfigInfo(configID)
-                    if configInfo and configInfo.name then
-                        table.insert(self.loadoutCache[spec.id], {
-                            configID = configID,
-                            name = configInfo.name,
-                        })
-                    end
-                end
-            end
-        end
-        -- Last-selected config for ALL specs (used for spec switching via LoadConfig)
-        wipe(self.lastConfigBySpec)
-        if C_ClassTalents.GetLastSelectedSavedConfigID then
-            for _, spec in ipairs(self.specCache) do
-                local lastConfig = C_ClassTalents.GetLastSelectedSavedConfigID(spec.id)
-                if lastConfig then
-                    self.lastConfigBySpec[spec.id] = lastConfig
-                elseif self.loadoutCache[spec.id] and #self.loadoutCache[spec.id] > 0 then
-                    -- Fallback: use first available loadout
-                    self.lastConfigBySpec[spec.id] = self.loadoutCache[spec.id][1].configID
-                end
-            end
-        end
-
-        -- Active loadout for current spec
-        if self.currentSpecID > 0 and C_ClassTalents.GetLastSelectedSavedConfigID then
-            self.activeLoadoutID = self.lastConfigBySpec[self.currentSpecID]
-            -- Resolve name
-            if self.activeLoadoutID and self.loadoutCache[self.currentSpecID] then
-                for _, lo in ipairs(self.loadoutCache[self.currentSpecID]) do
-                    if lo.configID == self.activeLoadoutID then
-                        self.activeLoadoutName = lo.name
-                        break
-                    end
-                end
-            end
-        end
-    end
+    -- Scan in a protected call so the label update below always runs
+    self:UpdateLoadouts()
 
     -- Update LDB text from label template
     local db = self:GetDB()
@@ -406,6 +364,59 @@ function SpecSwitch:UpdateData()
     -- Refresh tooltip if visible
     if tooltipFrame and tooltipFrame:IsShown() then
         self:BuildTooltipContent()
+    end
+end
+
+function SpecSwitch:UpdateLoadouts()
+    wipe(self.loadoutCache)
+    self.activeLoadoutID = nil
+    self.activeLoadoutName = nil
+
+    if not (C_ClassTalents and PlayerUtil and PlayerUtil.CanUseClassTalents) then return end
+    if not PlayerUtil.CanUseClassTalents() then return end
+
+    for _, spec in pairs(self.specCache) do
+        local configIDs = C_ClassTalents.GetConfigIDsBySpecID(spec.id)
+        if configIDs then
+            self.loadoutCache[spec.id] = {}
+            for _, configID in ipairs(configIDs) do
+                local configInfo = C_Traits and C_Traits.GetConfigInfo(configID)
+                if configInfo and configInfo.name then
+                    table.insert(self.loadoutCache[spec.id], {
+                        configID = configID,
+                        name = configInfo.name,
+                    })
+                end
+            end
+        end
+    end
+
+    -- Last-selected config for ALL specs (used for spec switching via LoadConfig)
+    wipe(self.lastConfigBySpec)
+    if C_ClassTalents.GetLastSelectedSavedConfigID then
+        for _, spec in ipairs(self.specCache) do
+            local lastConfig = C_ClassTalents.GetLastSelectedSavedConfigID(spec.id)
+            if lastConfig then
+                self.lastConfigBySpec[spec.id] = lastConfig
+            elseif self.loadoutCache[spec.id] and #self.loadoutCache[spec.id] > 0 then
+                -- Fallback: use first available loadout
+                self.lastConfigBySpec[spec.id] = self.loadoutCache[spec.id][1].configID
+            end
+        end
+    end
+
+    -- Active loadout for current spec
+    if self.currentSpecID > 0 and C_ClassTalents.GetLastSelectedSavedConfigID then
+        self.activeLoadoutID = self.lastConfigBySpec[self.currentSpecID]
+        -- Resolve name
+        if self.activeLoadoutID and self.loadoutCache[self.currentSpecID] then
+            for _, lo in ipairs(self.loadoutCache[self.currentSpecID]) do
+                if lo.configID == self.activeLoadoutID then
+                    self.activeLoadoutName = lo.name
+                    break
+                end
+            end
+        end
     end
 end
 

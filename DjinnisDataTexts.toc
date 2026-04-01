@@ -1,13 +1,13 @@
 ## Interface: 120001
 ## Title: Djinni's Data Texts
 ## Author: Djinni
-## Version: 0.3.3
+## Version: 0.4.0-beta
 ## Notes: LDB data brokers for a unified suite of DataTexts with rich tooltips. Works with any LDB display.
 ## Category: Data Brokers
 ## X-Category: Data Broker
 ## IconTexture: Interface\Icons\INV_Misc_Gear_01
 ## SavedVariables: DjinnisDataTextsDB
-## OptionalDeps: ElvUI, DjinnisGuildFriends, TradeSkillMaster
+## OptionalDeps: ElvUI, DjinnisGuildFriends, TradeSkillMaster, SavedInstances, Auctionator, SimulationCraft
 
 # Libraries
 Libs\LibStub\LibStub.lua
@@ -52,6 +52,9 @@ Modules\PetInfo.lua
 # Modules - Phase 8
 Modules\AccountStatus.lua
 Modules\LFGStatus.lua
+
+# Modules - Phase 9
+Modules\ItemLevel.lua
 
 # Demo mode - uncomment to inject fake data, comment out for live use:
 # DemoMode.lua

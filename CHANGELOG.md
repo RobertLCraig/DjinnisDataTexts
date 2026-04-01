@@ -4,11 +4,40 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
-## [0.3.3] - 2026-03-31
+## [0.4.0-beta] - 2026-04-01
 
-### [Placeholder for next release]
+### ItemLevel Module + SavedInstances Delve Tracking & UI Enhancements
 
-Add release notes here as features are completed.
+#### New Module: ItemLevel
+- **Equipped item level display** with configurable label template tags (`<ilvl>`, `<overall>`, `<enchants>`, `<gems>`)
+- **Per-slot breakdown** in tooltip showing item ilvl, quality colors, missing enchants/gems with warnings
+- **SimC string export** — copy your SimulationCraft import string to clipboard (uses SimulationCraft addon if installed, otherwise generates basic string)
+- **Missing enhancement detection** — Identifies slots with missing enchants, gems, or embellishments
+- **Shopping list integration**:
+  - **Auctionator** — Creates "DDT - Missing Enhancements" shopping list with one-click crafting/purchase
+  - **TSM** — Copies missing item search terms to clipboard for custom price searches
+- **Auction House gear upgrade search** — Finds weakest item slots and searches AH if open
+
+#### SavedInstances Module Enhancements
+- **Delve self-tracking** — Tracks individual delve completions with instance names, tier, and timestamps per week
+  - Uses `SCENARIO_COMPLETED` event + zone detection + vault snapshot diffing for tier determination
+  - Falls back to `C_WeeklyRewards.GetSortedProgressForActivity()` for aggregate data
+  - Displays tracked run names in both full and condensed tooltip views
+- **Column hover highlighting** — Vertical highlight strips appear when hovering over alt column headers for better readability
+- **Column text centering** — Alt column text now properly centered
+
+#### Core Module Enhancements
+- **Centralized gold display settings** — Global `goldColorize`, `goldShowSilver`, `goldShowCopper` settings in General panel
+  - `ns.FormatGold()` respects global defaults when no explicit overrides provided
+  - Live gold preview in settings with custom format/color control
+- **DDT:CopyToClipboard utility** — Uses `C_Clipboard.SetText()` if available, falls back to scrollable EditBox popup for SimC strings
+- **Currency module UI cohesion** — Merged "Label Template" and "Gold" sections into unified "Label & Gold Display" section with live preview
+
+#### Module Bug Fixes
+- **SpecSwitch label not updating** — Added immediate `UpdateData()` call in `Init()` to ensure label is set during `ADDON_LOADED`. Separated loadout scanning into protected `UpdateLoadouts()` function to prevent API errors from killing label update. Added `TRAIT_CONFIG_CREATED` event registration.
+
+#### Dependencies Added
+- **Optional**: Auctionator (ItemLevel shopping lists), SimulationCraft (ItemLevel SimC export)
 
 
 ## [0.3.2] - 2026-03-31

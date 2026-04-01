@@ -915,6 +915,44 @@ local function BuildGeneralPanel(panel)
     ShowCustomWidgets()
     EndSection(panel, y)
 
+    -- Gold Display
+    body = AddSection(panel, "Gold Display")
+    y = 0
+    y = AddDescription(body, y,
+        "Controls how gold amounts appear in all module tooltips.\n" ..
+        "Number formatting (separators, abbreviation) is inherited from above.")
+    y = AddCheckbox(body, y, "Colorize gold (|cffe6cc80g|r |cffc0c0c0s|r |cffcc7722c|r)",
+        function() return ns.db.global.goldColorize ~= false end,
+        function(v) ns.db.global.goldColorize = v; for _, cb in ipairs(r) do cb() end end, r)
+    y = AddCheckboxPair(body, y,
+        "Show silver",
+        function() return ns.db.global.goldShowSilver ~= false end,
+        function(v) ns.db.global.goldShowSilver = v; for _, cb in ipairs(r) do cb() end end,
+        "Show copper",
+        function() return ns.db.global.goldShowCopper ~= false end,
+        function(v) ns.db.global.goldShowCopper = v; for _, cb in ipairs(r) do cb() end end, r)
+
+    -- Gold preview
+    local goldPreviewLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    goldPreviewLabel:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
+    goldPreviewLabel:SetText("Preview:")
+    local goldPreviewValue = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    goldPreviewValue:SetPoint("LEFT", goldPreviewLabel, "RIGHT", 8, 0)
+
+    local function UpdateGoldPreview()
+        -- Show examples at different amounts
+        local examples = {
+            ns.FormatGold(12345678, nil),   -- ~1234g
+            ns.FormatGold(1234567890, nil), -- ~123456g
+        }
+        goldPreviewValue:SetText(table.concat(examples, "   "))
+    end
+    UpdateGoldPreview()
+    table.insert(r, UpdateGoldPreview)
+    y = y - 20
+
+    EndSection(panel, y)
+
     -- Tooltip Font
     body = AddSection(panel, "Tooltip Font")
     y = 0
