@@ -85,8 +85,9 @@ local DEFAULTS = {
     delveSortOrder  = "tier_desc",  -- tier_desc, tier_asc, count_desc, count_asc
     raidSortOrder   = "diff_asc",   -- diff_asc, diff_desc, name, api
     mplusSortOrder  = "level_asc",  -- level_asc, level_desc, name, api
-    tooltipScale    = 1.0,
-    tooltipWidth    = 380,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 600,
+    tooltipWidth     = 380,
     -- Alt lockout display
     showAlts        = true,
     altColumns      = false,        -- show alt progress as columns next to current char
@@ -743,42 +744,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTSavedInstancesTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    -- Title separator
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    -- Hint bar
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    -- Mouse interaction
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() SavedInst:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() SavedInst:StartHideTimer() end)
-
+    local f = ns.CreateTooltipFrame("DDTSavedInstancesTooltip", SavedInst)
+    f.content.lines = {}
     return f
 end
 
@@ -881,10 +848,10 @@ local function HideAllPooled()
 end
 
 -- Renders one alt lockout row (indented, no boss-expand). Returns updated rowIndex, y.
-local function RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
-    local lrow = GetRow(f, rowIndex)
-    lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
-    lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+local function RenderAltLockoutRow(c, rowIndex, y, lo, elapsed)
+    local lrow = GetRow(c, rowIndex)
+    lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
+    lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     lrow:SetHeight(ROW_HEIGHT)
     lrow.isBossRow = false
 
@@ -1237,10 +1204,10 @@ end
 -- Tooltip content building
 ---------------------------------------------------------------------------
 
-local function AddInstanceRow(f, rowIndex, y, entry)
-    local row = GetRow(f, rowIndex)
-    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+local function AddInstanceRow(c, rowIndex, y, entry)
+    local row = GetRow(c, rowIndex)
+    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     row:SetHeight(ROW_HEIGHT)
     row.isBossRow = false
 
@@ -1293,10 +1260,10 @@ local function AddInstanceRow(f, rowIndex, y, entry)
     return rowIndex, y - ROW_HEIGHT
 end
 
-local function AddBossRow(f, rowIndex, y, boss)
-    local row = GetRow(f, rowIndex)
-    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 16, y)
-    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+local function AddBossRow(c, rowIndex, y, boss)
+    local row = GetRow(c, rowIndex)
+    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 16, y)
+    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     row:SetHeight(BOSS_ROW_HEIGHT)
     row.isBossRow = true
 
@@ -1325,8 +1292,9 @@ function SavedInst:BuildTooltipContent()
     HideColHdrOverlays()
 
     local f = tooltipFrame
+    local c = f.content
     local db = self:GetDB()
-    f.title:SetText("Saved Instances")
+    f.header:SetText("Saved Instances")
 
     -- Build alt column lookup for side-by-side display
     local playerKey = UnitName("player") .. " - " .. GetRealmName()
@@ -1336,21 +1304,21 @@ function SavedInst:BuildTooltipContent()
     local rowIndex = 0
     local headerIndex = 0
     local sepIndex = 0
-    local y = -PADDING - 20 - 6 -- below title + separator
+    local y = 0
 
     if #lockoutCache == 0 then
         -- No lockouts message
         headerIndex = headerIndex + 1
-        local noData = GetHeader(f, headerIndex)
-        noData:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local noData = GetHeader(c, headerIndex)
+        noData:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         noData:SetText("|cff888888No active lockouts.|r")
         noData:SetTextColor(0.53, 0.53, 0.53)
         y = y - HEADER_HEIGHT
     else
         -- Column headers
         headerIndex = headerIndex + 1
-        local colHdr = GetHeader(f, headerIndex)
-        colHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        local colHdr = GetHeader(c, headerIndex)
+        colHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         colHdr:SetText("|cff888888Instance|r")
         colHdr:SetTextColor(0.53, 0.53, 0.53)
 
@@ -1362,10 +1330,10 @@ function SavedInst:BuildTooltipContent()
 
             -- Current character header (positioned just left of alt columns)
             headerIndex = headerIndex + 1
-            local youHdr = GetHeader(f, headerIndex)
+            local youHdr = GetHeader(c, headerIndex)
             youHdr:ClearAllPoints()
             local youRightOff = -(PADDING + 6 + 56 + 2 + numAltCols * (ALT_COL_WIDTH + 2))
-            youHdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youHdr:SetPoint("TOPRIGHT", c, "TOPRIGHT", youRightOff, y)
             youHdr:SetWidth(ALT_COL_WIDTH)
             youHdr:SetJustifyH("CENTER")
             local youName = UnitName("player")
@@ -1376,17 +1344,17 @@ function SavedInst:BuildTooltipContent()
 
             -- Column highlight for "you"
             hlIdx = hlIdx + 1
-            local youHL = GetColHighlight(f, hlIdx)
+            local youHL = GetColHighlight(c, hlIdx)
             youHL:ClearAllPoints()
-            youHL:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youHL:SetPoint("TOPRIGHT", c, "TOPRIGHT", youRightOff, y)
             youHL:SetWidth(ALT_COL_WIDTH)
-            youHL:SetPoint("BOTTOM", f, "BOTTOM", 0, HINT_HEIGHT + 4)
+            youHL:SetPoint("BOTTOM", c, "BOTTOM", 0, 0)
 
             -- Hover overlay for current character
             ovIdx = ovIdx + 1
-            local youOv = GetColHdrOverlay(f, ovIdx)
+            local youOv = GetColHdrOverlay(c, ovIdx)
             youOv:ClearAllPoints()
-            youOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", youRightOff, y)
+            youOv:SetPoint("TOPRIGHT", c, "TOPRIGHT", youRightOff, y)
             youOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
             local capturedYouHL = youHL
             youOv:SetScript("OnEnter", function(self)
@@ -1409,10 +1377,10 @@ function SavedInst:BuildTooltipContent()
             -- Alt column headers
             for i, alt in ipairs(activeAltCols) do
                 headerIndex = headerIndex + 1
-                local altNameHdr = GetHeader(f, headerIndex)
+                local altNameHdr = GetHeader(c, headerIndex)
                 altNameHdr:ClearAllPoints()
                 local rightOff = -(PADDING + 6 + 56 + 2 + (numAltCols - i) * (ALT_COL_WIDTH + 2))
-                altNameHdr:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altNameHdr:SetPoint("TOPRIGHT", c, "TOPRIGHT", rightOff, y)
                 altNameHdr:SetWidth(ALT_COL_WIDTH)
                 altNameHdr:SetJustifyH("CENTER")
                 local displayName = alt.name
@@ -1421,17 +1389,17 @@ function SavedInst:BuildTooltipContent()
 
                 -- Column highlight for this alt
                 hlIdx = hlIdx + 1
-                local altHL = GetColHighlight(f, hlIdx)
+                local altHL = GetColHighlight(c, hlIdx)
                 altHL:ClearAllPoints()
-                altHL:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altHL:SetPoint("TOPRIGHT", c, "TOPRIGHT", rightOff, y)
                 altHL:SetWidth(ALT_COL_WIDTH)
-                altHL:SetPoint("BOTTOM", f, "BOTTOM", 0, HINT_HEIGHT + 4)
+                altHL:SetPoint("BOTTOM", c, "BOTTOM", 0, 0)
 
                 -- Hover overlay for this alt
                 ovIdx = ovIdx + 1
-                local altOv = GetColHdrOverlay(f, ovIdx)
+                local altOv = GetColHdrOverlay(c, ovIdx)
                 altOv:ClearAllPoints()
-                altOv:SetPoint("TOPRIGHT", f, "TOPRIGHT", rightOff, y)
+                altOv:SetPoint("TOPRIGHT", c, "TOPRIGHT", rightOff, y)
                 altOv:SetSize(ALT_COL_WIDTH, HEADER_HEIGHT)
                 local capturedAlt = alt
                 local capturedAltHL = altHL
@@ -1472,8 +1440,8 @@ function SavedInst:BuildTooltipContent()
         -- Raids section
         if #raids > 0 then
             headerIndex = headerIndex + 1
-            local raidHdr = GetHeader(f, headerIndex)
-            raidHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local raidHdr = GetHeader(c, headerIndex)
+            raidHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             raidHdr:SetText("Raids")
             y = y - HEADER_HEIGHT
 
@@ -1503,9 +1471,9 @@ function SavedInst:BuildTooltipContent()
                     end
 
                     rowIndex = rowIndex + 1
-                    local row = GetRow(f, rowIndex)
-                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    local row = GetRow(c, rowIndex)
+                    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                     row:SetHeight(ROW_HEIGHT)
 
                     row.nameText:SetText(raidName)
@@ -1527,12 +1495,12 @@ function SavedInst:BuildTooltipContent()
                 -- Full view
                 for _, entry in ipairs(raids) do
                     rowIndex = rowIndex + 1
-                    rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                    rowIndex, y = AddInstanceRow(c, rowIndex, y, entry)
                     if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag, entry) end
                     if entry.expanded and #entry.bosses > 0 then
                         for _, boss in ipairs(entry.bosses) do
                             rowIndex = rowIndex + 1
-                            rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                            rowIndex, y = AddBossRow(c, rowIndex, y, boss)
                             if numAltCols > 0 then ClearAltColumns(rowPool[rowIndex]) end
                         end
                     end
@@ -1545,25 +1513,25 @@ function SavedInst:BuildTooltipContent()
             if #raids > 0 then
                 y = y - 4
                 sepIndex = sepIndex + 1
-                local sep = GetSeparator(f, sepIndex)
-                sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                local sep = GetSeparator(c, sepIndex)
+                sep:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                sep:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                 y = y - 6
             end
             headerIndex = headerIndex + 1
-            local dungHdr = GetHeader(f, headerIndex)
-            dungHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local dungHdr = GetHeader(c, headerIndex)
+            dungHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             dungHdr:SetText("Dungeons")
             y = y - HEADER_HEIGHT
 
             for _, entry in ipairs(dungeons) do
                 rowIndex = rowIndex + 1
-                rowIndex, y = AddInstanceRow(f, rowIndex, y, entry)
+                rowIndex, y = AddInstanceRow(c, rowIndex, y, entry)
                 if numAltCols > 0 then SetAltColumnsForInstance(rowPool[rowIndex], entry.name, entry.difficultyTag, entry) end
                 if entry.expanded and #entry.bosses > 0 then
                     for _, boss in ipairs(entry.bosses) do
                         rowIndex = rowIndex + 1
-                        rowIndex, y = AddBossRow(f, rowIndex, y, boss)
+                        rowIndex, y = AddBossRow(c, rowIndex, y, boss)
                         if numAltCols > 0 then ClearAltColumns(rowPool[rowIndex]) end
                     end
                 end
@@ -1575,9 +1543,9 @@ function SavedInst:BuildTooltipContent()
     if #mythicPlusRuns > 0 then
         y = y - 4
         sepIndex = sepIndex + 1
-        local mpSep = GetSeparator(f, sepIndex)
-        mpSep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        mpSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local mpSep = GetSeparator(c, sepIndex)
+        mpSep:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        mpSep:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
         y = y - 6
 
         -- Vault progress summary
@@ -1595,8 +1563,8 @@ function SavedInst:BuildTooltipContent()
         end
 
         headerIndex = headerIndex + 1
-        local mpHdr = GetHeader(f, headerIndex)
-        mpHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local mpHdr = GetHeader(c, headerIndex)
+        mpHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         mpHdr:SetText("Mythic+ This Week (" .. mythicPlusCount .. ")" .. vaultText)
         y = y - HEADER_HEIGHT
 
@@ -1625,9 +1593,9 @@ function SavedInst:BuildTooltipContent()
                 end
 
                 rowIndex = rowIndex + 1
-                local row = GetRow(f, rowIndex)
-                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                local row = GetRow(c, rowIndex)
+                row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                 row:SetHeight(ROW_HEIGHT)
 
                 row.nameText:SetText(dungeonName)
@@ -1650,9 +1618,9 @@ function SavedInst:BuildTooltipContent()
             -- Full view: one row per run
             for _, run in ipairs(mythicPlusRuns) do
                 rowIndex = rowIndex + 1
-                local row = GetRow(f, rowIndex)
-                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                local row = GetRow(c, rowIndex)
+                row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                 row:SetHeight(ROW_HEIGHT)
 
                 row.nameText:SetText(run.name)
@@ -1683,9 +1651,9 @@ function SavedInst:BuildTooltipContent()
     if hasDelveData and db.showDelves ~= false then
         y = y - 4
         sepIndex = sepIndex + 1
-        local dvSep = GetSeparator(f, sepIndex)
-        dvSep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        dvSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local dvSep = GetSeparator(c, sepIndex)
+        dvSep:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        dvSep:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
         y = y - 6
 
         -- Vault progress summary
@@ -1703,8 +1671,8 @@ function SavedInst:BuildTooltipContent()
         end
 
         headerIndex = headerIndex + 1
-        local dvHdr = GetHeader(f, headerIndex)
-        dvHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local dvHdr = GetHeader(c, headerIndex)
+        dvHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         dvHdr:SetText("Delves This Week (" .. delveCount .. ")" .. dvVaultText)
         y = y - HEADER_HEIGHT
 
@@ -1734,9 +1702,9 @@ function SavedInst:BuildTooltipContent()
                     end
 
                     rowIndex = rowIndex + 1
-                    local row = GetRow(f, rowIndex)
-                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    local row = GetRow(c, rowIndex)
+                    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                     row:SetHeight(ROW_HEIGHT)
 
                     row.nameText:SetText(delveName)
@@ -1766,9 +1734,9 @@ function SavedInst:BuildTooltipContent()
                 end
 
                 rowIndex = rowIndex + 1
-                local row = GetRow(f, rowIndex)
-                row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                local row = GetRow(c, rowIndex)
+                row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                 row:SetHeight(ROW_HEIGHT)
 
                 row.nameText:SetText("All Delves")
@@ -1814,9 +1782,9 @@ function SavedInst:BuildTooltipContent()
 
                 for _, run in ipairs(sortedTracked) do
                     rowIndex = rowIndex + 1
-                    local row = GetRow(f, rowIndex)
-                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    local row = GetRow(c, rowIndex)
+                    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                     row:SetHeight(ROW_HEIGHT)
 
                     row.nameText:SetText(run.name)
@@ -1839,9 +1807,9 @@ function SavedInst:BuildTooltipContent()
                 SortDelveRuns(delveRuns, db.delveSortOrder)
                 for _, run in ipairs(delveRuns) do
                     rowIndex = rowIndex + 1
-                    local row = GetRow(f, rowIndex)
-                    row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                    row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    local row = GetRow(c, rowIndex)
+                    row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                    row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                     row:SetHeight(ROW_HEIGHT)
 
                     row.nameText:SetText("Delve")
@@ -1865,7 +1833,7 @@ function SavedInst:BuildTooltipContent()
 
     -- Alt lockouts section (expandable per-alt detail — hidden when column view is active)
     if not db.altColumns then
-        local altSection = self:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
+        local altSection = self:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
         if altSection then
             y = altSection.y
         end
@@ -1884,15 +1852,14 @@ function SavedInst:BuildTooltipContent()
     if numAltCols > 0 then
         ttWidth = ttWidth + (numAltCols + 1) * (ALT_COL_WIDTH + 2) -- +1 for current char column
     end
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 ---------------------------------------------------------------------------
 -- Alt lockout section (reads DDT's own DjinnisDataTextsDB.altLockouts)
 ---------------------------------------------------------------------------
 
-function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
+function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
     local db = self:GetDB()
     if not db.showAlts then return nil end
     if not ns.db or not ns.db.altLockouts then return nil end
@@ -1941,14 +1908,14 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
     -- Section separator + header
     y = y - 4
     sepIndex = sepIndex + 1
-    local sep = GetSeparator(f, sepIndex)
-    sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+    local sep = GetSeparator(c, sepIndex)
+    sep:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+    sep:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     y = y - 6
 
     headerIndex = headerIndex + 1
-    local altHdr = GetHeader(f, headerIndex)
-    altHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local altHdr = GetHeader(c, headerIndex)
+    altHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     altHdr:SetText("Alt Lockouts")
     altHdr:SetTextColor(1, 0.82, 0)
     y = y - HEADER_HEIGHT
@@ -1976,9 +1943,9 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
 
         -- Alt summary row (click to expand)
         rowIndex = rowIndex + 1
-        local row = GetRow(f, rowIndex)
-        row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local row = GetRow(c, rowIndex)
+        row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
         row:SetHeight(ROW_HEIGHT)
         row.isBossRow = false
 
@@ -2011,11 +1978,11 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
 
             for _, lo in ipairs(altRaids) do
                 rowIndex = rowIndex + 1
-                rowIndex, y = RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
+                rowIndex, y = RenderAltLockoutRow(c, rowIndex, y, lo, elapsed)
             end
             for _, lo in ipairs(altDungs) do
                 rowIndex = rowIndex + 1
-                rowIndex, y = RenderAltLockoutRow(f, rowIndex, y, lo, elapsed)
+                rowIndex, y = RenderAltLockoutRow(c, rowIndex, y, lo, elapsed)
             end
 
             -- M+ runs
@@ -2027,9 +1994,9 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
                 local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
                 for _, run in ipairs(sortedRuns) do
                     rowIndex = rowIndex + 1
-                    local lrow = GetRow(f, rowIndex)
-                    lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
-                    lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                    local lrow = GetRow(c, rowIndex)
+                    lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
+                    lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                     lrow:SetHeight(ROW_HEIGHT)
                     lrow.isBossRow = false
 
@@ -2055,9 +2022,9 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
                 if altTracked and #altTracked > 0 then
                     for _, run in ipairs(altTracked) do
                         rowIndex = rowIndex + 1
-                        local lrow = GetRow(f, rowIndex)
-                        lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
-                        lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                        local lrow = GetRow(c, rowIndex)
+                        lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
+                        lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                         lrow:SetHeight(ROW_HEIGHT)
                         lrow.isBossRow = false
 
@@ -2075,9 +2042,9 @@ function SavedInst:BuildAltSection(f, y, rowIndex, headerIndex, sepIndex)
                 else
                     for _, run in ipairs(altDvRuns) do
                         rowIndex = rowIndex + 1
-                        local lrow = GetRow(f, rowIndex)
-                        lrow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 12, y)
-                        lrow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                        local lrow = GetRow(c, rowIndex)
+                        lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
+                        lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
                         lrow:SetHeight(ROW_HEIGHT)
                         lrow.isBossRow = false
 
@@ -2206,6 +2173,12 @@ function SavedInst:BuildSettingsPanel(panel)
         { label = "Width", min = 300, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v; refreshTT() end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 400 x 600. Increase for many lockouts and alt data.")
     W.EndSection(panel, y)
 
     -- Alt Lockouts (before click actions so it's easier to find)

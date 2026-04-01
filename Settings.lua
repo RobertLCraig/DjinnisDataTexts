@@ -275,6 +275,17 @@ local function AddSliderPair(content, y, spec1, spec2, refreshList)
     return y - 48
 end
 
+--- Add a small gray note/hint text
+local function AddNote(content, y, text)
+    local note = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+    note:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
+    note:SetPoint("RIGHT", content, "RIGHT", -18, 0)
+    note:SetJustifyH("LEFT")
+    note:SetText(text)
+    local h = math.max(14, note:GetStringHeight() + 2)
+    return y - h
+end
+
 local function AddDropdown(content, y, label, values, getter, setter, refreshList)
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
@@ -657,6 +668,7 @@ ns.SettingsWidgets = {
     AddLabelEditBox = AddLabelEditBox,
     AddButton       = AddButton,
     AddDescription  = AddDescription,
+    AddNote         = AddNote,
     AddSection      = AddSection,
     EndSection      = EndSection,
 }

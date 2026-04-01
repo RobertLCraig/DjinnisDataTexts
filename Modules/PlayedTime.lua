@@ -34,8 +34,9 @@ local playedReceived = false -- has TIME_PLAYED_MSG fired?
 
 local DEFAULTS = {
     labelTemplate = "<session>",
-    tooltipScale  = 1.0,
-    tooltipWidth  = 280,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 280,
     clickActions  = {
         leftClick       = "refresh",
         rightClick      = "stopwatch",
@@ -199,39 +200,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTPlayedTimeTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() PlayedTime:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() PlayedTime:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTPlayedTimeTooltip", PlayedTime)
+    f.content.lines = {}
     return f
 end
 
@@ -261,19 +231,20 @@ end
 
 function PlayedTime:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
-    f.title:SetText("Played Time")
+    f.header:SetText("Played Time")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Session time
     lineIdx = lineIdx + 1
-    local sessLine = GetLine(f, lineIdx)
-    sessLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local sessLine = GetLine(c, lineIdx)
+    sessLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     sessLine.label:SetText("|cffffffffSession|r")
-    sessLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    sessLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     sessLine.value:SetText(FormatDurationLong(GetSessionTime()))
     sessLine.value:SetTextColor(0.0, 1.0, 0.0)
     y = y - ROW_HEIGHT
@@ -285,10 +256,10 @@ function PlayedTime:BuildTooltipContent()
         -- Total played (including session time since last TIME_PLAYED_MSG)
         local adjustedTotal = totalPlayed + GetSessionTime()
         lineIdx = lineIdx + 1
-        local totalLine = GetLine(f, lineIdx)
-        totalLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local totalLine = GetLine(c, lineIdx)
+        totalLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         totalLine.label:SetText("|cffffffffTotal Played|r")
-        totalLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        totalLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         totalLine.value:SetText(FormatDurationLong(adjustedTotal))
         totalLine.value:SetTextColor(0.4, 0.78, 1)
         y = y - ROW_HEIGHT
@@ -296,19 +267,19 @@ function PlayedTime:BuildTooltipContent()
         -- Level played
         local adjustedLevel = levelPlayed + GetSessionTime()
         lineIdx = lineIdx + 1
-        local lvlLine = GetLine(f, lineIdx)
-        lvlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local lvlLine = GetLine(c, lineIdx)
+        lvlLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         lvlLine.label:SetText("|cffffffffThis Level|r")
-        lvlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        lvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lvlLine.value:SetText(FormatDurationLong(adjustedLevel))
         lvlLine.value:SetTextColor(0.4, 0.78, 1)
         y = y - ROW_HEIGHT
     else
         lineIdx = lineIdx + 1
-        local pendLine = GetLine(f, lineIdx)
-        pendLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local pendLine = GetLine(c, lineIdx)
+        pendLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         pendLine.label:SetText("|cff888888Waiting for /played data...|r")
-        pendLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        pendLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         pendLine.value:SetText("")
         y = y - ROW_HEIGHT
     end
@@ -320,10 +291,10 @@ function PlayedTime:BuildTooltipContent()
     local level = UnitLevel("player") or 0
 
     lineIdx = lineIdx + 1
-    local charLine = GetLine(f, lineIdx)
-    charLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local charLine = GetLine(c, lineIdx)
+    charLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     charLine.label:SetText("|cffffffffCharacter|r")
-    charLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    charLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     local nameStr = playerName
     if className then
         local cc = RAID_CLASS_COLORS[className]
@@ -341,8 +312,7 @@ function PlayedTime:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function PlayedTime:ShowTooltip(anchor)
@@ -409,6 +379,12 @@ function PlayedTime:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 300 x 250 for session and character times.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "playedtime", CLICK_ACTIONS)

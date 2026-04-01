@@ -713,10 +713,10 @@ function DDT:BuildHintText(clickActions, actionLabels)
     return "|cff888888" .. table.concat(hints, "  |  ") .. "|r"
 end
 
---- Update scrollbar thumb/track visibility and position for a scrollable tooltip
+--- Update vertical scrollbar thumb/track visibility and position
 function DDT:UpdateScrollbar(f)
     if not f or not f.scrollTrack then return end
-    local contentH = f.scrollContent:GetHeight()
+    local contentH = (f.scrollContent or f.content):GetHeight()
     local clipH = f.clipFrame:GetHeight()
     if contentH > clipH + 1 then
         f.scrollTrack:Show()
@@ -733,6 +733,211 @@ function DDT:UpdateScrollbar(f)
         f.scrollTrack:Hide()
         f.scrollThumb:Hide()
     end
+end
+
+--- Update horizontal scrollbar thumb/track visibility and position
+function DDT:UpdateHScrollbar(f)
+    if not f or not f.hScrollTrack then return end
+    local contentW = (f.scrollContent or f.content):GetWidth()
+    local clipW = f.clipFrame:GetWidth()
+    if contentW > clipW + 1 then
+        f.hScrollTrack:Show()
+        f.hScrollThumb:Show()
+        local ratio = clipW / contentW
+        local thumbW = math.max(20, clipW * ratio)
+        f.hScrollThumb:SetWidth(thumbW)
+        local scrollRange = contentW - clipW
+        local scrollPos = (scrollRange > 0) and (f.hScrollOffset / scrollRange) or 0
+        local thumbTravel = clipW - thumbW
+        f.hScrollThumb:ClearAllPoints()
+        f.hScrollThumb:SetPoint("TOPLEFT", f.hScrollTrack, "TOPLEFT", scrollPos * thumbTravel, 0)
+    else
+        f.hScrollTrack:Hide()
+        f.hScrollThumb:Hide()
+    end
+end
+
+---------------------------------------------------------------------------
+-- Scrollable tooltip factory
+---------------------------------------------------------------------------
+
+local FACTORY_PADDING     = 10
+local FACTORY_HEADER_H    = 20
+local FACTORY_SEP_GAP     = 3   -- gap below header before separator
+local FACTORY_CONTENT_GAP = 6   -- gap below separator before content
+local FACTORY_HINT_H      = 22  -- hint bar height reservation
+local FACTORY_HINT_H_NONE = 4   -- bottom padding when no hint
+
+--- Create a scrollable tooltip frame with standard DDT styling.
+--- All content should be placed on f.content (the scroll child).
+--- After populating, call f:FinalizeLayout(width, contentHeight [, contentWidth]).
+--- @param globalName string|nil  Frame global name (nil = anonymous)
+--- @param moduleRef table  Module with CancelHideTimer/StartHideTimer (or *TooltipHideTimer variants)
+--- @return Frame
+function ns.CreateTooltipFrame(globalName, moduleRef)
+    local f = CreateFrame("Frame", globalName, UIParent, "BackdropTemplate")
+    f:SetFrameStrata("TOOLTIP")
+    f:SetClampedToScreen(true)
+    f:EnableMouse(true)
+    f:SetSize(400, 100)
+
+    f:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 14,
+        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
+    })
+    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
+    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
+
+    -- Header (title)
+    f.header = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
+    f.header:SetPoint("TOPLEFT", f, "TOPLEFT", FACTORY_PADDING, -FACTORY_PADDING)
+    f.header:SetPoint("TOPRIGHT", f, "TOPRIGHT", -FACTORY_PADDING, -FACTORY_PADDING)
+    f.header:SetJustifyH("LEFT")
+    f.header:SetTextColor(1, 0.82, 0)
+    f.header:SetHeight(FACTORY_HEADER_H)
+    f.title = f.header  -- alias for Pattern B compat
+
+    -- Title separator
+    f.titleSep = f:CreateTexture(nil, "ARTWORK")
+    f.titleSep:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -FACTORY_SEP_GAP)
+    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -FACTORY_PADDING, 0)
+    f.titleSep:SetHeight(1)
+    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
+
+    -- Hint bar (anchored to bottom of outer frame)
+    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", FACTORY_PADDING, 8)
+    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -FACTORY_PADDING, 8)
+    f.hint:SetJustifyH("CENTER")
+    f.hint:SetTextColor(0.53, 0.53, 0.53)
+
+    -- Clip frame (clips children for scrolling)
+    f.clipFrame = CreateFrame("Frame", nil, f)
+    f.clipFrame:SetClipsChildren(true)
+
+    -- Scroll content (child of clipFrame — all module content goes here)
+    f.content = CreateFrame("Frame", nil, f.clipFrame)
+    f.scrollContent = f.content  -- alias for DDT:UpdateScrollbar compat
+
+    f.scrollOffset  = 0
+    f.hScrollOffset = 0
+
+    -- Vertical scrollbar track + thumb
+    f.scrollTrack = f:CreateTexture(nil, "ARTWORK")
+    f.scrollTrack:SetPoint("TOPLEFT", f.clipFrame, "TOPRIGHT", 2, 0)
+    f.scrollTrack:SetPoint("BOTTOMLEFT", f.clipFrame, "BOTTOMRIGHT", 2, 0)
+    f.scrollTrack:SetWidth(4)
+    f.scrollTrack:SetColorTexture(1, 1, 1, 0.08)
+    f.scrollTrack:Hide()
+
+    f.scrollThumb = f:CreateTexture(nil, "OVERLAY")
+    f.scrollThumb:SetWidth(4)
+    f.scrollThumb:SetColorTexture(0.8, 0.8, 0.8, 0.4)
+    f.scrollThumb:Hide()
+
+    -- Horizontal scrollbar track + thumb
+    f.hScrollTrack = f:CreateTexture(nil, "ARTWORK")
+    f.hScrollTrack:SetPoint("TOPLEFT", f.clipFrame, "BOTTOMLEFT", 0, -2)
+    f.hScrollTrack:SetPoint("TOPRIGHT", f.clipFrame, "BOTTOMRIGHT", 0, -2)
+    f.hScrollTrack:SetHeight(4)
+    f.hScrollTrack:SetColorTexture(1, 1, 1, 0.08)
+    f.hScrollTrack:Hide()
+
+    f.hScrollThumb = f:CreateTexture(nil, "OVERLAY")
+    f.hScrollThumb:SetHeight(4)
+    f.hScrollThumb:SetColorTexture(0.8, 0.8, 0.8, 0.4)
+    f.hScrollThumb:Hide()
+
+    -- Extra top offset for modules with column headers (set before FinalizeLayout)
+    f.headerExtra = 0
+
+    -- Mouse wheel: vertical default, Shift+wheel = horizontal
+    f:EnableMouseWheel(true)
+    f:SetScript("OnMouseWheel", function(self, delta)
+        if IsShiftKeyDown() then
+            local contentW = self.content:GetWidth() or 0
+            local clipW    = self.clipFrame:GetWidth() or 0
+            local maxScroll = math.max(0, contentW - clipW)
+            self.hScrollOffset = math.max(0, math.min(maxScroll, self.hScrollOffset - delta * 30))
+        else
+            local contentH = self.content:GetHeight() or 0
+            local clipH    = self.clipFrame:GetHeight() or 0
+            local maxScroll = math.max(0, contentH - clipH)
+            self.scrollOffset = math.max(0, math.min(maxScroll, self.scrollOffset - delta * 20))
+        end
+        self.content:ClearAllPoints()
+        self.content:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT",
+            -self.hScrollOffset, self.scrollOffset)
+        DDT:UpdateScrollbar(self)
+        DDT:UpdateHScrollbar(self)
+    end)
+
+    -- OnEnter / OnLeave — probe for both naming conventions
+    f:SetScript("OnEnter", function()
+        if moduleRef.CancelTooltipHideTimer then
+            moduleRef:CancelTooltipHideTimer()
+        elseif moduleRef.CancelHideTimer then
+            moduleRef:CancelHideTimer()
+        end
+    end)
+    f:SetScript("OnLeave", function()
+        if moduleRef.StartTooltipHideTimer then
+            moduleRef:StartTooltipHideTimer()
+        elseif moduleRef.StartHideTimer then
+            moduleRef:StartHideTimer()
+        end
+    end)
+
+    --- Finalize tooltip layout after content is populated.
+    --- Sets clip frame size, outer frame size, and updates scrollbars.
+    --- @param width number  Desired tooltip width
+    --- @param contentHeight number  Total content height (positive)
+    --- @param contentWidth number|nil  Total content width (nil = use inner width)
+    function f:FinalizeLayout(width, contentHeight, contentWidth)
+        local padding = FACTORY_PADDING
+        local innerWidth = width - 2 * padding
+
+        contentHeight = math.max(1, contentHeight)
+        contentWidth  = contentWidth or innerWidth
+
+        local fixedTop = padding + FACTORY_HEADER_H + FACTORY_SEP_GAP + 1 + FACTORY_CONTENT_GAP
+                         + self.headerExtra
+        local hintText = self.hint:GetText()
+        local hasHint  = hintText and hintText ~= ""
+        local hintH    = hasHint and FACTORY_HINT_H or FACTORY_HINT_H_NONE
+
+        -- Determine max scroll area height
+        local db = moduleRef.GetDB and moduleRef:GetDB() or {}
+        local maxH = db.tooltipMaxHeight or math.floor(UIParent:GetHeight() * 0.7)
+        local scrollAreaH = math.min(contentHeight,
+            math.max(20, maxH - fixedTop - hintH))
+
+        -- Position clip frame
+        self.clipFrame:ClearAllPoints()
+        self.clipFrame:SetPoint("TOPLEFT", self, "TOPLEFT", padding, -fixedTop)
+        self.clipFrame:SetSize(innerWidth, scrollAreaH)
+
+        -- Set content size
+        self.content:SetSize(contentWidth, contentHeight)
+
+        -- Reset scroll position
+        self.scrollOffset  = 0
+        self.hScrollOffset = 0
+        self.content:ClearAllPoints()
+        self.content:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT", 0, 0)
+
+        -- Set outer frame size
+        self:SetSize(width, fixedTop + scrollAreaH + hintH)
+
+        -- Update scrollbar visibility
+        DDT:UpdateScrollbar(self)
+        DDT:UpdateHScrollbar(self)
+    end
+
+    f:Hide()
+    return f
 end
 
 --- Print a message to chat

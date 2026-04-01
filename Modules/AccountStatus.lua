@@ -20,8 +20,6 @@ local hideTimer = nil
 local TOOLTIP_WIDTH  = 300
 local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
-local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local warbankEnabled = false   -- C_PlayerInfo.IsAccountBankEnabled()
@@ -36,6 +34,7 @@ local findBattleEnabled = false
 local DEFAULTS = {
     labelTemplate    = "<warbank> | <journal>",
     tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
     tooltipWidth     = 300,
     clickActions     = {
         leftClick       = "openwarbank",
@@ -197,39 +196,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTAccountStatusTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() AcctStatus:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() AcctStatus:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTAccountStatusTooltip", AcctStatus)
+    f.content.lines = {}
     return f
 end
 
@@ -259,21 +227,22 @@ end
 
 function AcctStatus:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("Account Status")
+    f.header:SetText("Account Status")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Character info
     lineIdx = lineIdx + 1
-    local charLine = GetLine(f, lineIdx)
-    charLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local charLine = GetLine(c, lineIdx)
+    charLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     charLine.label:SetText("|cffffffffCharacter|r")
-    charLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    charLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     local charName = UnitName("player") or "Unknown"
     local _, classFile = UnitClass("player")
     if classFile then
@@ -288,20 +257,20 @@ function AcctStatus:BuildTooltipContent()
 
     -- Warband Bank header
     lineIdx = lineIdx + 1
-    local wbHdr = GetLine(f, lineIdx)
-    wbHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local wbHdr = GetLine(c, lineIdx)
+    wbHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     wbHdr.label:SetText("|cffffd100Warband Bank|r")
-    wbHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    wbHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     wbHdr.value:SetText("")
     y = y - HEADER_HEIGHT
 
     -- Warband: Feature enabled
     lineIdx = lineIdx + 1
-    local wbEnabledLine = GetLine(f, lineIdx)
-    wbEnabledLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+    local wbEnabledLine = GetLine(c, lineIdx)
+    wbEnabledLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 6, y)
     wbEnabledLine.label:SetText("Feature")
     wbEnabledLine.label:SetTextColor(0.8, 0.8, 0.8)
-    wbEnabledLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    wbEnabledLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     if warbankEnabled then
         wbEnabledLine.value:SetText("Enabled")
         wbEnabledLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -313,11 +282,11 @@ function AcctStatus:BuildTooltipContent()
 
     -- Warband: Access lock
     lineIdx = lineIdx + 1
-    local wbLockLine = GetLine(f, lineIdx)
-    wbLockLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+    local wbLockLine = GetLine(c, lineIdx)
+    wbLockLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 6, y)
     wbLockLine.label:SetText("Access")
     wbLockLine.label:SetTextColor(0.8, 0.8, 0.8)
-    wbLockLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    wbLockLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     if not warbankEnabled then
         wbLockLine.value:SetText("N/A")
         wbLockLine.value:SetTextColor(0.5, 0.5, 0.5)
@@ -334,20 +303,20 @@ function AcctStatus:BuildTooltipContent()
 
     -- Pet Journal header
     lineIdx = lineIdx + 1
-    local petHdr = GetLine(f, lineIdx)
-    petHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local petHdr = GetLine(c, lineIdx)
+    petHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     petHdr.label:SetText("|cffffd100Pet Journal|r")
-    petHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    petHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     petHdr.value:SetText("")
     y = y - HEADER_HEIGHT
 
     -- Pet: Journal unlock
     lineIdx = lineIdx + 1
-    local petUnlockLine = GetLine(f, lineIdx)
-    petUnlockLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+    local petUnlockLine = GetLine(c, lineIdx)
+    petUnlockLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 6, y)
     petUnlockLine.label:SetText("Journal")
     petUnlockLine.label:SetTextColor(0.8, 0.8, 0.8)
-    petUnlockLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    petUnlockLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     if journalUnlocked then
         petUnlockLine.value:SetText("Unlocked")
         petUnlockLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -359,11 +328,11 @@ function AcctStatus:BuildTooltipContent()
 
     -- Pet: Battle capability
     lineIdx = lineIdx + 1
-    local petBattleLine = GetLine(f, lineIdx)
-    petBattleLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+    local petBattleLine = GetLine(c, lineIdx)
+    petBattleLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 6, y)
     petBattleLine.label:SetText("Pet Battles")
     petBattleLine.label:SetTextColor(0.8, 0.8, 0.8)
-    petBattleLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    petBattleLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     if not journalUnlocked then
         petBattleLine.value:SetText("Unavailable")
         petBattleLine.value:SetTextColor(0.5, 0.5, 0.5)
@@ -380,8 +349,8 @@ function AcctStatus:BuildTooltipContent()
 
     -- Summary
     lineIdx = lineIdx + 1
-    local summaryLine = GetLine(f, lineIdx)
-    summaryLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local summaryLine = GetLine(c, lineIdx)
+    summaryLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     local allOK = warbankLocked and journalUnlocked
     if allOK then
         summaryLine.label:SetText("|cff00ff00All resources available on this account.|r")
@@ -395,7 +364,7 @@ function AcctStatus:BuildTooltipContent()
         end
         summaryLine.label:SetText("|cffff3333Restricted: " .. table.concat(issues, ", ") .. "|r")
     end
-    summaryLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    summaryLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     summaryLine.value:SetText("")
     y = y - ROW_HEIGHT
 
@@ -403,8 +372,7 @@ function AcctStatus:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function AcctStatus:ShowTooltip(anchor)
@@ -471,6 +439,12 @@ function AcctStatus:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 300 x 300 for typical tooltip content.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "accountstatus", CLICK_ACTIONS)

@@ -18,9 +18,6 @@ local hideTimer = nil
 -- Layout
 local TOOLTIP_WIDTH  = 360
 local ROW_HEIGHT     = 20
-local HEADER_HEIGHT  = 18
-local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local activeQueues = {}   -- { {category, categoryName, mode, instanceName, waitTime, queuedTime} }
@@ -38,8 +35,9 @@ local DEFAULTS = {
     showQueues     = true,
     showApps       = true,
     showListed     = true,
-    tooltipScale   = 1.0,
-    tooltipWidth   = 360,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 500,
+    tooltipWidth     = 360,
     clickActions   = {
         leftClick       = "groupfinder",
         rightClick      = "leavequeue",
@@ -433,40 +431,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTLFGStatusTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() LFGStatus:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() LFGStatus:StartHideTimer() end)
-
-    f.lines = {}
-
+    local f = ns.CreateTooltipFrame("DDTLFGStatusTooltip", LFGStatus)
+    f.content.lines = {}
     return f
 end
 
@@ -496,12 +462,13 @@ end
 
 function LFGStatus:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
-    f.title:SetText("LFG Status")
+    f.header:SetText("LFG Status")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -----------------------------------------------------------------------
@@ -509,10 +476,10 @@ function LFGStatus:BuildTooltipContent()
     -----------------------------------------------------------------------
     if db.showQueues and #activeQueues > 0 then
         lineIdx = lineIdx + 1
-        local hdr = GetLine(f, lineIdx)
-        hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local hdr = GetLine(c, lineIdx)
+        hdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         hdr.label:SetText("|cff66c7ffActive Queues|r")
-        hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("Queued as: " .. roleString)
         hdr.value:SetTextColor(0.8, 0.8, 0.8)
         y = y - ROW_HEIGHT
@@ -520,12 +487,12 @@ function LFGStatus:BuildTooltipContent()
         -- Show assigned role prominently when known
         if assignedRole then
             lineIdx = lineIdx + 1
-            local assignLine = GetLine(f, lineIdx)
-            assignLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 8, y)
+            local assignLine = GetLine(c, lineIdx)
+            assignLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 8, y)
             local roleIcon = GetRoleIcon(assignedRole)
             local roleLabel = GetRoleLabel(assignedRole)
             assignLine.label:SetText(roleIcon .. " |cff00ff00Assigned as: " .. roleLabel .. "|r")
-            assignLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            assignLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             assignLine.value:SetText("")
             y = y - ROW_HEIGHT
         end
@@ -533,8 +500,8 @@ function LFGStatus:BuildTooltipContent()
         for _, q in ipairs(activeQueues) do
             -- Row 1: category + mode indicator
             lineIdx = lineIdx + 1
-            local catLine = GetLine(f, lineIdx)
-            catLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 8, y)
+            local catLine = GetLine(c, lineIdx)
+            catLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 8, y)
 
             local catText = q.categoryName
             if q.mode == "proposal" then
@@ -546,14 +513,14 @@ function LFGStatus:BuildTooltipContent()
             end
             catLine.label:SetText(catText)
             catLine.label:SetTextColor(1, 0.82, 0)
-            catLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            catLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             catLine.value:SetText("")
             y = y - ROW_HEIGHT
 
             -- Row 2: instance name + wait/elapsed
             lineIdx = lineIdx + 1
-            local instLine = GetLine(f, lineIdx)
-            instLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 16, y)
+            local instLine = GetLine(c, lineIdx)
+            instLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 16, y)
             instLine.label:SetText(q.instanceName)
             instLine.label:SetTextColor(1, 1, 1)
 
@@ -564,7 +531,7 @@ function LFGStatus:BuildTooltipContent()
             if q.hasData and q.waitTime > 0 then
                 table.insert(timeParts, "est. " .. FormatTime(q.waitTime))
             end
-            instLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            instLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             instLine.value:SetText(table.concat(timeParts, " / "))
             instLine.value:SetTextColor(0.7, 0.7, 0.7)
             y = y - ROW_HEIGHT
@@ -578,17 +545,17 @@ function LFGStatus:BuildTooltipContent()
     -----------------------------------------------------------------------
     if db.showApps and #pendingApps > 0 then
         lineIdx = lineIdx + 1
-        local hdr = GetLine(f, lineIdx)
-        hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local hdr = GetLine(c, lineIdx)
+        hdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         hdr.label:SetText("|cff66c7ffPremade Applications|r")
-        hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("")
         y = y - ROW_HEIGHT
 
         for _, app in ipairs(pendingApps) do
             lineIdx = lineIdx + 1
-            local line = GetLine(f, lineIdx)
-            line.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 8, y)
+            local line = GetLine(c, lineIdx)
+            line.label:SetPoint("TOPLEFT", c, "TOPLEFT", 8, y)
 
             local roleIcon = GetRoleIcon(app.role)
             local roleLabel = GetRoleLabel(app.role)
@@ -602,7 +569,7 @@ function LFGStatus:BuildTooltipContent()
             local statusLabel = APP_STATUS_TEXT[app.status] or app.status
             local statusColor = APP_STATUS_COLOR[app.status] or { 0.7, 0.7, 0.7 }
             local rightText = roleLabel .. " — " .. statusLabel
-            line.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             line.value:SetText(rightText)
             line.value:SetTextColor(unpack(statusColor))
             y = y - ROW_HEIGHT
@@ -616,23 +583,23 @@ function LFGStatus:BuildTooltipContent()
     -----------------------------------------------------------------------
     if db.showListed and activeEntry then
         lineIdx = lineIdx + 1
-        local hdr = GetLine(f, lineIdx)
-        hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local hdr = GetLine(c, lineIdx)
+        hdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         hdr.label:SetText("|cff66c7ffYour Listed Group|r")
-        hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("")
         y = y - ROW_HEIGHT
 
         lineIdx = lineIdx + 1
-        local line = GetLine(f, lineIdx)
-        line.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 8, y)
+        local line = GetLine(c, lineIdx)
+        line.label:SetPoint("TOPLEFT", c, "TOPLEFT", 8, y)
         local entryText = activeEntry.name
         if activeEntry.activityName ~= "" then
             entryText = entryText .. " |cff888888(" .. activeEntry.activityName .. ")|r"
         end
         line.label:SetText(entryText)
         line.label:SetTextColor(1, 1, 1)
-        line.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         local n = activeEntry.numApplicants
         line.value:SetText(n .. " applicant" .. (n ~= 1 and "s" or ""))
         line.value:SetTextColor(0.4, 0.78, 1)
@@ -646,10 +613,10 @@ function LFGStatus:BuildTooltipContent()
     -----------------------------------------------------------------------
     if #activeQueues == 0 and #pendingApps == 0 and not activeEntry then
         lineIdx = lineIdx + 1
-        local line = GetLine(f, lineIdx)
-        line.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local line = GetLine(c, lineIdx)
+        line.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         line.label:SetText("|cff888888Not queued or applied to any groups.|r")
-        line.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         line.value:SetText("")
         y = y - ROW_HEIGHT
     end
@@ -658,8 +625,7 @@ function LFGStatus:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function LFGStatus:ShowTooltip(anchor)
@@ -740,6 +706,12 @@ function LFGStatus:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 400. Height depends on queue count.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "lfgstatus", CLICK_ACTIONS)

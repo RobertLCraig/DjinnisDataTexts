@@ -48,8 +48,9 @@ local HINT_HEIGHT    = 18
 
 local DEFAULTS = {
     labelTemplate = "<spec>",
-    tooltipScale  = 1.0,
-    tooltipWidth  = 280,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 280,
     clickActions = {
         leftClick       = "opentalents",
         rightClick      = "none",
@@ -425,42 +426,7 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTSpecSwitchTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    -- Title separator
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    -- Hint bar
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    -- Mouse interaction: keep tooltip visible when mousing over it
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() SpecSwitch:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() SpecSwitch:StartHideTimer() end)
-
+    local f = ns.CreateTooltipFrame("DDTSpecSwitchTooltip", SpecSwitch)
     return f
 end
 
@@ -557,26 +523,27 @@ function SpecSwitch:BuildTooltipContent()
     HideAllPooled()
 
     local f = tooltipFrame
+    local c = f.content
     local db = self:GetDB()
-    f.title:SetText("Specialization")
+    f.header:SetText("Specialization")
 
     local rowIndex = 0
     local headerIndex = 0
     local sepIndex = 0
-    local y = -PADDING - 20 - 6 -- below title + separator
+    local y = 0
 
     -- ── Specializations ──────────────────────────────────────
     headerIndex = headerIndex + 1
-    local specHdr = GetHeader(f, headerIndex)
-    specHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local specHdr = GetHeader(c, headerIndex)
+    specHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     specHdr:SetText("Specializations")
     y = y - HEADER_HEIGHT
 
     for i, spec in ipairs(self.specCache) do
         rowIndex = rowIndex + 1
-        local row = GetRow(f, rowIndex)
-        row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local row = GetRow(c, rowIndex)
+        row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
         row.icon:SetTexture(spec.icon)
         row.icon:Show()
@@ -615,14 +582,14 @@ function SpecSwitch:BuildTooltipContent()
         y = y - 4
 
         sepIndex = sepIndex + 1
-        local sep = GetSeparator(f, sepIndex)
-        sep:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        sep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local sep = GetSeparator(c, sepIndex)
+        sep:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        sep:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
         y = y - 6
 
         headerIndex = headerIndex + 1
-        local loadHdr = GetHeader(f, headerIndex)
-        loadHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local loadHdr = GetHeader(c, headerIndex)
+        loadHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         loadHdr:SetText("Talent Loadouts")
         y = y - HEADER_HEIGHT
 
@@ -632,9 +599,9 @@ function SpecSwitch:BuildTooltipContent()
 
         if hasStarter then
             rowIndex = rowIndex + 1
-            local row = GetRow(f, rowIndex)
-            row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+            local row = GetRow(c, rowIndex)
+            row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
             row.icon:Hide()
             row.text:SetText("  Starter Build")
@@ -656,9 +623,9 @@ function SpecSwitch:BuildTooltipContent()
 
         for _, loadout in ipairs(currentLoadouts) do
             rowIndex = rowIndex + 1
-            local row = GetRow(f, rowIndex)
-            row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+            local row = GetRow(c, rowIndex)
+            row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
             row.icon:Hide()
             row.text:SetText("  " .. loadout.name)
@@ -698,22 +665,22 @@ function SpecSwitch:BuildTooltipContent()
     y = y - 4
 
     sepIndex = sepIndex + 1
-    local sep2 = GetSeparator(f, sepIndex)
-    sep2:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    sep2:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+    local sep2 = GetSeparator(c, sepIndex)
+    sep2:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+    sep2:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     y = y - 6
 
     headerIndex = headerIndex + 1
-    local lootHdr = GetHeader(f, headerIndex)
-    lootHdr:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local lootHdr = GetHeader(c, headerIndex)
+    lootHdr:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     lootHdr:SetText("Loot Specialization")
     y = y - HEADER_HEIGHT
 
     -- "Current Spec" option
     rowIndex = rowIndex + 1
-    local defaultRow = GetRow(f, rowIndex)
-    defaultRow:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    defaultRow:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+    local defaultRow = GetRow(c, rowIndex)
+    defaultRow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+    defaultRow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
     if self.currentSpecIcon then
         defaultRow.icon:SetTexture(self.currentSpecIcon)
@@ -746,9 +713,9 @@ function SpecSwitch:BuildTooltipContent()
     -- Per-spec loot options
     for i, spec in ipairs(self.specCache) do
         rowIndex = rowIndex + 1
-        local row = GetRow(f, rowIndex)
-        row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local row = GetRow(c, rowIndex)
+        row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
         row.icon:SetTexture(spec.icon)
         row.icon:Show()
@@ -781,10 +748,9 @@ function SpecSwitch:BuildTooltipContent()
     local hintText = DDT:BuildHintText(db.clickActions or {}, SPEC_ACTION_VALUES)
     f.hint:SetText(hintText ~= "" and hintText or "|cff888888Click a row to switch|r")
 
-    -- Size the frame
+    -- Finalize layout
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 ---------------------------------------------------------------------------
@@ -859,6 +825,12 @@ function SpecSwitch:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 300 for specs and loadouts.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "specswitch", SPEC_ACTION_VALUES)

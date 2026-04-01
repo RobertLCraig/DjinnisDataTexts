@@ -29,8 +29,9 @@ local HINT_HEIGHT    = 18
 
 local DEFAULTS = {
     labelTemplate = "Menu",
-    tooltipScale  = 1.0,
-    tooltipWidth  = 220,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 220,
     clickActions  = {
         leftClick       = "gamemenu",
         rightClick      = "reloadui",
@@ -168,38 +169,7 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTMicroMenuTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() MicroMenu:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() MicroMenu:StartHideTimer() end)
-
+    local f = ns.CreateTooltipFrame("DDTMicroMenuTooltip", MicroMenu)
     return f
 end
 
@@ -244,18 +214,19 @@ function MicroMenu:BuildTooltipContent()
     HideAllRows()
 
     local f = tooltipFrame
+    local c = f.content
     local db = self:GetDB()
 
-    f.title:SetText("Micro Menu")
+    f.header:SetText("Micro Menu")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local rowIndex = 0
 
     for _, entry in ipairs(MENU_ENTRIES) do
         rowIndex = rowIndex + 1
-        local row = GetRow(f, rowIndex)
-        row:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        row:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local row = GetRow(c, rowIndex)
+        row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
         row.icon:SetTexture(entry.icon)
         row.text:SetText(entry.label)
@@ -273,8 +244,7 @@ function MicroMenu:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function MicroMenu:ShowTooltip(anchor)
@@ -336,6 +306,12 @@ function MicroMenu:BuildSettingsPanel(panel)
         { label = "Width", min = 150, max = 400, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 200 x 350 for the full menu grid.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "micromenu", CLICK_ACTIONS,

@@ -20,7 +20,6 @@ local TOOLTIP_WIDTH  = 300
 local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local hasNewMail = false
@@ -35,8 +34,9 @@ local mailboxOpen = false
 local DEFAULTS = {
     labelTemplate  = "<status>",
     mailSortOrder  = "sender",  -- sender, subject, expiry, unread
-    tooltipScale   = 1.0,
-    tooltipWidth   = 300,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 300,
     clickActions   = {
         leftClick       = "character",
         rightClick      = "none",
@@ -226,39 +226,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTMailTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() Mail:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() Mail:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTMailTooltip", Mail)
+    f.content.lines = {}
     return f
 end
 
@@ -288,19 +257,20 @@ end
 
 function Mail:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
-    f.title:SetText("Mail")
+    f.header:SetText("Mail")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Status line
     lineIdx = lineIdx + 1
-    local statusLine = GetLine(f, lineIdx)
-    statusLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local statusLine = GetLine(c, lineIdx)
+    statusLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     statusLine.label:SetText("|cffffffffStatus|r")
-    statusLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    statusLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     if hasNewMail then
         statusLine.value:SetText("New mail waiting!")
         statusLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -317,28 +287,28 @@ function Mail:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local hdr = GetLine(f, lineIdx)
-        hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local hdr = GetLine(c, lineIdx)
+        hdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         hdr.label:SetText("|cffffd100Mailbox (" .. mailCount .. " items)|r")
-        hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         hdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
         for i, item in ipairs(mailItems) do
             if i > 15 then
                 lineIdx = lineIdx + 1
-                local moreRow = GetLine(f, lineIdx)
-                moreRow.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                local moreRow = GetLine(c, lineIdx)
+                moreRow.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
                 moreRow.label:SetText("|cff888888... and " .. (#mailItems - 15) .. " more|r")
-                moreRow.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                moreRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 moreRow.value:SetText("")
                 y = y - ROW_HEIGHT
                 break
             end
 
             lineIdx = lineIdx + 1
-            local row = GetLine(f, lineIdx)
-            row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local row = GetLine(c, lineIdx)
+            row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
 
             -- Subject or sender
             local displayText = item.subject ~= "" and item.subject or item.sender
@@ -349,7 +319,7 @@ function Mail:BuildTooltipContent()
             row.label:SetTextColor(item.wasRead and 0.5 or 0.9, item.wasRead and 0.5 or 0.9, item.wasRead and 0.5 or 0.9)
 
             -- Right side: money, attachment indicator, or days left
-            row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             if item.money > 0 then
                 row.value:SetText(FormatMoney(item.money))
                 row.value:SetTextColor(1.0, 0.82, 0.0)
@@ -372,18 +342,18 @@ function Mail:BuildTooltipContent()
         end
     elseif mailboxOpen then
         lineIdx = lineIdx + 1
-        local emptyLine = GetLine(f, lineIdx)
-        emptyLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local emptyLine = GetLine(c, lineIdx)
+        emptyLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         emptyLine.label:SetText("|cff888888Mailbox is empty.|r")
-        emptyLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        emptyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         emptyLine.value:SetText("")
         y = y - ROW_HEIGHT
     else
         lineIdx = lineIdx + 1
-        local notOpenLine = GetLine(f, lineIdx)
-        notOpenLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local notOpenLine = GetLine(c, lineIdx)
+        notOpenLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         notOpenLine.label:SetText("|cff888888Visit a mailbox to see details.|r")
-        notOpenLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        notOpenLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         notOpenLine.value:SetText("")
         y = y - ROW_HEIGHT
     end
@@ -397,8 +367,7 @@ function Mail:BuildTooltipContent()
     end
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function Mail:ShowTooltip(anchor)
@@ -471,6 +440,12 @@ function Mail:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 350. Increase height for many mail items.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "mail", CLICK_ACTIONS,

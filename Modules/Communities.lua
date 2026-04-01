@@ -19,9 +19,6 @@ local tooltipFrame = nil
 local rowPool = {}
 local ROW_HEIGHT      = ns.ROW_HEIGHT
 local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
-local HEADER_HEIGHT   = ns.HEADER_HEIGHT
-local FIXED_TOP       = ns.FIXED_TOP
-local FIXED_BOTTOM    = ns.FIXED_BOTTOM
 
 ---------------------------------------------------------------------------
 -- LDB Data Object
@@ -216,40 +213,18 @@ function CommunitiesBroker:SortMembers(members)
     DDT:SortList(members, ns.db.communities)
 end
 
+function CommunitiesBroker:GetDB()
+    return ns.db and ns.db.communities or {}
+end
+
 ---------------------------------------------------------------------------
 -- Tooltip frame creation
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:EnableMouse(true)
-    f:SetSize(420, 100)
+    local f = ns.CreateTooltipFrame(nil, CommunitiesBroker)
 
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.header = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.header:SetPoint("TOPLEFT", f, "TOPLEFT", TOOLTIP_PADDING, -TOOLTIP_PADDING)
-    f.header:SetPoint("TOPRIGHT", f, "TOPRIGHT", -TOOLTIP_PADDING, -TOOLTIP_PADDING)
-    f.header:SetJustifyH("LEFT")
-    f.header:SetTextColor(1, 0.82, 0)
-    f.header:SetHeight(HEADER_HEIGHT)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    -- Column headers
+    -- Column headers live on the outer frame (above scroll area)
     f.colName = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     f.colName:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -4)
     f.colName:SetText("|cffaaaaaaName|r")
@@ -279,50 +254,8 @@ local function CreateTooltipFrame()
     f.colNote:SetText("|cffaaaaaaNotes|r")
     f.colNote:SetJustifyH("LEFT")
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", TOOLTIP_PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -TOOLTIP_PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
+    f.headerExtra = 18  -- extra height for column header row
 
-    -- Scrollable content area (clip frame + content frame)
-    f.clipFrame = CreateFrame("Frame", nil, f)
-    f.clipFrame:SetClipsChildren(true)
-    f.scrollContent = CreateFrame("Frame", nil, f.clipFrame)
-    f.scrollOffset = 0
-
-    -- Scrollbar track and thumb
-    f.scrollTrack = f:CreateTexture(nil, "ARTWORK")
-    f.scrollTrack:SetPoint("TOPLEFT", f.clipFrame, "TOPRIGHT", 2, 0)
-    f.scrollTrack:SetPoint("BOTTOMLEFT", f.clipFrame, "BOTTOMRIGHT", 2, 0)
-    f.scrollTrack:SetWidth(4)
-    f.scrollTrack:SetColorTexture(1, 1, 1, 0.08)
-    f.scrollTrack:Hide()
-
-    f.scrollThumb = f:CreateTexture(nil, "OVERLAY")
-    f.scrollThumb:SetWidth(4)
-    f.scrollThumb:SetColorTexture(0.8, 0.8, 0.8, 0.4)
-    f.scrollThumb:Hide()
-
-    f:EnableMouseWheel(true)
-    f:SetScript("OnMouseWheel", function(self, delta)
-        local contentH = self.scrollContent:GetHeight() or 0
-        local clipH = self.clipFrame:GetHeight() or 0
-        local maxScroll = math.max(0, contentH - clipH)
-        self.scrollOffset = math.max(0, math.min(maxScroll, self.scrollOffset - delta * (ROW_HEIGHT + 4)))
-        self.scrollContent:ClearAllPoints()
-        self.scrollContent:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT", 0, self.scrollOffset)
-        DDT:UpdateScrollbar(self)
-    end)
-
-    f:SetScript("OnEnter", function()
-        CommunitiesBroker:CancelTooltipHideTimer()
-    end)
-    f:SetScript("OnLeave", function()
-        CommunitiesBroker:StartTooltipHideTimer()
-    end)
-
-    f:Hide()
     return f
 end
 
@@ -684,22 +617,9 @@ function CommunitiesBroker:PopulateTooltip()
         yOffset = yOffset - rowStep
     end
 
-    -- Scroll geometry
-    local fixedBottom = showHint and FIXED_BOTTOM or (TOOLTIP_PADDING + 4)
+    -- Finalize scroll layout
     local contentH = math.max(math.abs(yOffset), ROW_HEIGHT)
-    local maxH = ns.db.communities.tooltipMaxHeight or 500
-    local innerWidth = (ns.db.communities.tooltipWidth or 480) - 2 * TOOLTIP_PADDING
-    local scrollAreaH = math.min(contentH, math.max(ROW_HEIGHT, maxH - FIXED_TOP - fixedBottom))
-
-    tooltipFrame.clipFrame:ClearAllPoints()
-    tooltipFrame.clipFrame:SetPoint("TOPLEFT", tooltipFrame, "TOPLEFT", TOOLTIP_PADDING, -FIXED_TOP)
-    tooltipFrame.clipFrame:SetSize(innerWidth, scrollAreaH)
-    tooltipFrame.scrollContent:SetSize(innerWidth, contentH)
-    tooltipFrame.scrollOffset = 0
-    tooltipFrame.scrollContent:ClearAllPoints()
-    tooltipFrame.scrollContent:SetPoint("TOPLEFT", tooltipFrame.clipFrame, "TOPLEFT", 0, 0)
-    tooltipFrame:SetHeight(FIXED_TOP + scrollAreaH + fixedBottom)
-    DDT:UpdateScrollbar(tooltipFrame)
+    tooltipFrame:FinalizeLayout(tooltipWidth, contentH)
 end
 
 ---------------------------------------------------------------------------

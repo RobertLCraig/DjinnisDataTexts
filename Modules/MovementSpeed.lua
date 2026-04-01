@@ -48,6 +48,7 @@ local DEFAULTS = {
     updateInterval    = 0.2,   -- seconds (0.05 = high, 0.5 = low)
     showSpeedBuffs    = true,
     tooltipScale      = 1.0,
+    tooltipMaxHeight  = 500,
     tooltipWidth      = 320,
     clickActions      = {
         leftClick       = "character",
@@ -408,39 +409,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTMoveSpeedTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() MoveSpeed:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() MoveSpeed:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTMoveSpeedTooltip", MoveSpeed)
+    f.content.lines = {}
     return f
 end
 
@@ -470,25 +440,26 @@ end
 
 function MoveSpeed:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("Movement Speed")
+    f.header:SetText("Movement Speed")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Current speed
     lineIdx = lineIdx + 1
-    local curLine = GetLine(f, lineIdx)
-    curLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local curLine = GetLine(c, lineIdx)
+    curLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     local modeText = "Current"
     if isGliding then modeText = "Current (Skyriding)"
     elseif isFlying then modeText = "Current (Flying)"
     elseif isSwimming then modeText = "Current (Swimming)" end
     curLine.label:SetText("|cffffffff" .. modeText .. "|r")
-    curLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    curLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     curLine.value:SetText(string.format("%.0f%%  (%.1f yd/s)", currentPercent, currentSpeed))
     curLine.value:SetTextColor(0.4, 0.78, 1)
     y = y - ROW_HEIGHT
@@ -497,10 +468,10 @@ function MoveSpeed:BuildTooltipContent()
 
     -- Ground run speed
     lineIdx = lineIdx + 1
-    local runLine = GetLine(f, lineIdx)
-    runLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local runLine = GetLine(c, lineIdx)
+    runLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     runLine.label:SetText("|cffffffffGround|r")
-    runLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    runLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     runLine.value:SetText(FormatSpeed(runPercent))
     runLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
@@ -508,10 +479,10 @@ function MoveSpeed:BuildTooltipContent()
     -- Flying speed
     if flyPercent > 0 then
         lineIdx = lineIdx + 1
-        local flyLine = GetLine(f, lineIdx)
-        flyLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local flyLine = GetLine(c, lineIdx)
+        flyLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         flyLine.label:SetText("|cffffffffFlying|r")
-        flyLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        flyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         flyLine.value:SetText(FormatSpeed(flyPercent))
         flyLine.value:SetTextColor(0.9, 0.9, 0.9)
         y = y - ROW_HEIGHT
@@ -519,10 +490,10 @@ function MoveSpeed:BuildTooltipContent()
 
     -- Swimming speed
     lineIdx = lineIdx + 1
-    local swimLine = GetLine(f, lineIdx)
-    swimLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local swimLine = GetLine(c, lineIdx)
+    swimLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     swimLine.label:SetText("|cffffffffSwimming|r")
-    swimLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    swimLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     swimLine.value:SetText(FormatSpeed(swimPercent))
     swimLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
@@ -530,10 +501,10 @@ function MoveSpeed:BuildTooltipContent()
     -- Gliding speed (if currently skyriding)
     if isGliding and glideSpeed > 0 then
         lineIdx = lineIdx + 1
-        local glideLine = GetLine(f, lineIdx)
-        glideLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local glideLine = GetLine(c, lineIdx)
+        glideLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         glideLine.label:SetText("|cffffffffSkyriding|r")
-        glideLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        glideLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         glideLine.value:SetText(string.format("%.0f%%  (%.1f yd/s)", glideSpeed / BASE_SPEED * 100, glideSpeed))
         glideLine.value:SetTextColor(0.0, 1.0, 0.5)
         y = y - ROW_HEIGHT
@@ -546,17 +517,17 @@ function MoveSpeed:BuildTooltipContent()
             y = y - 4
 
             lineIdx = lineIdx + 1
-            local buffHdr = GetLine(f, lineIdx)
-            buffHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local buffHdr = GetLine(c, lineIdx)
+            buffHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             buffHdr.label:SetText("|cffffd100Active Speed Effects|r")
-            buffHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            buffHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             buffHdr.value:SetText("")
             y = y - HEADER_HEIGHT
 
             for _, buff in ipairs(activeBuffs) do
                 lineIdx = lineIdx + 1
-                local row = GetLine(f, lineIdx)
-                row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                local row = GetLine(c, lineIdx)
+                row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
 
                 local iconStr = ""
                 if buff.icon then
@@ -566,7 +537,7 @@ function MoveSpeed:BuildTooltipContent()
                 local cc = CATEGORY_COLORS[buff.cat] or { 0.8, 0.8, 0.8 }
                 row.label:SetTextColor(unpack(cc))
 
-                row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 row.value:SetText(CATEGORY_LABELS[buff.cat] or "")
                 row.value:SetTextColor(0.5, 0.5, 0.5)
                 y = y - ROW_HEIGHT
@@ -574,10 +545,10 @@ function MoveSpeed:BuildTooltipContent()
         else
             y = y - 4
             lineIdx = lineIdx + 1
-            local noBuff = GetLine(f, lineIdx)
-            noBuff.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local noBuff = GetLine(c, lineIdx)
+            noBuff.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             noBuff.label:SetText("|cff888888No speed effects active|r")
-            noBuff.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            noBuff.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             noBuff.value:SetText("")
             y = y - ROW_HEIGHT
         end
@@ -585,10 +556,10 @@ function MoveSpeed:BuildTooltipContent()
         -- Speed source reference
         y = y - 4
         lineIdx = lineIdx + 1
-        local refHdr = GetLine(f, lineIdx)
-        refHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local refHdr = GetLine(c, lineIdx)
+        refHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         refHdr.label:SetText("|cffffd100Common Speed Sources|r")
-        refHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        refHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         refHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
@@ -601,11 +572,11 @@ function MoveSpeed:BuildTooltipContent()
         }
         for _, src in ipairs(sources) do
             lineIdx = lineIdx + 1
-            local srcRow = GetLine(f, lineIdx)
-            srcRow.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local srcRow = GetLine(c, lineIdx)
+            srcRow.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             srcRow.label:SetText(src[1])
             srcRow.label:SetTextColor(1, 1, 1)
-            srcRow.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            srcRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             srcRow.value:SetText(src[2])
             srcRow.value:SetTextColor(0.6, 0.6, 0.6)
             y = y - ROW_HEIGHT
@@ -616,8 +587,7 @@ function MoveSpeed:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function MoveSpeed:ShowTooltip(anchor)
@@ -710,6 +680,12 @@ function MoveSpeed:BuildSettingsPanel(panel)
         { label = "Width", min = 250, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 400 for all speed categories.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "movementspeed", CLICK_ACTIONS,

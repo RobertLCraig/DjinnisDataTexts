@@ -20,7 +20,6 @@ local TOOLTIP_WIDTH  = 320
 local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local fps = 0
@@ -48,6 +47,7 @@ local DEFAULTS = {
     cpuSortMetric    = "current",      -- current, average, peak, encounter
     numTopCpuAddons  = 10,
     tooltipScale     = 1.0,
+    tooltipMaxHeight = 500,
     tooltipWidth     = 320,
     clickActions     = {
         leftClick       = "gc",
@@ -389,61 +389,30 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTSystemPerfTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() SysPerf:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() SysPerf:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTSystemPerfTooltip", SysPerf)
+    f.content.lines = {}
     return f
 end
 
-local function GetLine(f, index)
-    if f.lines[index] then
-        f.lines[index].label:Show()
-        f.lines[index].value:Show()
-        return f.lines[index]
+local function GetLine(c, index)
+    if c.lines[index] then
+        c.lines[index].label:Show()
+        c.lines[index].value:Show()
+        return c.lines[index]
     end
 
-    local label = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local label = c:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local value = c:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
-    f.lines[index] = { label = label, value = value }
-    return f.lines[index]
+    c.lines[index] = { label = label, value = value }
+    return c.lines[index]
 end
 
-local function HideLines(f)
-    for _, line in pairs(f.lines) do
+local function HideLines(c)
+    for _, line in pairs(c.lines) do
         line.label:Hide()
         line.value:Hide()
     end
@@ -451,41 +420,42 @@ end
 
 function SysPerf:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("System Performance")
+    f.header:SetText("System Performance")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- FPS
     lineIdx = lineIdx + 1
-    local fpsLine = GetLine(f, lineIdx)
-    fpsLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local fpsLine = GetLine(c, lineIdx)
+    fpsLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     fpsLine.label:SetText("|cffffffffFramerate|r")
-    fpsLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    fpsLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     fpsLine.value:SetText(string.format("%.0f fps", fps))
     fpsLine.value:SetTextColor(FPSColor(fps))
     y = y - ROW_HEIGHT
 
     -- Home latency
     lineIdx = lineIdx + 1
-    local homeLine = GetLine(f, lineIdx)
-    homeLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local homeLine = GetLine(c, lineIdx)
+    homeLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     homeLine.label:SetText("|cffffffffHome Latency|r")
-    homeLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    homeLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     homeLine.value:SetText(latencyHome .. " ms")
     homeLine.value:SetTextColor(LatencyColor(latencyHome))
     y = y - ROW_HEIGHT
 
     -- World latency
     lineIdx = lineIdx + 1
-    local worldLine = GetLine(f, lineIdx)
-    worldLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local worldLine = GetLine(c, lineIdx)
+    worldLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     worldLine.label:SetText("|cffffffffWorld Latency|r")
-    worldLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    worldLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     worldLine.value:SetText(latencyWorld .. " ms")
     worldLine.value:SetTextColor(LatencyColor(latencyWorld))
     y = y - ROW_HEIGHT
@@ -495,10 +465,10 @@ function SysPerf:BuildTooltipContent()
 
     -- Total memory
     lineIdx = lineIdx + 1
-    local memLine = GetLine(f, lineIdx)
-    memLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local memLine = GetLine(c, lineIdx)
+    memLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     memLine.label:SetText("|cffffffffTotal Addon Memory|r")
-    memLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    memLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     memLine.value:SetText(FormatMemory(memoryTotal))
     memLine.value:SetTextColor(0.4, 0.78, 1)
     y = y - ROW_HEIGHT
@@ -509,10 +479,10 @@ function SysPerf:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local hdr = GetLine(f, lineIdx)
-        hdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local hdr = GetLine(c, lineIdx)
+        hdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         hdr.label:SetText("|cffffd100Top Addons (Memory)|r")
-        hdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         hdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
@@ -520,11 +490,11 @@ function SysPerf:BuildTooltipContent()
         for i = 1, count do
             local addon = addonMemory[i]
             lineIdx = lineIdx + 1
-            local row = GetLine(f, lineIdx)
-            row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local row = GetLine(c, lineIdx)
+            row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             row.label:SetText(addon.name)
             row.label:SetTextColor(0.8, 0.8, 0.8)
-            row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatMemory(addon.memory))
             row.value:SetTextColor(0.6, 0.6, 0.6)
             y = y - ROW_HEIGHT
@@ -540,54 +510,54 @@ function SysPerf:BuildTooltipContent()
         if not profilerAvailable then
             -- Profiler not available
             lineIdx = lineIdx + 1
-            local cpuHdr = GetLine(f, lineIdx)
-            cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local cpuHdr = GetLine(c, lineIdx)
+            cpuHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             cpuHdr.label:SetText("|cffffd100CPU Profiling|r")
-            cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            cpuHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             cpuHdr.value:SetText("|cffff3333Not Available|r")
             y = y - ROW_HEIGHT
 
             lineIdx = lineIdx + 1
-            local note = GetLine(f, lineIdx)
-            note.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local note = GetLine(c, lineIdx)
+            note.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             note.label:SetText("|cff888888C_AddOnProfiler not enabled in this session.|r")
-            note.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            note.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             note.value:SetText("")
             y = y - ROW_HEIGHT
         else
             -- Overall CPU summary row
             lineIdx = lineIdx + 1
-            local cpuHdr = GetLine(f, lineIdx)
-            cpuHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local cpuHdr = GetLine(c, lineIdx)
+            cpuHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             cpuHdr.label:SetText("|cffffd100CPU Usage (All Addons)|r")
-            cpuHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            cpuHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             cpuHdr.value:SetText("")
             y = y - HEADER_HEIGHT
 
             -- Overall metrics: Current | Average | Encounter | Peak
             lineIdx = lineIdx + 1
-            local curLine = GetLine(f, lineIdx)
-            curLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local curLine = GetLine(c, lineIdx)
+            curLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             curLine.label:SetText("|cffffffffCurrent|r")
-            curLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            curLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             curLine.value:SetText(FormatCPU(overallCPU.current))
             curLine.value:SetTextColor(CPUColor(overallCPU.current))
             y = y - ROW_HEIGHT
 
             lineIdx = lineIdx + 1
-            local avgLine = GetLine(f, lineIdx)
-            avgLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local avgLine = GetLine(c, lineIdx)
+            avgLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             avgLine.label:SetText("|cffffffffAverage|r")
-            avgLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            avgLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             avgLine.value:SetText(FormatCPU(overallCPU.average))
             avgLine.value:SetTextColor(CPUColor(overallCPU.average))
             y = y - ROW_HEIGHT
 
             lineIdx = lineIdx + 1
-            local encLine = GetLine(f, lineIdx)
-            encLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local encLine = GetLine(c, lineIdx)
+            encLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             encLine.label:SetText("|cffffffffEncounter|r")
-            encLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            encLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             local encText = overallCPU.encounter > 0 and FormatCPU(overallCPU.encounter) or "—"
             encLine.value:SetText(encText)
             if overallCPU.encounter > 0 then
@@ -598,10 +568,10 @@ function SysPerf:BuildTooltipContent()
             y = y - ROW_HEIGHT
 
             lineIdx = lineIdx + 1
-            local pkLine = GetLine(f, lineIdx)
-            pkLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local pkLine = GetLine(c, lineIdx)
+            pkLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             pkLine.label:SetText("|cffffffffPeak|r")
-            pkLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            pkLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             pkLine.value:SetText(FormatCPU(overallCPU.peak))
             pkLine.value:SetTextColor(CPUColor(overallCPU.peak))
             y = y - ROW_HEIGHT
@@ -615,10 +585,10 @@ function SysPerf:BuildTooltipContent()
                 -- Column header
                 local metricLabel = CPU_SORT_VALUES[sortMetric] or "Current CPU"
                 lineIdx = lineIdx + 1
-                local listHdr = GetLine(f, lineIdx)
-                listHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                local listHdr = GetLine(c, lineIdx)
+                listHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                 listHdr.label:SetText("|cffffd100Top Addons (CPU)|r")
-                listHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                listHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 listHdr.value:SetText("|cff888888" .. metricLabel .. "|r")
                 y = y - HEADER_HEIGHT
 
@@ -629,11 +599,11 @@ function SysPerf:BuildTooltipContent()
                     if val <= 0 then break end
 
                     lineIdx = lineIdx + 1
-                    local row = GetLine(f, lineIdx)
-                    row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                    local row = GetLine(c, lineIdx)
+                    row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
                     row.label:SetText(addon.name)
                     row.label:SetTextColor(0.8, 0.8, 0.8)
-                    row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                    row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                     row.value:SetText(FormatCPU(val))
                     row.value:SetTextColor(CPUColor(val))
                     y = y - ROW_HEIGHT
@@ -646,8 +616,7 @@ function SysPerf:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function SysPerf:ShowTooltip(anchor)
@@ -715,6 +684,12 @@ function SysPerf:BuildSettingsPanel(panel)
         { label = "Width", min = 250, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 400 for FPS, latency, and addon memory list.")
     W.EndSection(panel, y)
 
     body = W.AddSection(panel, "Addon Memory")

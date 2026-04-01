@@ -38,8 +38,9 @@ local favoriteCount = 0
 local DEFAULTS = {
     labelTemplate   = "<status>",
     showCollection  = true,
-    tooltipScale    = 1.0,
-    tooltipWidth    = 300,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 300,
     clickActions    = {
         leftClick       = "openjournal",
         rightClick      = "randomsummon",
@@ -277,39 +278,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTPetInfoTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() PetInfo:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() PetInfo:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTPetInfoTooltip", PetInfo)
+    f.content.lines = {}
     return f
 end
 
@@ -339,21 +309,22 @@ end
 
 function PetInfo:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("Battle Pets")
+    f.header:SetText("Battle Pets")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Journal status
     lineIdx = lineIdx + 1
-    local statusLine = GetLine(f, lineIdx)
-    statusLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local statusLine = GetLine(c, lineIdx)
+    statusLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     statusLine.label:SetText("|cffffffffPet Journal|r")
-    statusLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    statusLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     if journalUnlocked then
         statusLine.value:SetText("Unlocked")
         statusLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -365,10 +336,10 @@ function PetInfo:BuildTooltipContent()
 
     -- Battle capability
     lineIdx = lineIdx + 1
-    local battleLine = GetLine(f, lineIdx)
-    battleLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local battleLine = GetLine(c, lineIdx)
+    battleLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     battleLine.label:SetText("|cffffffffPet Battles|r")
-    battleLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    battleLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     if not journalUnlocked then
         battleLine.value:SetText("Unavailable (journal locked)")
         battleLine.value:SetTextColor(1.0, 0.2, 0.2)
@@ -383,10 +354,10 @@ function PetInfo:BuildTooltipContent()
 
     -- Find Battle queue
     lineIdx = lineIdx + 1
-    local queueLine = GetLine(f, lineIdx)
-    queueLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local queueLine = GetLine(c, lineIdx)
+    queueLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     queueLine.label:SetText("|cffffffffFind Battle|r")
-    queueLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    queueLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     local canQueue = journalUnlocked and findBattleEnabled
     if C_LobbyMatchmakerInfo and C_LobbyMatchmakerInfo.IsInQueue and C_LobbyMatchmakerInfo.IsInQueue() then
         queueLine.value:SetText("In Queue")
@@ -405,20 +376,20 @@ function PetInfo:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local colHdr = GetLine(f, lineIdx)
-        colHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local colHdr = GetLine(c, lineIdx)
+        colHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         colHdr.label:SetText("|cffffd100Collection|r")
-        colHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        colHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         colHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
         -- Collected count
         lineIdx = lineIdx + 1
-        local collLine = GetLine(f, lineIdx)
-        collLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        local collLine = GetLine(c, lineIdx)
+        collLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         collLine.label:SetText("Collected")
         collLine.label:SetTextColor(0.8, 0.8, 0.8)
-        collLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        collLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         local pct = numPetsTotal > 0 and math.floor(numPetsOwned / numPetsTotal * 100) or 0
         collLine.value:SetText(string.format("%d / %d  (%d%%)", numPetsOwned, numPetsTotal, pct))
         collLine.value:SetTextColor(0.4, 0.78, 1)
@@ -426,33 +397,33 @@ function PetInfo:BuildTooltipContent()
 
         -- Max level
         lineIdx = lineIdx + 1
-        local maxLine = GetLine(f, lineIdx)
-        maxLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        local maxLine = GetLine(c, lineIdx)
+        maxLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         maxLine.label:SetText("Level 25")
         maxLine.label:SetTextColor(0.8, 0.8, 0.8)
-        maxLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        maxLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         maxLine.value:SetText(tostring(numMaxLevel))
         maxLine.value:SetTextColor(1.0, 0.82, 0.0)
         y = y - ROW_HEIGHT
 
         -- Rare quality
         lineIdx = lineIdx + 1
-        local rareLine = GetLine(f, lineIdx)
-        rareLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        local rareLine = GetLine(c, lineIdx)
+        rareLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         rareLine.label:SetText("Rare Quality")
         rareLine.label:SetTextColor(0.8, 0.8, 0.8)
-        rareLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        rareLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         rareLine.value:SetText(tostring(numRareQuality))
         rareLine.value:SetTextColor(0.0, 0.44, 0.87)
         y = y - ROW_HEIGHT
 
         -- Favorites
         lineIdx = lineIdx + 1
-        local favLine = GetLine(f, lineIdx)
-        favLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        local favLine = GetLine(c, lineIdx)
+        favLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         favLine.label:SetText("Favorites")
         favLine.label:SetTextColor(0.8, 0.8, 0.8)
-        favLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        favLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         favLine.value:SetText(tostring(favoriteCount))
         favLine.value:SetTextColor(0.9, 0.9, 0.9)
         y = y - ROW_HEIGHT
@@ -460,26 +431,26 @@ function PetInfo:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local lockInfo = GetLine(f, lineIdx)
-        lockInfo.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local lockInfo = GetLine(c, lineIdx)
+        lockInfo.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         lockInfo.label:SetText("|cff888888Pet Journal is locked on this account.|r")
-        lockInfo.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        lockInfo.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo.value:SetText("")
         y = y - ROW_HEIGHT
 
         lineIdx = lineIdx + 1
-        local lockInfo2 = GetLine(f, lineIdx)
-        lockInfo2.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local lockInfo2 = GetLine(c, lineIdx)
+        lockInfo2.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         lockInfo2.label:SetText("|cff888888Pet battles, summoning, and caging|r")
-        lockInfo2.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        lockInfo2.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo2.value:SetText("")
         y = y - ROW_HEIGHT
 
         lineIdx = lineIdx + 1
-        local lockInfo3 = GetLine(f, lineIdx)
-        lockInfo3.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local lockInfo3 = GetLine(c, lineIdx)
+        lockInfo3.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         lockInfo3.label:SetText("|cff888888are unavailable.|r")
-        lockInfo3.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        lockInfo3.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo3.value:SetText("")
         y = y - ROW_HEIGHT
     end
@@ -488,8 +459,7 @@ function PetInfo:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function PetInfo:ShowTooltip(anchor)
@@ -563,6 +533,12 @@ function PetInfo:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 300 x 300 for pet stats and actions.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "petinfo", CLICK_ACTIONS)

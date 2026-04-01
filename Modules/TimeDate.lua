@@ -20,7 +20,6 @@ local TOOLTIP_WIDTH  = 260
 local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 ---------------------------------------------------------------------------
 -- Defaults
@@ -32,8 +31,9 @@ local DEFAULTS = {
     showSeconds     = false,
     dateTimeFormat  = "%A, %B %d, %Y",
     labelTemplate   = "<time>",
-    tooltipScale    = 1.0,
-    tooltipWidth    = 260,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 260,
     clickActions    = {
         leftClick       = "calendar",
         rightClick      = "toggletime",
@@ -241,41 +241,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTTimeDateTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() TimeDate:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() TimeDate:StartHideTimer() end)
-
-    -- Reusable lines: { label = FontString, value = FontString }
-    f.lines = {}
-
+    local f = ns.CreateTooltipFrame("DDTTimeDateTooltip", TimeDate)
+    f.content.lines = {}
     return f
 end
 
@@ -305,22 +272,23 @@ end
 
 function TimeDate:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
     local use24h = db.use24h ~= false
 
-    f.title:SetText("Time & Date")
+    f.header:SetText("Time & Date")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Date
     lineIdx = lineIdx + 1
-    local dateLine = GetLine(f, lineIdx)
-    dateLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local dateLine = GetLine(c, lineIdx)
+    dateLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     dateLine.label:SetText("|cffffffffDate|r")
-    dateLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    dateLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     dateLine.value:SetText(GetDateString(db.dateTimeFormat))
     dateLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
@@ -328,10 +296,10 @@ function TimeDate:BuildTooltipContent()
     -- Server time
     local sHour, sMin = GetGameTime()
     lineIdx = lineIdx + 1
-    local serverLine = GetLine(f, lineIdx)
-    serverLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local serverLine = GetLine(c, lineIdx)
+    serverLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     serverLine.label:SetText("|cffffffffServer Time|r")
-    serverLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    serverLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     serverLine.value:SetText(FormatTime(sHour, sMin, nil, use24h, false))
     serverLine.value:SetTextColor(0.4, 0.78, 1)
     y = y - ROW_HEIGHT
@@ -339,10 +307,10 @@ function TimeDate:BuildTooltipContent()
     -- Local time
     local lTime = date("*t")
     lineIdx = lineIdx + 1
-    local localLine = GetLine(f, lineIdx)
-    localLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local localLine = GetLine(c, lineIdx)
+    localLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     localLine.label:SetText("|cffffffffLocal Time|r")
-    localLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    localLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     localLine.value:SetText(FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
     localLine.value:SetTextColor(0.4, 0.78, 1)
     y = y - ROW_HEIGHT
@@ -353,10 +321,10 @@ function TimeDate:BuildTooltipContent()
     -- Daily reset
     local dailyReset = C_DateAndTime.GetSecondsUntilDailyReset and C_DateAndTime.GetSecondsUntilDailyReset() or 0
     lineIdx = lineIdx + 1
-    local dailyLine = GetLine(f, lineIdx)
-    dailyLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local dailyLine = GetLine(c, lineIdx)
+    dailyLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     dailyLine.label:SetText("|cffffffffDaily Reset|r")
-    dailyLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    dailyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     dailyLine.value:SetText(FormatCountdown(dailyReset))
     dailyLine.value:SetTextColor(0.0, 1.0, 0.0)
     y = y - ROW_HEIGHT
@@ -364,10 +332,10 @@ function TimeDate:BuildTooltipContent()
     -- Weekly reset
     local weeklyReset = C_DateAndTime.GetSecondsUntilWeeklyReset and C_DateAndTime.GetSecondsUntilWeeklyReset() or 0
     lineIdx = lineIdx + 1
-    local weeklyLine = GetLine(f, lineIdx)
-    weeklyLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local weeklyLine = GetLine(c, lineIdx)
+    weeklyLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     weeklyLine.label:SetText("|cffffffffWeekly Reset|r")
-    weeklyLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    weeklyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     weeklyLine.value:SetText(FormatCountdown(weeklyReset))
     weeklyLine.value:SetTextColor(1.0, 0.82, 0.0)
     y = y - ROW_HEIGHT
@@ -395,24 +363,24 @@ function TimeDate:BuildTooltipContent()
                 y = y - 4
 
                 lineIdx = lineIdx + 1
-                local evHdr = GetLine(f, lineIdx)
-                evHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+                local evHdr = GetLine(c, lineIdx)
+                evHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                 evHdr.label:SetText("|cffffd100Today's Events|r")
-                evHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                evHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 evHdr.value:SetText("")
                 y = y - HEADER_HEIGHT
 
                 for _, ev in ipairs(events) do
                     lineIdx = lineIdx + 1
-                    local evLine = GetLine(f, lineIdx)
-                    evLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                    local evLine = GetLine(c, lineIdx)
+                    evLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
                     evLine.label:SetText(ev.title)
                     if ev.calendarType == "HOLIDAY" then
                         evLine.label:SetTextColor(0.0, 0.8, 0.0)
                     else
                         evLine.label:SetTextColor(0.7, 0.7, 0.7)
                     end
-                    evLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                    evLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                     evLine.value:SetText("")
                     y = y - ROW_HEIGHT
                 end
@@ -424,8 +392,7 @@ function TimeDate:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function TimeDate:ShowTooltip(anchor)
@@ -540,6 +507,12 @@ function TimeDate:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 350 for time, resets, and calendar events.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "timedate", CLICK_ACTIONS)

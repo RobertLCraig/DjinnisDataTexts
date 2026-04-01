@@ -20,9 +20,6 @@ local tooltipFrame = nil
 local rowPool = {}
 local ROW_HEIGHT      = ns.ROW_HEIGHT
 local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
-local HEADER_HEIGHT   = ns.HEADER_HEIGHT
-local FIXED_TOP       = ns.FIXED_TOP
-local FIXED_BOTTOM    = ns.FIXED_BOTTOM
 
 local STATUS_STRINGS = {
     [0] = "",
@@ -208,42 +205,22 @@ end
 -- Tooltip frame creation
 ---------------------------------------------------------------------------
 
+function GuildBroker:GetDB()
+    return ns.db.guild
+end
+
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", nil, UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:EnableMouse(true)
-    f:SetSize(420, 100)
+    local f = ns.CreateTooltipFrame(nil, GuildBroker)
 
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.header = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.header:SetPoint("TOPLEFT", f, "TOPLEFT", TOOLTIP_PADDING, -TOOLTIP_PADDING)
-    f.header:SetPoint("TOPRIGHT", f, "TOPRIGHT", -TOOLTIP_PADDING, -TOOLTIP_PADDING)
-    f.header:SetJustifyH("LEFT")
-    f.header:SetTextColor(1, 0.82, 0)
-    f.header:SetHeight(HEADER_HEIGHT)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
+    -- MOTD line (below title separator, above column headers)
     f.motd = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.motd:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -2)
-    f.motd:SetPoint("TOPRIGHT", f.header, "BOTTOMRIGHT", 0, -2)
+    f.motd:SetPoint("TOPLEFT", f.titleSep, "BOTTOMLEFT", 0, -2)
+    f.motd:SetPoint("TOPRIGHT", f.titleSep, "BOTTOMRIGHT", 0, -2)
     f.motd:SetJustifyH("LEFT")
     f.motd:SetWordWrap(true)
     f.motd:SetMaxLines(2)
 
+    -- Column headers (on outer frame, above scroll area)
     f.colName = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
     f.colName:SetText("|cffaaaaaaName|r")
     f.colName:SetJustifyH("LEFT")
@@ -266,54 +243,8 @@ local function CreateTooltipFrame()
     f.colNote:SetText("|cffaaaaaaNotes|r")
     f.colNote:SetJustifyH("LEFT")
 
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", TOOLTIP_PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -TOOLTIP_PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    -- Scrollable content area (clip frame + content frame)
-    f.clipFrame = CreateFrame("Frame", nil, f)
-    f.clipFrame:SetClipsChildren(true)
-    f.scrollContent = CreateFrame("Frame", nil, f.clipFrame)
-    f.scrollOffset = 0
-
-    -- Scrollbar track and thumb
-    f.scrollTrack = f:CreateTexture(nil, "ARTWORK")
-    f.scrollTrack:SetPoint("TOPLEFT", f.clipFrame, "TOPRIGHT", 2, 0)
-    f.scrollTrack:SetPoint("BOTTOMLEFT", f.clipFrame, "BOTTOMRIGHT", 2, 0)
-    f.scrollTrack:SetWidth(4)
-    f.scrollTrack:SetColorTexture(1, 1, 1, 0.08)
-    f.scrollTrack:Hide()
-
-    f.scrollThumb = f:CreateTexture(nil, "OVERLAY")
-    f.scrollThumb:SetWidth(4)
-    f.scrollThumb:SetColorTexture(0.8, 0.8, 0.8, 0.4)
-    f.scrollThumb:Hide()
-
-    f:EnableMouseWheel(true)
-    f:SetScript("OnMouseWheel", function(self, delta)
-        local contentH = self.scrollContent:GetHeight() or 0
-        local clipH = self.clipFrame:GetHeight() or 0
-        local maxScroll = math.max(0, contentH - clipH)
-        self.scrollOffset = math.max(0, math.min(maxScroll, self.scrollOffset - delta * (ROW_HEIGHT + 4)))
-        self.scrollContent:ClearAllPoints()
-        self.scrollContent:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT", 0, self.scrollOffset)
-        DDT:UpdateScrollbar(self)
-    end)
-
-    f:SetScript("OnEnter", function()
-        GuildBroker:CancelTooltipHideTimer()
-    end)
-    f:SetScript("OnLeave", function()
-        GuildBroker:StartTooltipHideTimer()
-    end)
-
-    f:Hide()
     return f
 end
-
-
 
 local function GetOrCreateRow(parent, index)
     if rowPool[index] then
@@ -452,12 +383,10 @@ function GuildBroker:PopulateTooltip()
         motdHeight = tooltipFrame.motd:GetStringHeight() + 4
     end
 
-    -- fixedTop is dynamic based on MOTD presence
-    local fixedTop = TOOLTIP_PADDING + HEADER_HEIGHT + motdHeight + 4 + 16
-
-    local colY = -(TOOLTIP_PADDING + HEADER_HEIGHT + motdHeight + 4)
+    -- Column headers anchored below MOTD (or titleSep when no MOTD)
+    local colAnchor = (motdHeight > 0) and tooltipFrame.motd or tooltipFrame.titleSep
     tooltipFrame.colName:ClearAllPoints()
-    tooltipFrame.colName:SetPoint("TOPLEFT", tooltipFrame, "TOPLEFT", TOOLTIP_PADDING, colY)
+    tooltipFrame.colName:SetPoint("TOPLEFT", colAnchor, "BOTTOMLEFT", 0, -4)
     tooltipFrame.colLevel:ClearAllPoints()
     tooltipFrame.colLevel:SetPoint("LEFT", tooltipFrame.colName, "RIGHT", 4, 0)
     tooltipFrame.colRank:ClearAllPoints()
@@ -472,6 +401,7 @@ function GuildBroker:PopulateTooltip()
         tooltipFrame.hint:SetText(DDT:BuildHintText(db.rowClickActions or {}))
         tooltipFrame.hint:Show()
     else
+        tooltipFrame.hint:SetText("")
         tooltipFrame.hint:Hide()
     end
 
@@ -606,22 +536,10 @@ function GuildBroker:PopulateTooltip()
         yOffset = yOffset - rowStep
     end
 
-    -- Scroll geometry
-    local fixedBottom = showHint and FIXED_BOTTOM or (TOOLTIP_PADDING + 4)
+    -- Finalize scroll geometry via factory
     local contentH = math.max(math.abs(yOffset), ROW_HEIGHT)
-    local maxH = ns.db.guild.tooltipMaxHeight or 500
-    local innerWidth = (ns.db.guild.tooltipWidth or 480) - 2 * TOOLTIP_PADDING
-    local scrollAreaH = math.min(contentH, math.max(ROW_HEIGHT, maxH - fixedTop - fixedBottom))
-
-    tooltipFrame.clipFrame:ClearAllPoints()
-    tooltipFrame.clipFrame:SetPoint("TOPLEFT", tooltipFrame, "TOPLEFT", TOOLTIP_PADDING, -fixedTop)
-    tooltipFrame.clipFrame:SetSize(innerWidth, scrollAreaH)
-    tooltipFrame.scrollContent:SetSize(innerWidth, contentH)
-    tooltipFrame.scrollOffset = 0
-    tooltipFrame.scrollContent:ClearAllPoints()
-    tooltipFrame.scrollContent:SetPoint("TOPLEFT", tooltipFrame.clipFrame, "TOPLEFT", 0, 0)
-    tooltipFrame:SetHeight(fixedTop + scrollAreaH + fixedBottom)
-    DDT:UpdateScrollbar(tooltipFrame)
+    tooltipFrame.headerExtra = motdHeight + 4 + 16
+    tooltipFrame:FinalizeLayout(tooltipWidth, contentH)
 end
 
 ---------------------------------------------------------------------------

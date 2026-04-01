@@ -59,8 +59,9 @@ local questXPCount = 0
 local DEFAULTS = {
     labelTemplate = "<xp>",
     barWidth      = 20,
-    tooltipScale  = 1.0,
-    tooltipWidth  = 300,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 300,
     clickActions  = {
         leftClick       = "character",
         rightClick      = "none",
@@ -348,64 +349,34 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTExperienceTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() Experience:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() Experience:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTExperienceTooltip", Experience)
+    local c = f.content
+    c.lines = {}
 
     -- XP bar background
-    f.xpBarBG = f:CreateTexture(nil, "ARTWORK")
-    f.xpBarBG:SetColorTexture(0.15, 0.15, 0.15, 0.8)
-    f.xpBarBG:SetHeight(8)
+    c.xpBarBG = c:CreateTexture(nil, "ARTWORK")
+    c.xpBarBG:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+    c.xpBarBG:SetHeight(8)
 
     -- XP bar fill
-    f.xpBar = f:CreateTexture(nil, "ARTWORK", nil, 1)
-    f.xpBar:SetColorTexture(0.58, 0.0, 0.82, 0.9)  -- purple
-    f.xpBar:SetHeight(8)
+    c.xpBar = c:CreateTexture(nil, "ARTWORK", nil, 1)
+    c.xpBar:SetColorTexture(0.58, 0.0, 0.82, 0.9)  -- purple
+    c.xpBar:SetHeight(8)
 
     -- Rested bar fill
-    f.restedBar = f:CreateTexture(nil, "ARTWORK", nil, 1)
-    f.restedBar:SetColorTexture(0.0, 0.39, 0.88, 0.5)  -- blue overlay
-    f.restedBar:SetHeight(8)
+    c.restedBar = c:CreateTexture(nil, "ARTWORK", nil, 1)
+    c.restedBar:SetColorTexture(0.0, 0.39, 0.88, 0.5)  -- blue overlay
+    c.restedBar:SetHeight(8)
 
     -- Rep bar background
-    f.repBarBG = f:CreateTexture(nil, "ARTWORK")
-    f.repBarBG:SetColorTexture(0.15, 0.15, 0.15, 0.8)
-    f.repBarBG:SetHeight(8)
+    c.repBarBG = c:CreateTexture(nil, "ARTWORK")
+    c.repBarBG:SetColorTexture(0.15, 0.15, 0.15, 0.8)
+    c.repBarBG:SetHeight(8)
 
     -- Rep bar fill
-    f.repBar = f:CreateTexture(nil, "ARTWORK", nil, 1)
-    f.repBar:SetColorTexture(0.0, 0.6, 0.0, 0.9)
-    f.repBar:SetHeight(8)
+    c.repBar = c:CreateTexture(nil, "ARTWORK", nil, 1)
+    c.repBar:SetColorTexture(0.0, 0.6, 0.0, 0.9)
+    c.repBar:SetHeight(8)
 
     return f
 end
@@ -436,23 +407,24 @@ end
 
 function Experience:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
     local barWidth = ttWidth - (PADDING * 2)
 
-    f.title:SetText("Experience")
+    f.header:SetText("Experience")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Level
     lineIdx = lineIdx + 1
-    local lvlLine = GetLine(f, lineIdx)
-    lvlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local lvlLine = GetLine(c, lineIdx)
+    lvlLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     lvlLine.label:SetText("|cffffffffLevel|r")
-    lvlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    lvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     if isMaxLevel then
         lvlLine.value:SetText(playerLevel .. " (Max)")
         lvlLine.value:SetTextColor(1.0, 0.82, 0.0)
@@ -465,43 +437,46 @@ function Experience:BuildTooltipContent()
     if not isMaxLevel then
         -- XP
         lineIdx = lineIdx + 1
-        local xpLine = GetLine(f, lineIdx)
-        xpLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local xpLine = GetLine(c, lineIdx)
+        xpLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         xpLine.label:SetText("|cffffffffExperience|r")
-        xpLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        xpLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         xpLine.value:SetText(string.format("%s / %s (%.1f%%)", FormatNumber(currentXP), FormatNumber(maxXP), GetXPPercent()))
         xpLine.value:SetTextColor(0.58, 0.0, 0.82)
         y = y - ROW_HEIGHT
 
         -- XP bar
         y = y - 2
-        f.xpBarBG:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        f.xpBarBG:SetWidth(barWidth)
-        f.xpBarBG:Show()
+        c.xpBarBG:ClearAllPoints()
+        c.xpBarBG:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
+        c.xpBarBG:SetWidth(barWidth)
+        c.xpBarBG:Show()
 
         local xpFill = maxXP > 0 and (currentXP / maxXP) or 0
-        f.xpBar:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        f.xpBar:SetWidth(math.max(1, barWidth * xpFill))
-        f.xpBar:Show()
+        c.xpBar:ClearAllPoints()
+        c.xpBar:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
+        c.xpBar:SetWidth(math.max(1, barWidth * xpFill))
+        c.xpBar:Show()
 
         -- Rested overlay
         if restedXP > 0 then
             local restedFill = math.min(1, (currentXP + restedXP) / maxXP)
-            f.restedBar:SetPoint("TOPLEFT", f.xpBar, "TOPRIGHT", 0, 0)
-            f.restedBar:SetWidth(math.max(1, barWidth * (restedFill - xpFill)))
-            f.restedBar:Show()
+            c.restedBar:ClearAllPoints()
+            c.restedBar:SetPoint("TOPLEFT", c.xpBar, "TOPRIGHT", 0, 0)
+            c.restedBar:SetWidth(math.max(1, barWidth * (restedFill - xpFill)))
+            c.restedBar:Show()
         else
-            f.restedBar:Hide()
+            c.restedBar:Hide()
         end
 
         y = y - 12
 
         -- Remaining
         lineIdx = lineIdx + 1
-        local remLine = GetLine(f, lineIdx)
-        remLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local remLine = GetLine(c, lineIdx)
+        remLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         remLine.label:SetText("|cffffffffRemaining|r")
-        remLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        remLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         remLine.value:SetText(FormatNumber(maxXP - currentXP))
         remLine.value:SetTextColor(0.7, 0.7, 0.7)
         y = y - ROW_HEIGHT
@@ -509,10 +484,10 @@ function Experience:BuildTooltipContent()
         -- Rested XP
         if restedXP > 0 then
             lineIdx = lineIdx + 1
-            local restLine = GetLine(f, lineIdx)
-            restLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local restLine = GetLine(c, lineIdx)
+            restLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
             restLine.label:SetText("|cffffffffRested XP|r")
-            restLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            restLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             restLine.value:SetText(string.format("%s (%.0f%%)", FormatNumber(restedXP), GetRestedPercent()))
             restLine.value:SetTextColor(0.0, 0.39, 0.88)
             y = y - ROW_HEIGHT
@@ -520,10 +495,10 @@ function Experience:BuildTooltipContent()
 
         -- XP per hour
         lineIdx = lineIdx + 1
-        local xphrLine = GetLine(f, lineIdx)
-        xphrLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local xphrLine = GetLine(c, lineIdx)
+        xphrLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         xphrLine.label:SetText("|cffffffffXP / Hour|r")
-        xphrLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        xphrLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         if xpPerHour > 0 then
             xphrLine.value:SetText(FormatNumber(math.floor(xpPerHour)))
             xphrLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -538,10 +513,10 @@ function Experience:BuildTooltipContent()
             local remaining = maxXP - currentXP
             local secondsToLevel = remaining / xpPerHour * 3600
             lineIdx = lineIdx + 1
-            local ttlLine = GetLine(f, lineIdx)
-            ttlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local ttlLine = GetLine(c, lineIdx)
+            ttlLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
             ttlLine.label:SetText("|cffffffffTime to Level|r")
-            ttlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            ttlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             ttlLine.value:SetText(FormatDuration(secondsToLevel))
             ttlLine.value:SetTextColor(0.7, 0.7, 0.7)
             y = y - ROW_HEIGHT
@@ -550,10 +525,10 @@ function Experience:BuildTooltipContent()
         -- Quest XP (ready to turn in)
         if questXPTotal > 0 then
             lineIdx = lineIdx + 1
-            local qLine = GetLine(f, lineIdx)
-            qLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local qLine = GetLine(c, lineIdx)
+            qLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
             qLine.label:SetText(string.format("|cffffffffQuest XP|r  |cff888888(%d quest%s)|r", questXPCount, questXPCount == 1 and "" or "s"))
-            qLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            qLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             qLine.value:SetText(string.format("%s (%.1f%%)", FormatNumber(questXPTotal), maxXP > 0 and (questXPTotal / maxXP * 100) or 0))
             qLine.value:SetTextColor(1.0, 0.82, 0.0)
             y = y - ROW_HEIGHT
@@ -563,18 +538,18 @@ function Experience:BuildTooltipContent()
         if totalXPGained > 0 then
             y = y - 4
             lineIdx = lineIdx + 1
-            local sessLine = GetLine(f, lineIdx)
-            sessLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            local sessLine = GetLine(c, lineIdx)
+            sessLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
             sessLine.label:SetText("|cffffd100Session|r")
-            sessLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            sessLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             sessLine.value:SetText(string.format("%s XP in %s", FormatNumber(totalXPGained), FormatDuration(GetTime() - sessionStartTime)))
             sessLine.value:SetTextColor(0.7, 0.7, 0.7)
             y = y - ROW_HEIGHT
         end
     else
-        f.xpBarBG:Hide()
-        f.xpBar:Hide()
-        f.restedBar:Hide()
+        c.xpBarBG:Hide()
+        c.xpBar:Hide()
+        c.restedBar:Hide()
     end
 
     -- Watched reputation
@@ -582,20 +557,20 @@ function Experience:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local repHdr = GetLine(f, lineIdx)
-        repHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local repHdr = GetLine(c, lineIdx)
+        repHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         repHdr.label:SetText("|cffffd100Watched Reputation|r")
-        repHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        repHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         repHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
         -- Faction name + standing
         lineIdx = lineIdx + 1
-        local fLine = GetLine(f, lineIdx)
-        fLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local fLine = GetLine(c, lineIdx)
+        fLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         fLine.label:SetText(watchedFaction.name)
         fLine.label:SetTextColor(0.9, 0.9, 0.9)
-        fLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        fLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         local standingLabel = STANDING_LABELS[watchedFaction.standing] or "Unknown"
         local sc = STANDING_COLORS[watchedFaction.standing] or { 0.7, 0.7, 0.7 }
         fLine.value:SetText(standingLabel)
@@ -608,36 +583,37 @@ function Experience:BuildTooltipContent()
         local repPct = repRange > 0 and (repCurrent / repRange * 100) or 0
 
         lineIdx = lineIdx + 1
-        local rpLine = GetLine(f, lineIdx)
-        rpLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local rpLine = GetLine(c, lineIdx)
+        rpLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         rpLine.label:SetText("|cffffffffProgress|r")
-        rpLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        rpLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         rpLine.value:SetText(string.format("%s / %s (%.1f%%)", FormatNumber(repCurrent), FormatNumber(repRange), repPct))
         rpLine.value:SetTextColor(sc[1], sc[2], sc[3])
         y = y - ROW_HEIGHT
 
         -- Rep bar
         y = y - 2
-        f.repBarBG:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        f.repBarBG:SetWidth(barWidth)
-        f.repBarBG:Show()
+        c.repBarBG:ClearAllPoints()
+        c.repBarBG:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
+        c.repBarBG:SetWidth(barWidth)
+        c.repBarBG:Show()
 
         local repFill = repRange > 0 and (repCurrent / repRange) or 0
-        f.repBar:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        f.repBar:SetWidth(math.max(1, barWidth * repFill))
-        f.repBar:SetColorTexture(sc[1], sc[2], sc[3], 0.9)
-        f.repBar:Show()
+        c.repBar:ClearAllPoints()
+        c.repBar:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
+        c.repBar:SetWidth(math.max(1, barWidth * repFill))
+        c.repBar:SetColorTexture(sc[1], sc[2], sc[3], 0.9)
+        c.repBar:Show()
 
         y = y - 12
     else
-        f.repBarBG:Hide()
-        f.repBar:Hide()
+        c.repBarBG:Hide()
+        c.repBar:Hide()
     end
 
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function Experience:ShowTooltip(anchor)
@@ -715,6 +691,12 @@ function Experience:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 300 for XP bar and stats.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "experience", CLICK_ACTIONS,

@@ -47,8 +47,9 @@ local DEFAULTS = {
     showShardID     = false,
     showGuild       = true,
     showItemLevel   = true,
-    tooltipScale    = 1.0,
-    tooltipWidth    = 300,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 300,
     clickActions    = {
         leftClick       = "character",
         rightClick      = "copyname",
@@ -232,39 +233,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTCharInfoTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() CharInfo:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() CharInfo:StartHideTimer() end)
-
-    f.lines = {}
+    local f = ns.CreateTooltipFrame("DDTCharInfoTooltip", CharInfo)
+    f.content.lines = {}
     return f
 end
 
@@ -294,53 +264,54 @@ end
 
 function CharInfo:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
     -- Title: class-colored character name
     local r, g, b = DDT:GetClassColor(charClassFile)
-    f.title:SetText(DDT:ColorText(charName, r, g, b))
+    f.header:SetText(DDT:ColorText(charName, r, g, b))
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Realm
     lineIdx = lineIdx + 1
-    local realmLine = GetLine(f, lineIdx)
-    realmLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local realmLine = GetLine(c, lineIdx)
+    realmLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     realmLine.label:SetText("|cffffffffRealm|r")
-    realmLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    realmLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     realmLine.value:SetText(charRealm)
     realmLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
 
     -- Class
     lineIdx = lineIdx + 1
-    local classLine = GetLine(f, lineIdx)
-    classLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local classLine = GetLine(c, lineIdx)
+    classLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     classLine.label:SetText("|cffffffffClass|r")
-    classLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    classLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     classLine.value:SetText(DDT:ColorText(charClass, r, g, b))
     classLine.value:SetTextColor(1, 1, 1)
     y = y - ROW_HEIGHT
 
     -- Race
     lineIdx = lineIdx + 1
-    local raceLine = GetLine(f, lineIdx)
-    raceLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local raceLine = GetLine(c, lineIdx)
+    raceLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     raceLine.label:SetText("|cffffffffRace|r")
-    raceLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    raceLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     raceLine.value:SetText(charRace)
     raceLine.value:SetTextColor(0.9, 0.9, 0.9)
     y = y - ROW_HEIGHT
 
     -- Level
     lineIdx = lineIdx + 1
-    local lvlLine = GetLine(f, lineIdx)
-    lvlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local lvlLine = GetLine(c, lineIdx)
+    lvlLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     lvlLine.label:SetText("|cffffffffLevel|r")
-    lvlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    lvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     lvlLine.value:SetText(tostring(charLevel))
     lvlLine.value:SetTextColor(1, 0.82, 0)
     y = y - ROW_HEIGHT
@@ -348,10 +319,10 @@ function CharInfo:BuildTooltipContent()
     -- Item Level
     if db.showItemLevel then
         lineIdx = lineIdx + 1
-        local ilvlLine = GetLine(f, lineIdx)
-        ilvlLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local ilvlLine = GetLine(c, lineIdx)
+        ilvlLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         ilvlLine.label:SetText("|cffffffffItem Level|r")
-        ilvlLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        ilvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         ilvlLine.value:SetText(string.format("%.1f", charIlvl))
         local ilvlColor
         if charIlvl >= 600 then ilvlColor = {1, 0.5, 0}
@@ -364,10 +335,10 @@ function CharInfo:BuildTooltipContent()
 
     -- Faction
     lineIdx = lineIdx + 1
-    local facLine = GetLine(f, lineIdx)
-    facLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local facLine = GetLine(c, lineIdx)
+    facLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
     facLine.label:SetText("|cffffffffFaction|r")
-    facLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    facLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     facLine.value:SetText(charFaction)
     if charFaction == "Alliance" then
         facLine.value:SetTextColor(0.2, 0.4, 1.0)
@@ -381,10 +352,10 @@ function CharInfo:BuildTooltipContent()
     -- Guild
     if db.showGuild and charGuild ~= "" then
         lineIdx = lineIdx + 1
-        local guildLine = GetLine(f, lineIdx)
-        guildLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local guildLine = GetLine(c, lineIdx)
+        guildLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         guildLine.label:SetText("|cffffffffGuild|r")
-        guildLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        guildLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         guildLine.value:SetText(charGuild)
         guildLine.value:SetTextColor(0.0, 0.8, 0.0)
         y = y - ROW_HEIGHT
@@ -394,10 +365,10 @@ function CharInfo:BuildTooltipContent()
     if db.showShardID then
         TryUpdateShard()
         lineIdx = lineIdx + 1
-        local shardLine = GetLine(f, lineIdx)
-        shardLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local shardLine = GetLine(c, lineIdx)
+        shardLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 0, y)
         shardLine.label:SetText("|cffffffffShard ID|r")
-        shardLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        shardLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         if shardID then
             shardLine.value:SetText(shardID)
             shardLine.value:SetTextColor(0.4, 0.78, 1)
@@ -412,8 +383,7 @@ function CharInfo:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function CharInfo:ShowTooltip(anchor)
@@ -504,6 +474,12 @@ function CharInfo:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 300 x 250 for standard character info.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "characterinfo", CLICK_ACTIONS)

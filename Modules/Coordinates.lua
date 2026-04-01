@@ -18,9 +18,7 @@ local hideTimer = nil
 -- Layout
 local TOOLTIP_WIDTH  = 280
 local ROW_HEIGHT     = 20
-local HEADER_HEIGHT  = 18
 local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local playerX, playerY = 0, 0
@@ -36,8 +34,9 @@ local currentMapID   = nil
 local DEFAULTS = {
     coordDecimals  = 2,
     labelTemplate  = "<coords>",
-    tooltipScale   = 1.0,
-    tooltipWidth   = 280,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 400,
+    tooltipWidth     = 280,
     clickActions   = {
         leftClick       = "worldmap",
         rightClick      = "copycoords",
@@ -245,41 +244,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTCoordinatesTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() Coordinates:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() Coordinates:StartHideTimer() end)
-
-    -- Reusable lines: { label = FontString, value = FontString }
-    f.lines = {}
-
+    local f = ns.CreateTooltipFrame("DDTCoordinatesTooltip", Coordinates)
+    f.content.lines = {}
     return f
 end
 
@@ -309,22 +275,23 @@ end
 
 function Coordinates:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
+    local c = f.content
+    HideLines(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("Coordinates")
+    f.header:SetText("Coordinates")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Zone
     if currentZone ~= "" then
         lineIdx = lineIdx + 1
-        local zoneLine = GetLine(f, lineIdx)
-        zoneLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local zoneLine = GetLine(c, lineIdx)
+        zoneLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         zoneLine.label:SetText("|cffffffffZone|r")
-        zoneLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        zoneLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         zoneLine.value:SetText(currentZone)
         zoneLine.value:SetTextColor(0.4, 0.78, 1)
         y = y - ROW_HEIGHT
@@ -333,10 +300,10 @@ function Coordinates:BuildTooltipContent()
     -- Subzone (if different from zone)
     if currentSubZone ~= "" and currentSubZone ~= currentZone then
         lineIdx = lineIdx + 1
-        local subLine = GetLine(f, lineIdx)
-        subLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local subLine = GetLine(c, lineIdx)
+        subLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         subLine.label:SetText("|cffffffffSubzone|r")
-        subLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        subLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         subLine.value:SetText(currentSubZone)
         subLine.value:SetTextColor(0.4, 0.78, 1)
         y = y - ROW_HEIGHT
@@ -345,10 +312,10 @@ function Coordinates:BuildTooltipContent()
     -- Map name (if different from zone)
     if currentMapName ~= "" and currentMapName ~= currentZone then
         lineIdx = lineIdx + 1
-        local mapLine = GetLine(f, lineIdx)
-        mapLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local mapLine = GetLine(c, lineIdx)
+        mapLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         mapLine.label:SetText("|cffffffffMap|r")
-        mapLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        mapLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         mapLine.value:SetText(currentMapName)
         mapLine.value:SetTextColor(0.9, 0.9, 0.9)
         y = y - ROW_HEIGHT
@@ -359,10 +326,10 @@ function Coordinates:BuildTooltipContent()
 
     -- Coordinates
     lineIdx = lineIdx + 1
-    local coordLine = GetLine(f, lineIdx)
-    coordLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local coordLine = GetLine(c, lineIdx)
+    coordLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     coordLine.label:SetText("|cffffffffCoordinates|r")
-    coordLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    coordLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     coordLine.value:SetText(FormatCoords(playerX, playerY, db.coordDecimals))
     coordLine.value:SetTextColor(0.0, 1.0, 0.0)
     y = y - ROW_HEIGHT
@@ -370,10 +337,10 @@ function Coordinates:BuildTooltipContent()
     -- Map ID (small reference)
     if currentMapID then
         lineIdx = lineIdx + 1
-        local idLine = GetLine(f, lineIdx)
-        idLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local idLine = GetLine(c, lineIdx)
+        idLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         idLine.label:SetText("|cffffffffMap ID|r")
-        idLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        idLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         idLine.value:SetText(tostring(currentMapID))
         idLine.value:SetTextColor(0.6, 0.6, 0.6)
         y = y - ROW_HEIGHT
@@ -383,8 +350,7 @@ function Coordinates:BuildTooltipContent()
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function Coordinates:ShowTooltip(anchor)
@@ -457,6 +423,12 @@ function Coordinates:BuildSettingsPanel(panel)
         { label = "Width", min = 200, max = 500, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 300 x 200 for zone and coordinate info.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "coordinates", CLICK_ACTIONS)

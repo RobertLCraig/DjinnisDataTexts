@@ -51,6 +51,7 @@ local DEFAULTS = {
     maxCurrencies      = 15,
     currencySortOrder  = "list",  -- list, name, quantity_desc, quantity_asc
     tooltipScale       = 1.0,
+    tooltipMaxHeight   = 600,
     tooltipWidth       = 340,
     clickActions       = {
         leftClick       = "currency",
@@ -442,40 +443,9 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTCurrencyTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() Currency:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() Currency:StartHideTimer() end)
-
-    f.lines = {}
-    f.rowFrames = {}
+    local f = ns.CreateTooltipFrame("DDTCurrencyTooltip", Currency)
+    f.content.lines = {}
+    f.content.rowFrames = {}
     return f
 end
 
@@ -564,23 +534,24 @@ end
 
 function Currency:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
-    HideRowFrames(f)
+    local c = f.content
+    HideLines(c)
+    HideRowFrames(c)
 
     local db = self:GetDB()
 
-    f.title:SetText("Currency")
+    f.header:SetText("Currency")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Current character gold
     lineIdx = lineIdx + 1
-    local goldLine = GetLine(f, lineIdx)
+    local goldLine = GetLine(c, lineIdx)
     goldLine.icon:Hide()
-    goldLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    goldLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     goldLine.label:SetText("|cffffffffGold|r")
-    goldLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    goldLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     goldLine.value:SetText(FormatGold(currentGold, nil))
     goldLine.value:SetTextColor(1, 1, 1)
     y = y - ROW_HEIGHT
@@ -588,11 +559,11 @@ function Currency:BuildTooltipContent()
     -- Session change
     if db.showSessionChange then
         lineIdx = lineIdx + 1
-        local sessLine = GetLine(f, lineIdx)
+        local sessLine = GetLine(c, lineIdx)
         sessLine.icon:Hide()
-        sessLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        sessLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         sessLine.label:SetText("|cffffffffSession|r")
-        sessLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        sessLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         sessLine.value:SetText(FormatGold(sessionChange))
         if sessionChange > 0 then
             sessLine.value:SetTextColor(0.0, 1.0, 0.0)
@@ -607,11 +578,11 @@ function Currency:BuildTooltipContent()
     -- WoW Token price
     if db.showTokenPrice then
         lineIdx = lineIdx + 1
-        local tokLine = GetLine(f, lineIdx)
+        local tokLine = GetLine(c, lineIdx)
         tokLine.icon:Hide()
-        tokLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        tokLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         tokLine.label:SetText("|cffffffffWoW Token|r")
-        tokLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        tokLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         if tokenPrice and tokenPrice > 0 then
             tokLine.value:SetText(FormatGold(tokenPrice))
             tokLine.value:SetTextColor(0.0, 0.8, 1.0)
@@ -629,20 +600,20 @@ function Currency:BuildTooltipContent()
             y = y - 4
 
             lineIdx = lineIdx + 1
-            local altHdr = GetLine(f, lineIdx)
+            local altHdr = GetLine(c, lineIdx)
             altHdr.icon:Hide()
-            altHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+            altHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             altHdr.label:SetText("|cffffd100Alt Characters|r")
-            altHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            altHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             altHdr.value:SetText("")
             y = y - HEADER_HEIGHT
 
             local totalAltGold = 0
             for _, alt in ipairs(alts) do
                 lineIdx = lineIdx + 1
-                local row = GetLine(f, lineIdx)
+                local row = GetLine(c, lineIdx)
                 row.icon:Hide()
-                row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+                row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
 
                 local nameText = alt.name
                 if alt.class then
@@ -651,7 +622,7 @@ function Currency:BuildTooltipContent()
                 end
                 row.label:SetText(nameText)
                 row.label:SetTextColor(0.9, 0.9, 0.9)
-                row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 row.value:SetText(FormatGoldShort(alt.gold))
                 row.value:SetTextColor(0.9, 0.82, 0.0)
                 totalAltGold = totalAltGold + alt.gold
@@ -660,11 +631,11 @@ function Currency:BuildTooltipContent()
 
             -- Total line
             lineIdx = lineIdx + 1
-            local totalLine = GetLine(f, lineIdx)
+            local totalLine = GetLine(c, lineIdx)
             totalLine.icon:Hide()
-            totalLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            totalLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             totalLine.label:SetText("|cffffffffTotal (all chars)|r")
-            totalLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            totalLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             totalLine.value:SetText(FormatGoldShort(currentGold + totalAltGold))
             totalLine.value:SetTextColor(1.0, 0.82, 0.0)
             y = y - ROW_HEIGHT
@@ -676,32 +647,32 @@ function Currency:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local wbHdr = GetLine(f, lineIdx)
+        local wbHdr = GetLine(c, lineIdx)
         wbHdr.icon:Hide()
-        wbHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        wbHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         wbHdr.label:SetText("|cffffd100Warband Bank|r")
-        wbHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        wbHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         wbHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
         -- Warband gold
         lineIdx = lineIdx + 1
-        local wbGoldLine = GetLine(f, lineIdx)
+        local wbGoldLine = GetLine(c, lineIdx)
         wbGoldLine.icon:Hide()
-        wbGoldLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        wbGoldLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         wbGoldLine.label:SetText("|cffffffffGold|r")
-        wbGoldLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        wbGoldLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         wbGoldLine.value:SetText(FormatGoldShort(warbankGold))
         wbGoldLine.value:SetTextColor(0.9, 0.82, 0.0)
         y = y - ROW_HEIGHT
 
         -- Access status
         lineIdx = lineIdx + 1
-        local wbAccLine = GetLine(f, lineIdx)
+        local wbAccLine = GetLine(c, lineIdx)
         wbAccLine.icon:Hide()
-        wbAccLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        wbAccLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         wbAccLine.label:SetText("|cffffffffAccess|r")
-        wbAccLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        wbAccLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         if warbankEnabled == false then
             wbAccLine.value:SetText("Not Available")
             wbAccLine.value:SetTextColor(0.5, 0.5, 0.5)
@@ -723,31 +694,31 @@ function Currency:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local ahHdr = GetLine(f, lineIdx)
+        local ahHdr = GetLine(c, lineIdx)
         ahHdr.icon:Hide()
-        ahHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        ahHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         ahHdr.label:SetText("|cffffd100Posted Auctions|r")
-        ahHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        ahHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         ahHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
         lineIdx = lineIdx + 1
-        local ahCountLine = GetLine(f, lineIdx)
+        local ahCountLine = GetLine(c, lineIdx)
         ahCountLine.icon:Hide()
-        ahCountLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+        ahCountLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
         ahCountLine.label:SetText("|cffffffffListings|r")
-        ahCountLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        ahCountLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         ahCountLine.value:SetText(tostring(postedAuctionCount))
         ahCountLine.value:SetTextColor(0.9, 0.9, 0.9)
         y = y - ROW_HEIGHT
 
         if postedAuctionValue > 0 then
             lineIdx = lineIdx + 1
-            local ahValLine = GetLine(f, lineIdx)
+            local ahValLine = GetLine(c, lineIdx)
             ahValLine.icon:Hide()
-            ahValLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            ahValLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             ahValLine.label:SetText("|cffffffffTotal Value|r")
-            ahValLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            ahValLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             ahValLine.value:SetText(FormatGoldShort(postedAuctionValue))
             ahValLine.value:SetTextColor(0.9, 0.82, 0.0)
             y = y - ROW_HEIGHT
@@ -763,11 +734,11 @@ function Currency:BuildTooltipContent()
             else ageText = math.floor(age / 3600) .. "h ago" end
 
             lineIdx = lineIdx + 1
-            local ageLine = GetLine(f, lineIdx)
+            local ageLine = GetLine(c, lineIdx)
             ageLine.icon:Hide()
-            ageLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            ageLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             ageLine.label:SetText("|cff888888Last scanned: " .. ageText .. "|r")
-            ageLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            ageLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             ageLine.value:SetText("")
             y = y - ROW_HEIGHT
         end
@@ -776,19 +747,19 @@ function Currency:BuildTooltipContent()
     -- Tracked currencies
     if db.showCurrencies and #currencyList > 0 then
         local sorted = {}
-        for _, c in ipairs(currencyList) do
-            table.insert(sorted, c)
+        for _, cur in ipairs(currencyList) do
+            table.insert(sorted, cur)
         end
         SortCurrencies(sorted, db.currencySortOrder)
 
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local curHdr = GetLine(f, lineIdx)
+        local curHdr = GetLine(c, lineIdx)
         curHdr.icon:Hide()
-        curHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        curHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         curHdr.label:SetText("|cffffd100Currencies|r")
-        curHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        curHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         curHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
@@ -803,31 +774,31 @@ function Currency:BuildTooltipContent()
             if db.currencySortOrder == "list" and cur.header and cur.header ~= lastHeader then
                 lastHeader = cur.header
                 lineIdx = lineIdx + 1
-                local subHdr = GetLine(f, lineIdx)
+                local subHdr = GetLine(c, lineIdx)
                 subHdr.icon:Hide()
-                subHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 4, y)
+                subHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 4, y)
                 subHdr.label:SetText("|cff888888" .. cur.header .. "|r")
                 subHdr.label:SetTextColor(0.53, 0.53, 0.53)
-                subHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+                subHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 subHdr.value:SetText("")
                 y = y - HEADER_HEIGHT
             end
 
             shown = shown + 1
             lineIdx = lineIdx + 1
-            local row = GetLine(f, lineIdx)
+            local row = GetLine(c, lineIdx)
 
             -- Currency icon
             if cur.iconFileID then
                 row.icon:SetTexture(cur.iconFileID)
-                row.icon:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y - 3)
+                row.icon:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y - 3)
                 row.icon:Show()
             else
                 row.icon:Hide()
             end
 
             local labelX = PADDING + 6 + (cur.iconFileID and 18 or 0)
-            row.label:SetPoint("TOPLEFT", f, "TOPLEFT", labelX, y)
+            row.label:SetPoint("TOPLEFT", c, "TOPLEFT", labelX, y)
             row.label:SetText(cur.name)
 
             -- Color by quality
@@ -838,25 +809,25 @@ function Currency:BuildTooltipContent()
             end
             row.label:SetTextColor(qr, qg, qb)
 
-            row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatQuantity(cur.quantity, cur.maxQuantity))
             row.value:SetTextColor(0.9, 0.9, 0.9)
 
             -- Clickable row overlay
-            local rf = GetRowFrame(f, shown)
+            local rf = GetRowFrame(c, shown)
             rf.currencyData = cur
-            rf:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            rf:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            rf:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            rf:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             y = y - ROW_HEIGHT
         end
 
         if #sorted > count then
             lineIdx = lineIdx + 1
-            local moreRow = GetLine(f, lineIdx)
+            local moreRow = GetLine(c, lineIdx)
             moreRow.icon:Hide()
-            moreRow.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            moreRow.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             moreRow.label:SetText("|cff888888... and " .. (#sorted - count) .. " more|r")
-            moreRow.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            moreRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             moreRow.value:SetText("")
             y = y - ROW_HEIGHT
         end
@@ -875,8 +846,7 @@ function Currency:BuildTooltipContent()
     f.hint:SetText(combined)
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function Currency:ShowTooltip(anchor)
@@ -1007,6 +977,12 @@ function Currency:BuildSettingsPanel(panel)
         { label = "Width", min = 250, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 500. Increase height for more currencies/alts.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "currency", CLICK_ACTIONS,

@@ -47,6 +47,7 @@ local DEFAULTS = {
     showFreeSlots     = true,
     itemSortOrder     = "value_desc",  -- value_desc, value_asc, name, quantity_desc
     tooltipScale      = 1.0,
+    tooltipMaxHeight  = 600,
     tooltipWidth      = 340,
     clickActions      = {
         leftClick       = "openbags",
@@ -338,40 +339,9 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTBagValueTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() BagVal:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() BagVal:StartHideTimer() end)
-
-    f.lines = {}
-    f.rowFrames = {}
+    local f = ns.CreateTooltipFrame("DDTBagValueTooltip", BagVal)
+    f.content.lines = {}
+    f.content.rowFrames = {}
     return f
 end
 
@@ -453,43 +423,44 @@ end
 
 function BagVal:BuildTooltipContent()
     local f = tooltipFrame
-    HideLines(f)
-    HideRowFrames(f)
+    local c = f.content
+    HideLines(c)
+    HideRowFrames(c)
 
     local db = self:GetDB()
     local hasTSM = TSM_API ~= nil
 
-    f.title:SetText("Bag Value")
+    f.header:SetText("Bag Value")
 
-    local y = -PADDING - 20 - 6
+    local y = 0
     local lineIdx = 0
 
     -- Total value
     lineIdx = lineIdx + 1
-    local totalLine = GetLine(f, lineIdx)
-    totalLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local totalLine = GetLine(c, lineIdx)
+    totalLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     totalLine.label:SetText("|cffffffffEstimated Value|r")
-    totalLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    totalLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     totalLine.value:SetText(FormatGold(totalValue))
     totalLine.value:SetTextColor(1, 1, 1)
     y = y - ROW_HEIGHT
 
     -- Vendor value
     lineIdx = lineIdx + 1
-    local vendLine = GetLine(f, lineIdx)
-    vendLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local vendLine = GetLine(c, lineIdx)
+    vendLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     vendLine.label:SetText("|cffffffffVendor Value|r")
-    vendLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    vendLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     vendLine.value:SetText(FormatGold(vendorValue))
     vendLine.value:SetTextColor(0.6, 0.6, 0.6)
     y = y - ROW_HEIGHT
 
     -- Price source
     lineIdx = lineIdx + 1
-    local srcLine = GetLine(f, lineIdx)
-    srcLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+    local srcLine = GetLine(c, lineIdx)
+    srcLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     srcLine.label:SetText("|cffffffffPrice Source|r")
-    srcLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+    srcLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     if hasTSM then
         srcLine.value:SetText("TSM: " .. (db.tsmPriceSource or "dbmarket"))
         srcLine.value:SetTextColor(0.0, 0.8, 0.0)
@@ -502,10 +473,10 @@ function BagVal:BuildTooltipContent()
     -- Bag slots
     if db.showFreeSlots then
         lineIdx = lineIdx + 1
-        local slotLine = GetLine(f, lineIdx)
-        slotLine.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local slotLine = GetLine(c, lineIdx)
+        slotLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         slotLine.label:SetText("|cffffffffBag Space|r")
-        slotLine.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        slotLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         slotLine.value:SetText(string.format("%d / %d free", freeSlots, totalSlots))
         if freeSlots <= 5 then
             slotLine.value:SetTextColor(1.0, 0.2, 0.2)
@@ -528,10 +499,10 @@ function BagVal:BuildTooltipContent()
         y = y - 4
 
         lineIdx = lineIdx + 1
-        local itemHdr = GetLine(f, lineIdx)
-        itemHdr.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
+        local itemHdr = GetLine(c, lineIdx)
+        itemHdr.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         itemHdr.label:SetText("|cffffd100Top Items|r")
-        itemHdr.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+        itemHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         itemHdr.value:SetText("")
         y = y - HEADER_HEIGHT
 
@@ -539,8 +510,8 @@ function BagVal:BuildTooltipContent()
         for i = 1, count do
             local item = sorted[i]
             lineIdx = lineIdx + 1
-            local row = GetLine(f, lineIdx)
-            row.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local row = GetLine(c, lineIdx)
+            row.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
 
             local iconStr = ""
             if item.icon then
@@ -550,24 +521,24 @@ function BagVal:BuildTooltipContent()
             row.label:SetText(iconStr .. item.name .. qtyStr)
             row.label:SetTextColor(0.8, 0.8, 0.8)
 
-            row.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatGoldShort(item.value))
             row.value:SetTextColor(0.9, 0.82, 0.0)
 
             -- Clickable row overlay
-            local rf = GetRowFrame(f, i)
+            local rf = GetRowFrame(c, i)
             rf.itemData = item
-            rf:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            rf:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            rf:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            rf:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             y = y - ROW_HEIGHT
         end
 
         if #sorted > count then
             lineIdx = lineIdx + 1
-            local moreRow = GetLine(f, lineIdx)
-            moreRow.label:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING + 6, y)
+            local moreRow = GetLine(c, lineIdx)
+            moreRow.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             moreRow.label:SetText("|cff888888... and " .. (#sorted - count) .. " more items|r")
-            moreRow.value:SetPoint("TOPRIGHT", f, "TOPRIGHT", -PADDING, y)
+            moreRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             moreRow.value:SetText("")
             y = y - ROW_HEIGHT
         end
@@ -586,8 +557,7 @@ function BagVal:BuildTooltipContent()
     f.hint:SetText(combined)
 
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 8
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 function BagVal:ShowTooltip(anchor)
@@ -680,6 +650,12 @@ function BagVal:BuildSettingsPanel(panel)
         { label = "Width", min = 250, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 350 x 400. Increase height if showing many items.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "bagvalue", CLICK_ACTIONS)

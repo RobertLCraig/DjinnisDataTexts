@@ -14,14 +14,11 @@ ns.ItemLevel = ItemLevel
 -- Tooltip
 local tooltipFrame = nil
 local hideTimer = nil
-local linePool = {}
 
 -- Layout
 local TOOLTIP_WIDTH  = 360
 local ROW_HEIGHT     = 20
-local HEADER_HEIGHT  = 18
 local PADDING        = 10
-local HINT_HEIGHT    = 18
 
 -- State
 local equippedIlvl = 0
@@ -95,8 +92,9 @@ local DEFAULTS = {
     showSlotDetails = true,
     showMissingEnchants = true,
     showMissingGems = true,
-    tooltipScale    = 1.0,
-    tooltipWidth    = 360,
+    tooltipScale     = 1.0,
+    tooltipMaxHeight = 500,
+    tooltipWidth     = 360,
     clickActions    = {
         leftClick       = "character",
         rightClick      = "copysimcstring",
@@ -505,42 +503,8 @@ end
 ---------------------------------------------------------------------------
 
 local function CreateTooltipFrame()
-    local f = CreateFrame("Frame", "DDTItemLevelTooltip", UIParent, "BackdropTemplate")
-    f:SetFrameStrata("TOOLTIP")
-    f:SetClampedToScreen(true)
-    f:SetBackdrop({
-        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
-        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
-        edgeSize = 14,
-        insets   = { left = 3, right = 3, top = 3, bottom = 3 },
-    })
-    f:SetBackdropColor(0.05, 0.05, 0.05, 0.92)
-    f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
-
-    -- Title
-    f.title = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
-    f.title:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, -PADDING)
-    f.title:SetTextColor(1, 0.82, 0)
-
-    -- Title separator
-    f.titleSep = f:CreateTexture(nil, "ARTWORK")
-    f.titleSep:SetPoint("TOPLEFT", f.title, "BOTTOMLEFT", 0, -3)
-    f.titleSep:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
-    f.titleSep:SetHeight(1)
-    f.titleSep:SetColorTexture(0.5, 0.5, 0.5, 0.5)
-
-    -- Hint bar
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
-    f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", PADDING, 8)
-    f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -PADDING, 8)
-    f.hint:SetJustifyH("CENTER")
-    f.hint:SetTextColor(0.53, 0.53, 0.53)
-
-    -- Mouse interaction
-    f:EnableMouse(true)
-    f:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
-    f:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
-
+    local f = ns.CreateTooltipFrame("DDTItemLevelTooltip", ItemLevel)
+    f.content.lines = {}
     return f
 end
 
@@ -549,9 +513,9 @@ end
 ---------------------------------------------------------------------------
 
 local function GetLine(parent, index)
-    if linePool[index] then
-        linePool[index].frame:Show()
-        return linePool[index]
+    if parent.lines[index] then
+        parent.lines[index].frame:Show()
+        return parent.lines[index]
     end
 
     local frame = CreateFrame("Frame", nil, parent)
@@ -584,12 +548,12 @@ local function GetLine(parent, index)
     end)
 
     local line = { frame = frame, label = label, value = value, status = status, highlight = highlight }
-    linePool[index] = line
+    parent.lines[index] = line
     return line
 end
 
-local function HideAllLines()
-    for _, line in pairs(linePool) do line.frame:Hide() end
+local function HideAllLines(parent)
+    for _, line in pairs(parent.lines) do line.frame:Hide() end
 end
 
 ---------------------------------------------------------------------------
@@ -597,20 +561,21 @@ end
 ---------------------------------------------------------------------------
 
 function ItemLevel:BuildTooltipContent()
-    HideAllLines()
-
     local f = tooltipFrame
+    local c = f.content
+    HideAllLines(c)
+
     local db = self:GetDB()
-    f.title:SetText("Item Level")
+    f.header:SetText("Item Level")
 
     local lineIdx = 0
-    local y = -PADDING - 20 - 6
+    local y = 0
 
     -- Summary: Equipped iLvl
     lineIdx = lineIdx + 1
-    local summaryLine = GetLine(f, lineIdx)
-    summaryLine.frame:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-    summaryLine.frame:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+    local summaryLine = GetLine(c, lineIdx)
+    summaryLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+    summaryLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
     summaryLine.label:SetText("|cffffffffEquipped Item Level|r")
     summaryLine.value:SetText("|cff00cc00" .. equippedIlvl .. "|r")
     summaryLine.status:SetText("")
@@ -619,9 +584,9 @@ function ItemLevel:BuildTooltipContent()
 
     if overallIlvl ~= equippedIlvl then
         lineIdx = lineIdx + 1
-        local overallLine = GetLine(f, lineIdx)
-        overallLine.frame:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-        overallLine.frame:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+        local overallLine = GetLine(c, lineIdx)
+        overallLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+        overallLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
         overallLine.label:SetText("|cffffffffOverall Item Level|r")
         overallLine.value:SetText("|cff888888" .. overallIlvl .. "|r")
         overallLine.status:SetText("")
@@ -653,9 +618,9 @@ function ItemLevel:BuildTooltipContent()
             local info = slotData[slot]
             if info then
                 lineIdx = lineIdx + 1
-                local line = GetLine(f, lineIdx)
-                line.frame:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-                line.frame:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+                local line = GetLine(c, lineIdx)
+                line.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                line.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
 
                 local slotName = SLOT_NAMES[slot] or "?"
                 local qc = QUALITY_COLORS[info.quality] or QUALITY_COLORS[1]
@@ -697,9 +662,9 @@ function ItemLevel:BuildTooltipContent()
         if db.showMissingEnchants ~= false and #missingEnchants > 0 then
             y = y - 4
             lineIdx = lineIdx + 1
-            local enchLine = GetLine(f, lineIdx)
-            enchLine.frame:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            enchLine.frame:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+            local enchLine = GetLine(c, lineIdx)
+            enchLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            enchLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
             enchLine.label:SetText("|cffcc0000Missing Enchants: " .. #missingEnchants .. "|r")
             local slotList = {}
             for _, slot in ipairs(missingEnchants) do
@@ -715,9 +680,9 @@ function ItemLevel:BuildTooltipContent()
 
         if db.showMissingGems ~= false and #missingGems > 0 then
             lineIdx = lineIdx + 1
-            local gemLine = GetLine(f, lineIdx)
-            gemLine.frame:SetPoint("TOPLEFT", f, "TOPLEFT", PADDING, y)
-            gemLine.frame:SetPoint("RIGHT", f, "RIGHT", -PADDING, 0)
+            local gemLine = GetLine(c, lineIdx)
+            gemLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            gemLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
             local totalMissing = 0
             for _, slot in ipairs(missingGems) do totalMissing = totalMissing + slotData[slot].missingGems end
             gemLine.label:SetText("|cffcc0000Missing Gems: " .. totalMissing .. "|r")
@@ -740,8 +705,7 @@ function ItemLevel:BuildTooltipContent()
 
     -- Size
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
-    local totalHeight = math.abs(y) + PADDING + HINT_HEIGHT + 4
-    f:SetSize(ttWidth, totalHeight)
+    f:FinalizeLayout(ttWidth, math.abs(y))
 end
 
 ---------------------------------------------------------------------------
@@ -840,6 +804,12 @@ function ItemLevel:BuildSettingsPanel(panel)
         { label = "Width", min = 300, max = 600, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v; refreshTT() end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end },
+        nil, r)
+    y = W.AddNote(body, y, "Suggested: 400 x 450 for full slot breakdown with enhancements.")
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "itemlevel", CLICK_ACTIONS,
