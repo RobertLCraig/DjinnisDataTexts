@@ -177,6 +177,7 @@ local function AddSliderPair(content, y, spec1, spec2, refreshList)
 
     for i = 1, 2 do
         local spec = specs[i]
+        if not spec then break end
         local xBase = xBases[i]
         local stp = spec.step
 
