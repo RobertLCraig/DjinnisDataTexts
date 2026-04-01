@@ -15,7 +15,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 - **Configurable label templates** with `<tag>` syntax, clickable tag-insert buttons, and preset suggestions in settings
 - **Global number formatting** with 8 locale presets (US, EU, French/SI, plain, custom) -- configurable thousands separator, decimal point, and abbreviation (k/m/b vs full numbers)
 - **Configurable click actions** with 9 modifier combinations (Left, Right, Middle, Shift, Ctrl, Alt) on every module
-- **Per-row click actions** on Currency and Bag Value tooltip rows (link to chat, open panels)
+- **Per-row click actions** on Currency, Bag Value, and Item Level tooltip rows (link to chat, open panels, search AH)
+- **Auctionator category-filtered search** — Item Level enchant searches use the advanced filter format with slot subcategory and current expansion filter
 - **Configurable tooltip sizing** (width, scale) per module
 - **Configurable sort orders** on all list-based data
 - **Optimized update loops** -- lightweight label-only updates when tooltip is hidden; heavy data collection gated behind tooltip visibility and dirty flags
@@ -44,7 +45,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Account Status** | At-a-glance warband bank access and pet journal unlock indicators for multiboxers. |
 | **Character Info** | Name, realm, class, race, level, item level. Optional shard ID detection (opt-in). |
 | **Experience** | XP bar with rested overlay, XP/hr tracking, quest XP sum, time-to-level estimate. Shows watched reputation at max level. |
-| **Item Level** | Equipped item level, per-slot breakdown with quality colors. Missing enchants/gems detection. SimC string copy, Auctionator/TSM shopping lists for missing enhancements. AH gear upgrade search. |
+| **Item Level** | Equipped item level and durability. Per-slot breakdown with quality colors, durability %, missing enchants/gems warnings. SimC string copy, Auctionator category-filtered shopping lists for missing enhancements, TSM search. AH gear upgrade search. |
 | **Spec Switch** | Active spec, talent loadout switching, loot spec selection. Shows all specs with role icons and loadouts. |
 | **Movement Speed** | Current/base speed as %, ground/fly/swim/skyriding speeds, active speed buff detection. Shopping list integration (Auctionator/TSM) for Midnight-era speed consumables. |
 
