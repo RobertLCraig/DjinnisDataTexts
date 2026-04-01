@@ -19,7 +19,8 @@ $ReleaseNotesFile = Join-Path $Root "RELEASE_NOTES.md"
 $ChangelogFile    = Join-Path $Root "CHANGELOG.md"
 
 # Resolve gh CLI — check PATH first, then common install locations
-$GhExe = (Get-Command "gh" -ErrorAction SilentlyContinue)?.Source
+$_ghCmd = Get-Command "gh" -ErrorAction SilentlyContinue
+$GhExe  = if ($_ghCmd) { $_ghCmd.Source } else { $null }
 if (-not $GhExe) {
     $candidates = @(
         "C:\Program Files\GitHub CLI\gh.exe",
