@@ -481,10 +481,14 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
 
         btn:SetScript("OnClick", function()
             local cur = getter()
-            local newVal = cur .. tagStr
+            local pos = editbox:GetCursorPosition() or #cur
+            local before = cur:sub(1, pos)
+            local after  = cur:sub(pos + 1)
+            local newVal = before .. tagStr .. after
             setter(newVal)
             editbox:SetText(newVal)
             valText:SetText(newVal)
+            editbox:SetCursorPosition(pos + #tagStr)
         end)
     end
 
