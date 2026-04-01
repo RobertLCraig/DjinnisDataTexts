@@ -271,6 +271,50 @@ if (-not $DryRun) {
 }
 
 # ---------------------------------------------------------------------------
+# 8. Create GitHub Release with zip attached (requires gh CLI)
+# ---------------------------------------------------------------------------
+
+$ghAvailable = $null -ne (Get-Command "gh" -ErrorAction SilentlyContinue)
+
+if (-not $ghAvailable) {
+    Write-Warn ""
+    Write-Warn "  GitHub CLI (gh) not found — skipping GitHub Release creation."
+    Write-Warn "  Install from https://cli.github.com then run 'gh auth login'."
+    Write-Warn "  To create the release manually:"
+    Write-Warn "    gh release create $Tag '$ZipPath' --title '$Tag' --notes-file '$ReleaseNotesFile'"
+} elseif ($SkipPush -or $SkipTag) {
+    Write-Warn "  Skipping GitHub Release (SkipPush or SkipTag is set)"
+} elseif ($DryRun) {
+    Write-Warn "  [DryRun] Would create GitHub Release '$Tag' with $(Split-Path $ZipPath -Leaf) attached"
+} else {
+    Write-Info "  Creating GitHub Release $Tag..."
+
+    $isPrerelease = ($ReleaseType -ne "release")
+
+    # Write release notes to a temp file so special characters survive
+    $tmpNotes = [System.IO.Path]::GetTempFileName()
+    [System.IO.File]::WriteAllText($tmpNotes, $notesBody, (New-Object System.Text.UTF8Encoding $false))
+
+    $ghArgs = @(
+        "release", "create", $Tag,
+        $ZipPath,
+        "--title", $Tag,
+        "--notes-file", $tmpNotes
+    )
+    if ($isPrerelease) { $ghArgs += "--prerelease" }
+
+    & gh @ghArgs
+    Remove-Item $tmpNotes -Force
+
+    if ($LASTEXITCODE -eq 0) {
+        Write-Success "  GitHub Release created: https://github.com/RobertLCraig/DjinnisDataTexts/releases/tag/$Tag"
+    } else {
+        Write-Warn "  gh release create failed (exit $LASTEXITCODE) — create it manually:"
+        Write-Warn "    gh release create $Tag '$ZipPath' --title '$Tag' --notes-file RELEASE_NOTES.md"
+    }
+}
+
+# ---------------------------------------------------------------------------
 # Done
 # ---------------------------------------------------------------------------
 
@@ -279,6 +323,7 @@ Write-Success "=== Release $Tag complete! ==="
 Write-Info ""
 Write-Info "  Local zip:  $ZipPath"
 if (-not $DryRun -and -not $SkipPush -and -not $SkipTag) {
+    Write-Info "  GitHub:     https://github.com/RobertLCraig/DjinnisDataTexts/releases/tag/$Tag"
     Write-Info "  CurseForge: packaging triggered by pushed tag (file type: $ReleaseType)"
 }
 Write-Info ""
