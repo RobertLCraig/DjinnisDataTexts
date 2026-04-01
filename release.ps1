@@ -18,6 +18,16 @@ $TocFile          = Join-Path $Root "$AddonName.toc"
 $ReleaseNotesFile = Join-Path $Root "RELEASE_NOTES.md"
 $ChangelogFile    = Join-Path $Root "CHANGELOG.md"
 
+# Resolve gh CLI — check PATH first, then common install locations
+$GhExe = (Get-Command "gh" -ErrorAction SilentlyContinue)?.Source
+if (-not $GhExe) {
+    $candidates = @(
+        "C:\Program Files\GitHub CLI\gh.exe",
+        "$env:LOCALAPPDATA\Programs\GitHub CLI\gh.exe"
+    )
+    foreach ($c in $candidates) { if (Test-Path $c) { $GhExe = $c; break } }
+}
+
 function Write-Info    { param($m) Write-Host $m -ForegroundColor Cyan    }
 function Write-Success { param($m) Write-Host $m -ForegroundColor Green   }
 function Write-Warn    { param($m) Write-Host $m -ForegroundColor Yellow  }
@@ -274,7 +284,7 @@ if (-not $DryRun) {
 # 8. Create GitHub Release with zip attached (requires gh CLI)
 # ---------------------------------------------------------------------------
 
-$ghAvailable = $null -ne (Get-Command "gh" -ErrorAction SilentlyContinue)
+$ghAvailable = $null -ne $GhExe
 
 if (-not $ghAvailable) {
     Write-Warn ""
@@ -303,14 +313,14 @@ if (-not $ghAvailable) {
     )
     if ($isPrerelease) { $ghArgs += "--prerelease" }
 
-    & gh @ghArgs
+    & $GhExe @ghArgs
     Remove-Item $tmpNotes -Force
 
     if ($LASTEXITCODE -eq 0) {
         Write-Success "  GitHub Release created: https://github.com/RobertLCraig/DjinnisDataTexts/releases/tag/$Tag"
     } else {
         Write-Warn "  gh release create failed (exit $LASTEXITCODE) — create it manually:"
-        Write-Warn "    gh release create $Tag '$ZipPath' --title '$Tag' --notes-file RELEASE_NOTES.md"
+        Write-Warn "    & '$GhExe' release create $Tag '$ZipPath' --title '$Tag' --notes-file RELEASE_NOTES.md"
     }
 }
 
