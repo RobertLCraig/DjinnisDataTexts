@@ -144,9 +144,8 @@ function FriendsBroker:UpdateData()
         for i = 1, numFriends do
             local info = C_FriendList.GetFriendInfoByIndex(i)
             if info then
-                local rawToken = info.classTag or info.classFileName or info.classFile or info.classToken
-                local localizedName = info.className or info.classLocalized or info.class or ""
-                local classToken = ResolveClassToken(rawToken, info.classID, localizedName)
+                local localizedName = info.className or ""
+                local classToken = localizedClassMap[localizedName]
 
                 table.insert(friends, {
                     name      = info.name or "Unknown",
@@ -212,9 +211,8 @@ function FriendsBroker:UpdateData()
 end
 
 function FriendsBroker:BuildBNetEntry(accountInfo, gameInfo)
-    local rawToken = gameInfo.classTag or gameInfo.classFile or gameInfo.classToken
-    local className = gameInfo.className or gameInfo.classLocalized or gameInfo.class or ""
-    local classToken = ResolveClassToken(rawToken, gameInfo.classID, className)
+    local className = gameInfo.className or ""
+    local classToken = ResolveClassToken(nil, gameInfo.classID, className)
 
     local charName = gameInfo.characterName or ""
     local realmName = gameInfo.realmDisplayName or gameInfo.realmName or ""

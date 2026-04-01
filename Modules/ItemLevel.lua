@@ -1,5 +1,5 @@
--- Djinni's Data Texts — Item Level
--- Equipped item level, missing enchants/gems, SimC export, shopping lists.
+-- Djinni's Data Texts — Item Level & Durability
+-- Equipped item level, durability, missing enchants/gems, SimC export, shopping lists.
 local addonName, ns = ...
 local DDT = ns.addon
 local LDB = LibStub("LibDataBroker-1.1")
@@ -23,7 +23,8 @@ local PADDING        = 10
 -- State
 local equippedIlvl = 0
 local overallIlvl  = 0
-local slotData     = {}  -- { [slot] = { link, name, ilvl, quality, hasEnchant, missingGems, numSockets } }
+local slotData     = {}  -- { [slot] = { link, name, ilvl, quality, hasEnchant, missingGems, numSockets, durCur, durMax } }
+local dataobj           -- forward declaration; assigned after UpdateData/ExpandLabel
 
 -- Enchantable slots in current WoW (Midnight era)
 -- Back (cloak), Chest, Wrist, Legs, Feet, Rings, Weapons
@@ -37,6 +38,20 @@ local ENCHANTABLE_SLOTS = {
     [INVSLOT_FINGER2]  = true,
     [INVSLOT_MAINHAND] = true,
     [INVSLOT_OFFHAND]  = true,
+}
+
+-- Map inventory slots to Auctionator "Item Enhancements" subcategory names
+-- These match the subclass names from C_Item.GetItemSubClassInfo(8, subClassID)
+local SLOT_ENCHANT_CATEGORY = {
+    [INVSLOT_BACK]     = "Back",
+    [INVSLOT_CHEST]    = "Chest",
+    [INVSLOT_WRIST]    = "Wrist",
+    [INVSLOT_LEGS]     = "Legs",
+    [INVSLOT_FEET]     = "Feet",
+    [INVSLOT_FINGER1]  = "Finger",
+    [INVSLOT_FINGER2]  = "Finger",
+    [INVSLOT_MAINHAND] = "Weapon",
+    [INVSLOT_OFFHAND]  = "Weapon",
 }
 
 -- Slot display names
@@ -92,6 +107,8 @@ local DEFAULTS = {
     showSlotDetails = true,
     showMissingEnchants = true,
     showMissingGems = true,
+    showDurability  = true,
+    durabilityThreshold = 100,
     tooltipScale     = 1.0,
     tooltipMaxHeight = 500,
     tooltipWidth     = 360,
@@ -106,6 +123,17 @@ local DEFAULTS = {
         altLeftClick    = "opensettings",
         altRightClick   = "none",
     },
+    rowClickActions = {
+        leftClick       = "linkitem",
+        rightClick      = "searchenchant",
+        middleClick     = "none",
+        shiftLeftClick  = "searchgem",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "wowhead",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
+    },
 }
 
 local CLICK_ACTIONS = {
@@ -117,6 +145,14 @@ local CLICK_ACTIONS = {
     ahsearch         = "AH Search: Gear Upgrades",
     opensettings     = "Open DDT Settings",
     none             = "None",
+}
+
+local ROW_CLICK_ACTIONS = {
+    linkitem       = "Link Item to Chat",
+    searchenchant  = "Search: Enchants for Slot",
+    searchgem      = "Search: Gems",
+    wowhead        = "Copy Wowhead URL",
+    none           = "None",
 }
 
 ---------------------------------------------------------------------------
@@ -138,7 +174,7 @@ end
 -- Count empty gem sockets for an item
 local function GetMissingGems(itemLink)
     if not itemLink then return 0, 0 end
-    -- Try C_Item API first
+    -- C_Item.GetItemNumSockets accepts ItemInfo (string link or itemID)
     if C_Item and C_Item.GetItemNumSockets then
         local numSockets = C_Item.GetItemNumSockets(itemLink)
         if numSockets and numSockets > 0 then
@@ -157,6 +193,48 @@ local function GetMissingGems(itemLink)
 end
 
 ---------------------------------------------------------------------------
+-- Robust item info helpers (handles API differences across WoW versions)
+---------------------------------------------------------------------------
+
+local function SafeGetSlotInfo(slot, itemLink)
+    local name, quality, ilvl
+
+    -- Primary: ItemLocation API (modern, works in Midnight+)
+    if ItemLocation and C_Item then
+        local loc = ItemLocation:CreateFromEquipmentSlot(slot)
+        if C_Item.DoesItemExist(loc) then
+            if C_Item.GetCurrentItemLevel then
+                ilvl = C_Item.GetCurrentItemLevel(loc)
+            end
+            if C_Item.GetItemName then
+                name = C_Item.GetItemName(loc)
+            end
+        end
+    end
+
+    -- Quality from itemID
+    local itemID = tonumber(itemLink:match("|Hitem:(%d+):"))
+    if itemID and C_Item and C_Item.GetItemQualityByID then
+        quality = C_Item.GetItemQualityByID(itemID)
+    end
+
+    -- Fallback: C_Item.GetItemInfo (accepts ItemInfo = string link or itemID)
+    if not name or not ilvl then
+        local n, _, q, il = C_Item.GetItemInfo(itemLink)
+        name = name or n
+        quality = quality or q
+        ilvl = ilvl or il
+    end
+
+    -- Last resort: parse name from link
+    if not name then
+        name = itemLink:match("|h%[(.-)%]|h") or "Unknown"
+    end
+
+    return name or "Unknown", quality or 1, ilvl or 0
+end
+
+---------------------------------------------------------------------------
 -- Data scanning
 ---------------------------------------------------------------------------
 
@@ -170,21 +248,23 @@ function ItemLevel:UpdateData()
     for _, slot in ipairs(GEAR_SLOTS) do
         local itemLink = GetInventoryItemLink("player", slot)
         if itemLink then
-            local itemName, _, itemQuality, itemLevel = C_Item.GetItemInfo(itemLink)
-            -- Use effective item level
-            local effectiveIlvl = C_Item.GetDetailedItemLevelInfo(itemLink) or itemLevel or 0
+            local itemName, itemQuality, effectiveIlvl = SafeGetSlotInfo(slot, itemLink)
             local hasEnchant = GetEnchantFromLink(itemLink) ~= nil
             local missingGems, numSockets = GetMissingGems(itemLink)
 
+            local durCur, durMax = GetInventoryItemDurability(slot)
+
             slotData[slot] = {
                 link       = itemLink,
-                name       = itemName or "Loading...",
+                name       = itemName,
                 ilvl       = effectiveIlvl,
-                quality    = itemQuality or 1,
+                quality    = itemQuality,
                 hasEnchant = hasEnchant,
                 missingGems = missingGems,
                 numSockets = numSockets,
                 canEnchant = ENCHANTABLE_SLOTS[slot] == true,
+                durCur     = durCur,
+                durMax     = durMax,
             }
         end
     end
@@ -205,14 +285,23 @@ function ItemLevel:ExpandLabel(template)
     result = E(result, "ilvl", equippedIlvl)
     result = E(result, "overall", overallIlvl)
 
-    -- Count missing enhancements
+    -- Count missing enhancements and compute durability
     local missingEnchants, missingGems = 0, 0
+    local lowestDur = 100
+    local repairCount = 0
     for _, info in pairs(slotData) do
         if info.canEnchant and not info.hasEnchant then missingEnchants = missingEnchants + 1 end
         missingGems = missingGems + info.missingGems
+        if info.durMax and info.durMax > 0 then
+            local pct = math.floor(info.durCur / info.durMax * 100)
+            if pct < lowestDur then lowestDur = pct end
+            if pct < 100 then repairCount = repairCount + 1 end
+        end
     end
     result = E(result, "enchants", missingEnchants)
     result = E(result, "gems", missingGems)
+    result = E(result, "durability", lowestDur .. "%")
+    result = E(result, "repair", repairCount)
     return result
 end
 
@@ -220,7 +309,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-ItemLevel", {
+local ldbCallbacks = {
     type  = "data source",
     text  = "iLvl: 0",
     icon  = "Interface\\Icons\\INV_Misc_Gear_01",
@@ -252,7 +341,9 @@ local dataobj = LDB:NewDataObject("DDT-ItemLevel", {
             end
         end
     end,
-})
+}
+dataobj = LDB:NewDataObject("DDT-ItemLevel", ldbCallbacks)
+    or LDB:GetDataObjectByName("DDT-ItemLevel")
 
 ItemLevel.dataobj = dataobj
 
@@ -282,6 +373,9 @@ function ItemLevel:Init()
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("PLAYER_EQUIPMENT_CHANGED")
     eventFrame:RegisterEvent("GET_ITEM_INFO_RECEIVED")
+    eventFrame:RegisterEvent("UPDATE_INVENTORY_DURABILITY")
+    -- Set label immediately (values may be 0 until PLAYER_ENTERING_WORLD)
+    self:UpdateData()
 end
 
 function ItemLevel:GetDB()
@@ -294,8 +388,8 @@ end
 
 function ItemLevel:CopySimCString()
     -- Check if SimulationCraft addon is loaded and has its slash command
-    if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("SimulationCraft") then
-        -- Trigger SimC's own export
+    if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("SimulationCraft")
+       and SlashCmdList["SIMULATIONCRAFT"] then
         SlashCmdList["SIMULATIONCRAFT"]("")
         return
     end
@@ -365,6 +459,7 @@ function ItemLevel:GetMissingEnhancementItems()
             if info.canEnchant and not info.hasEnchant then
                 table.insert(items, {
                     slot = SLOT_NAMES[slot] or "?",
+                    slotID = slot,
                     type = "enchant",
                     itemLink = info.link,
                     itemName = info.name,
@@ -374,6 +469,7 @@ function ItemLevel:GetMissingEnhancementItems()
             if info.missingGems > 0 then
                 table.insert(items, {
                     slot = SLOT_NAMES[slot] or "?",
+                    slotID = slot,
                     type = "gem",
                     count = info.missingGems,
                     itemLink = info.link,
@@ -399,13 +495,24 @@ function ItemLevel:CreateAuctionatorShoppingList()
         return
     end
 
-    -- Build search terms for Auctionator
+    -- Build search terms for Auctionator (advanced format with category filters)
+    local parentCat = AUCTION_CATEGORY_ITEM_ENHANCEMENT or "Item Enhancements"
+    local gemCat = AUCTION_CATEGORY_GEMS or "Gems"
+    local expID = LE_EXPANSION_LEVEL_CURRENT or 11
     local searchTerms = {}
+    local seenGem = false
     for _, item in ipairs(missing) do
         if item.type == "enchant" then
-            table.insert(searchTerms, "Enchant " .. item.slot)
-        elseif item.type == "gem" then
-            table.insert(searchTerms, "Gem")
+            local enchantCat = SLOT_ENCHANT_CATEGORY[item.slotID]
+            if enchantCat then
+                table.insert(searchTerms, string.format(
+                    ";%s/%s;0;0;0;0;0;0;0;0;;#;%d;",
+                    parentCat, enchantCat, expID))
+            end
+        elseif item.type == "gem" and not seenGem then
+            seenGem = true
+            table.insert(searchTerms, string.format(
+                ";%s;0;0;0;0;0;0;0;0;;#;%d;", gemCat, expID))
         end
     end
 
@@ -471,7 +578,7 @@ function ItemLevel:SearchAHForUpgrades()
         -- If AH is open, search for items in the weakest slot's equipment type
         local info = slotData[lowestSlot]
         if info and info.link then
-            local _, _, _, _, _, itemType, itemSubType = C_Item.GetItemInfo(info.link)
+            local _, _, _, _, _, _, itemSubType = C_Item.GetItemInfo(info.link)
             if itemSubType then
                 -- Use AH search with the sub type
                 if AuctionHouseFrame.SearchBar and AuctionHouseFrame.SearchBar.SearchBox then
@@ -499,6 +606,50 @@ function ItemLevel:SearchAHForUpgrades()
 end
 
 ---------------------------------------------------------------------------
+-- Row click actions
+---------------------------------------------------------------------------
+
+function ItemLevel:ExecuteRowAction(action, info, slot)
+    if not action or action == "none" or not info then return end
+
+    if action == "linkitem" then
+        if info.link then
+            ChatFrameUtil.OpenChat(info.link)
+        end
+    elseif action == "searchenchant" then
+        local slotName = SLOT_NAMES[slot] or "?"
+        local enchantCat = SLOT_ENCHANT_CATEGORY[slot]
+        if Auctionator and Auctionator.API and Auctionator.API.v1 and enchantCat then
+            local parentCat = AUCTION_CATEGORY_ITEM_ENHANCEMENT or "Item Enhancements"
+            local expID = LE_EXPANSION_LEVEL_CURRENT or 11
+            local search = string.format(";%s/%s;0;0;0;0;0;0;0;0;;#;%d;",
+                parentCat, enchantCat, expID)
+            pcall(Auctionator.API.v1.CreateShoppingList, "DjinnisDataTexts",
+                  "DDT - " .. slotName .. " Enchant", { search })
+            DDT:Print("Auctionator: searching enchants for " .. slotName)
+        else
+            DDT:Print("Search AH for: Enchant " .. slotName)
+        end
+    elseif action == "searchgem" then
+        if Auctionator and Auctionator.API and Auctionator.API.v1 then
+            local parentCat = AUCTION_CATEGORY_GEMS or "Gems"
+            local expID = LE_EXPANSION_LEVEL_CURRENT or 11
+            local search = string.format(";%s;0;0;0;0;0;0;0;0;;#;%d;", parentCat, expID)
+            pcall(Auctionator.API.v1.CreateShoppingList, "DjinnisDataTexts",
+                  "DDT - Gems", { search })
+            DDT:Print("Auctionator: searching gems")
+        else
+            DDT:Print("Search AH for: Gem")
+        end
+    elseif action == "wowhead" then
+        local itemID = info.link and info.link:match("|Hitem:(%d+):")
+        if itemID then
+            ns.CopyURL("https://www.wowhead.com/item=" .. itemID)
+        end
+    end
+end
+
+---------------------------------------------------------------------------
 -- Tooltip frame
 ---------------------------------------------------------------------------
 
@@ -518,27 +669,38 @@ local function GetLine(parent, index)
         return parent.lines[index]
     end
 
-    local frame = CreateFrame("Frame", nil, parent)
+    local frame = CreateFrame("Button", nil, parent)
     frame:SetHeight(ROW_HEIGHT)
-    frame:EnableMouse(true)
+    frame:RegisterForClicks("AnyUp")
 
     local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
     highlight:SetAllPoints()
     highlight:SetColorTexture(1, 1, 1, 0.06)
 
-    local label = frame:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
-    label:SetPoint("LEFT", frame, "LEFT", 6, 0)
-    label:SetJustifyH("LEFT")
-    label:SetWordWrap(false)
+    -- Durability column (far right, fixed width)
+    local durability = frame:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    durability:SetPoint("RIGHT", frame, "RIGHT", -6, 0)
+    durability:SetJustifyH("RIGHT")
+    durability:SetWordWrap(false)
+    durability:SetWidth(36)
 
+    -- iLvl value (left of durability column)
     local value = frame:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
-    value:SetPoint("RIGHT", frame, "RIGHT", -6, 0)
+    value:SetPoint("RIGHT", durability, "LEFT", -4, 0)
     value:SetJustifyH("RIGHT")
+    value:SetWordWrap(false)
 
-    -- Status indicators
+    -- Status indicators (anchored left of value)
     local status = frame:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
     status:SetPoint("RIGHT", value, "LEFT", -8, 0)
     status:SetJustifyH("RIGHT")
+    status:SetWordWrap(false)
+
+    local label = frame:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    label:SetPoint("LEFT", frame, "LEFT", 6, 0)
+    label:SetPoint("RIGHT", status, "LEFT", -4, 0)
+    label:SetJustifyH("LEFT")
+    label:SetWordWrap(false)
 
     frame:SetScript("OnEnter", function(self)
         ItemLevel:CancelHideTimer()
@@ -547,7 +709,7 @@ local function GetLine(parent, index)
         ItemLevel:StartHideTimer()
     end)
 
-    local line = { frame = frame, label = label, value = value, status = status, highlight = highlight }
+    local line = { frame = frame, label = label, value = value, status = status, durability = durability, highlight = highlight }
     parent.lines[index] = line
     return line
 end
@@ -579,6 +741,7 @@ function ItemLevel:BuildTooltipContent()
     summaryLine.label:SetText("|cffffffffEquipped Item Level|r")
     summaryLine.value:SetText("|cff00cc00" .. equippedIlvl .. "|r")
     summaryLine.status:SetText("")
+    summaryLine.durability:SetText("")
     summaryLine.frame:SetScript("OnClick", nil)
     y = y - ROW_HEIGHT
 
@@ -590,8 +753,40 @@ function ItemLevel:BuildTooltipContent()
         overallLine.label:SetText("|cffffffffOverall Item Level|r")
         overallLine.value:SetText("|cff888888" .. overallIlvl .. "|r")
         overallLine.status:SetText("")
+        overallLine.durability:SetText("")
         overallLine.frame:SetScript("OnClick", nil)
         y = y - ROW_HEIGHT
+    end
+
+    -- Durability summary
+    if db.showDurability ~= false then
+        local totalCur, totalMax = 0, 0
+        for _, slot in ipairs(GEAR_SLOTS) do
+            local info = slotData[slot]
+            if info and info.durMax and info.durMax > 0 then
+                totalCur = totalCur + info.durCur
+                totalMax = totalMax + info.durMax
+            end
+        end
+        if totalMax > 0 then
+            local pct = math.floor(totalCur / totalMax * 100)
+            local durColor
+            if pct <= 25 then durColor = "ffcc0000"
+            elseif pct <= 50 then durColor = "ffcc6600"
+            elseif pct < 100 then durColor = "ffffff00"
+            else durColor = "ff00cc00" end
+
+            lineIdx = lineIdx + 1
+            local durLine = GetLine(c, lineIdx)
+            durLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            durLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
+            durLine.label:SetText("|cffffffffDurability|r")
+            durLine.value:SetText("")
+            durLine.status:SetText("")
+            durLine.durability:SetText("|c" .. durColor .. pct .. "%|r")
+            durLine.frame:SetScript("OnClick", nil)
+            y = y - ROW_HEIGHT
+        end
     end
 
     -- Slot details
@@ -641,8 +836,23 @@ function ItemLevel:BuildTooltipContent()
                 end
                 line.status:SetText(table.concat(statusParts, " "))
 
-                -- Hover to show item tooltip
+                -- Durability column
+                if db.showDurability ~= false and info.durMax and info.durMax > 0 then
+                    local durPct = math.floor(info.durCur / info.durMax * 100)
+                    local durColor
+                    if durPct <= 25 then durColor = "ffcc0000"
+                    elseif durPct <= 50 then durColor = "ffcc6600"
+                    elseif durPct < 100 then durColor = "ffffff00"
+                    else durColor = "ff00cc00" end
+                    line.durability:SetText("|c" .. durColor .. durPct .. "%|r")
+                else
+                    line.durability:SetText("")
+                end
+
+                -- Hover to show item tooltip + click actions
                 local capturedLink = info.link
+                local capturedSlot = slot
+                local capturedInfo = info
                 line.frame:SetScript("OnEnter", function(self)
                     ItemLevel:CancelHideTimer()
                     GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
@@ -652,6 +862,10 @@ function ItemLevel:BuildTooltipContent()
                 line.frame:SetScript("OnLeave", function()
                     GameTooltip:Hide()
                     ItemLevel:StartHideTimer()
+                end)
+                line.frame:SetScript("OnClick", function(self, button)
+                    local act = DDT:ResolveClickAction(button, db.rowClickActions or {})
+                    ItemLevel:ExecuteRowAction(act, capturedInfo, capturedSlot)
                 end)
 
                 y = y - ROW_HEIGHT
@@ -665,13 +879,14 @@ function ItemLevel:BuildTooltipContent()
             local enchLine = GetLine(c, lineIdx)
             enchLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             enchLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-            enchLine.label:SetText("|cffcc0000Missing Enchants: " .. #missingEnchants .. "|r")
             local slotList = {}
             for _, slot in ipairs(missingEnchants) do
                 table.insert(slotList, SLOT_NAMES[slot] or "?")
             end
-            enchLine.value:SetText("|cff888888" .. table.concat(slotList, ", ") .. "|r")
+            enchLine.label:SetText("|cffcc0000Missing Enchants:|r  |cff888888" .. table.concat(slotList, ", ") .. "|r")
+            enchLine.value:SetText("")
             enchLine.status:SetText("")
+            enchLine.durability:SetText("")
             enchLine.frame:SetScript("OnClick", nil)
             enchLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
             enchLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
@@ -685,23 +900,61 @@ function ItemLevel:BuildTooltipContent()
             gemLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
             local totalMissing = 0
             for _, slot in ipairs(missingGems) do totalMissing = totalMissing + slotData[slot].missingGems end
-            gemLine.label:SetText("|cffcc0000Missing Gems: " .. totalMissing .. "|r")
             local slotList = {}
             for _, slot in ipairs(missingGems) do
                 table.insert(slotList, SLOT_NAMES[slot] or "?")
             end
-            gemLine.value:SetText("|cff888888" .. table.concat(slotList, ", ") .. "|r")
+            gemLine.label:SetText("|cffcc0000Missing Gems: " .. totalMissing .. "|r  |cff888888" .. table.concat(slotList, ", ") .. "|r")
+            gemLine.value:SetText("")
             gemLine.status:SetText("")
+            gemLine.durability:SetText("")
             gemLine.frame:SetScript("OnClick", nil)
             gemLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
             gemLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
             y = y - ROW_HEIGHT
         end
+
+        -- Needs Repair summary
+        if db.showDurability ~= false then
+            local repairSlots = {}
+            for _, slot in ipairs(GEAR_SLOTS) do
+                local info = slotData[slot]
+                if info and info.durMax and info.durMax > 0 and info.durCur < info.durMax then
+                    table.insert(repairSlots, slot)
+                end
+            end
+            if #repairSlots > 0 then
+                lineIdx = lineIdx + 1
+                local repLine = GetLine(c, lineIdx)
+                repLine.frame:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                repLine.frame:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
+                local slotList = {}
+                for _, slot in ipairs(repairSlots) do
+                    table.insert(slotList, SLOT_NAMES[slot] or "?")
+                end
+                repLine.label:SetText("|cffcc6600Needs Repair: " .. #repairSlots .. "|r  |cff888888" .. table.concat(slotList, ", ") .. "|r")
+                repLine.value:SetText("")
+                repLine.status:SetText("")
+                repLine.durability:SetText("")
+                repLine.frame:SetScript("OnClick", nil)
+                repLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
+                repLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
+                y = y - ROW_HEIGHT
+            end
+        end
     end
 
     -- Hint bar
-    local hintParts = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
-    f.hint:SetText(hintParts)
+    local dtHint = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)
+    local rowHint = DDT:BuildHintText(db.rowClickActions or {}, ROW_CLICK_ACTIONS)
+    if rowHint ~= "" then
+        rowHint = "|cff888888Row: " .. rowHint:gsub("|cff888888", ""):gsub("|r$", "") .. "|r"
+    end
+    local combined = dtHint
+    if rowHint ~= "" then
+        combined = combined ~= "" and (combined .. "\n" .. rowHint) or rowHint
+    end
+    f.hint:SetText(combined)
 
     -- Size
     local ttWidth = db.tooltipWidth or TOOLTIP_WIDTH
@@ -761,12 +1014,14 @@ function ItemLevel:BuildSettingsPanel(panel)
 
     local body = W.AddSection(panel, "Label Template")
     local y = 0
-    y = W.AddLabelEditBox(body, y, "ilvl overall enchants gems",
+    y = W.AddLabelEditBox(body, y, "ilvl overall enchants gems durability repair",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",      "<ilvl>" },
         { "With Overall", "<ilvl> (<overall>)" },
         { "Warnings",     "<ilvl>  E:<enchants> G:<gems>" },
+        { "Durability",   "<ilvl>  <durability>" },
+        { "Full",         "<ilvl>  <durability>  E:<enchants> G:<gems>" },
     })
     W.EndSection(panel, y)
 
@@ -782,6 +1037,12 @@ function ItemLevel:BuildSettingsPanel(panel)
         "Show missing gems",
         function() return db().showMissingGems ~= false end,
         function(v) db().showMissingGems = v; refreshTT() end, r)
+    y = W.AddCheckbox(body, y, "Show durability per slot",
+        function() return db().showDurability ~= false end,
+        function(v) db().showDurability = v; refreshTT() end, r)
+    y = W.AddSlider(body, y, "Durability warning threshold (%)", 0, 100, 5,
+        function() return db().durabilityThreshold or 100 end,
+        function(v) db().durabilityThreshold = v; refreshTT() end, r)
     W.EndSection(panel, y)
 
     body = W.AddSection(panel, "Integrations")
@@ -814,6 +1075,7 @@ function ItemLevel:BuildSettingsPanel(panel)
 
     ns.AddModuleClickActionsSection(panel, r, "itemlevel", CLICK_ACTIONS,
         "Hover a slot row to see full item tooltip.")
+    ns.AddRowClickActionsSection(panel, r, "itemlevel", ROW_CLICK_ACTIONS)
 end
 
 ---------------------------------------------------------------------------

@@ -1206,10 +1206,10 @@ function ns.GetCustomURL(template, charName, realmName)
     return result
 end
 
---- Copy a URL: uses C_Clipboard if available, otherwise inserts into chat input
+--- Copy a URL: uses CopyToClipboard if available, otherwise inserts into chat input
 function ns.CopyURL(url)
-    if C_Clipboard and C_Clipboard.SetText then
-        C_Clipboard.SetText(url)
+    if CopyToClipboard then
+        CopyToClipboard(url)
         ns.addon:Print("Copied: " .. url)
     else
         ChatFrameUtil.OpenChat(url)
@@ -1220,11 +1220,9 @@ end
 --- @param text string  Text to copy
 --- @param label string|nil  Label shown in print message
 function DDT:CopyToClipboard(text, label)
-    if C_Clipboard and C_Clipboard.SetText then
-        C_Clipboard.SetText(text)
-        self:Print("Copied " .. (label or "text") .. " to clipboard.")
-    else
-        -- Fallback: show a popup with selectable text
+    do
+        -- CopyToClipboard() is hardware-protected; addons cannot call it.
+        -- Show a popup with selectable text instead.
         if not DDTCopyFrame then
             local f = CreateFrame("Frame", "DDTCopyFrame", UIParent, "BackdropTemplate")
             f:SetSize(500, 300)
