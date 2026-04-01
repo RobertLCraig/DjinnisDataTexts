@@ -159,21 +159,26 @@ if (-not $DryRun) {
     $existing = ""
     if (Test-Path $ChangelogFile) { $existing = Get-Content $ChangelogFile -Raw -Encoding UTF8 }
 
-    # Detect the file's line-ending style so the separator search always matches
-    $nl        = if ($existing -match "`r`n") { "`r`n" } else { "`n" }
-    $separator = "${nl}---${nl}"
-    $sepIndex  = $existing.IndexOf($separator)
-
-    if ($sepIndex -ge 0) {
-        $before       = $existing.Substring(0, $sepIndex + $separator.Length)
-        $after        = $existing.Substring($sepIndex + $separator.Length)
-        $newChangelog = $before + $nl + $changelogEntry + $nl + $after
+    # Skip prepend if this version is already the top entry (prevents duplicates on re-run)
+    if ($existing -match "(?m)^##\s+\[$([regex]::Escape($versionLabel))\]") {
+        Write-Warn "  CHANGELOG.md already contains [$versionLabel] -- skipping prepend"
     } else {
-        $newChangelog = $existing + "${nl}---${nl}${nl}" + $changelogEntry
-    }
+        # Detect the file's line-ending style so the separator search always matches
+        $nl        = if ($existing -match "`r`n") { "`r`n" } else { "`n" }
+        $separator = "${nl}---${nl}"
+        $sepIndex  = $existing.IndexOf($separator)
 
-    [System.IO.File]::WriteAllText($ChangelogFile, $newChangelog, (New-Object System.Text.UTF8Encoding $false))
-    Write-Success "  CHANGELOG.md updated"
+        if ($sepIndex -ge 0) {
+            $before       = $existing.Substring(0, $sepIndex + $separator.Length)
+            $after        = $existing.Substring($sepIndex + $separator.Length)
+            $newChangelog = $before + $nl + $changelogEntry + $nl + $after
+        } else {
+            $newChangelog = $existing + "${nl}---${nl}${nl}" + $changelogEntry
+        }
+
+        [System.IO.File]::WriteAllText($ChangelogFile, $newChangelog, (New-Object System.Text.UTF8Encoding $false))
+        Write-Success "  CHANGELOG.md updated"
+    }
 } else {
     Write-Warn "  [DryRun] Would prepend to CHANGELOG.md:"
     Write-Host $changelogEntry -ForegroundColor DarkGray

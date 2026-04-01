@@ -42,33 +42,6 @@ This release significantly expands the Item Level module with real-time durabili
 - Fixed class color detection: removed access to undocumented `FriendInfo` fields (`classTag`, `classFileName`, `classFile`, `classToken`); now uses only `className` (localized lookup) and the documented fields
 - Fixed BNet friends class detection similarly — removed nonexistent `classTag`/`classFile`/`classToken` from `BNetGameAccountInfo`
 
-
-## [0.5.0-beta] - 2026-04-01
-
-### ItemLevel: Durability Tracking + Auctionator Category Search + Bug Fixes
-
-#### ItemLevel Module Enhancements
-- **Durability column** — Dedicated right-hand column per slot, color-coded (green/yellow/orange/red by threshold)
-- **Durability summary line** — Weighted average across all gear in the tooltip header section
-- **Needs Repair summary** — Lists all slots below 100% durability at the tooltip bottom
-- **Label tags** — `<durability>` (lowest slot %) and `<repair>` (repair count)
-- **Settings** — Show/hide durability toggle + warning threshold slider (0–100%)
-- **Event** — `UPDATE_INVENTORY_DURABILITY` registered for live data
-- **Auctionator enchant search** — Now uses advanced filter format with category/subcategory and current expansion filter (no text search term); correctly maps each slot to its Item Enhancements subcategory
-- **Gem search** — Scoped to Gems category + current expansion
-- **Label presets** — Added "Durability" and "Full" presets to settings
-
-#### Bug Fixes
-- **Settings crash** — `AddSlider` called with table instead of positional args; broke `/ddt` and all settings panels
-- **CopyToClipboard protected** — Removed call to hardware-protected global; now always uses popup editbox
-- **SimC SlashCmdList nil** — Added nil guard before calling slash command
-- **LDB dataobj nil** — Added `GetDataObjectByName` fallback for reload scenarios
-- **Tooltip row overlap** — Label bounded by status column; summary rows use full width
-- **Frame type crash** — `CreateFrame("Frame")` → `CreateFrame("Button")` for clickable tooltip rows
-
-#### Friends Module
-- Fixed WoW and BNet friend class detection to use only documented API fields (`className`, `classID`); removed access to nonexistent `classTag`/`classFile`/`classToken` fields
-
 ---
 
 ## [0.4.0-beta] - 2026-04-01
