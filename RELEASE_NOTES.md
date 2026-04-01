@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version: 0.5.1 — 2026-04-01
+## Version: 0.5.2 — 2026-04-01
 
 ### ItemLevel: Durability Tracking + Auctionator Category Search + Bug Fixes
 
