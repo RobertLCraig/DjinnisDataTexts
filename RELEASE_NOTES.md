@@ -1,39 +1,28 @@
 # Release Notes
 
-## Version: 0.5.2 — 2026-04-01
+## Version: 0.5.3 — 2026-04-02
 
-### ItemLevel: Durability Tracking + Auctionator Category Search + Bug Fixes
+### Gold Display Fixes + Settings Label Template UX Improvements + Startup Data Load
 
-This release significantly expands the Item Level module with real-time durability tracking, fixes several tooltip display issues, and upgrades the Auctionator enchant search to use proper category filters.
+#### Gold Display
 
-#### Durability Tracking
+- **Colorize now applies to datatexts** — `FormatGoldShort()` now respects `goldColorize`, `goldShowSilver`, and `goldShowCopper` global settings, matching `FormatGold()` behavior; gold in all module labels (Currency, BagValue) now colors correctly
+- **Gold settings changes refresh immediately** — toggling colorize/silver/copper in General settings now calls `UpdateData()` on all modules, so labels refresh without needing a mouseover
+- **Number format preset change also refreshes modules** — changing the format preset now propagates to all module labels immediately
 
-- **Per-slot durability column** — Dedicated right-hand column in the tooltip showing each slot's durability percentage, color-coded: green (100%), yellow (<100%), orange (≤50%), red (≤25%)
-- **Overall durability summary** — Header line showing weighted average durability across all gear with the same color coding
-- **Needs Repair summary** — Lists all slots below 100% durability at the bottom of the tooltip
-- **Label template tags** — `<durability>` (lowest slot %) and `<repair>` (count of slots needing repair)
-- **Settings** — Toggle durability display on/off; threshold slider controls the % below which per-slot values appear
-- **Live updates** — Registers `UPDATE_INVENTORY_DURABILITY` event for immediate refresh
+#### Settings Label Template UX
 
-#### Auctionator Enchant Search
+- **Label Template editor lifted out of scroll frame** — the template editbox and tag buttons now render in a fixed header above the scroll area, resolving the persistent "blank editbox on first load" issue caused by WoW's EditBox text not rendering inside scroll children
+- **Editbox pre-populated on panel show** — panels now start hidden so `OnShow` fires when Blizzard Settings displays them, ensuring the refresh callback correctly populates the editbox
+- **Tag insertion at cursor** — clicking a tag button now inserts at the last cursor position rather than appending to the end; cursor position is saved on focus loss (before the tag button's OnClick fires)
+- **Live template updates** — `OnTextChanged` commits the value as you type; no need to press Enter
 
-- Right-clicking a slot row (default) now opens an Auctionator shopping list using the advanced category filter format:
-  `;Item Enhancements/<Slot>;...;CurrentExpansion;` — no search term, just the category + current expansion filter
-- Slots map correctly: Finger → Finger subcategory, Feet → Feet, Weapon → Weapon, etc.
-- Gem search similarly scoped to the Gems category + current expansion
-- Bulk shopping list (Ctrl+L) uses the same format for all missing enchants
+#### Startup Data Load
 
-#### Bug Fixes
+- **Initial data load on login/reload** — all modules now call `UpdateData()` 1 second after addon load, so datatexts are populated immediately rather than waiting for the first mouseover
+- **Periodic background refresh** — all modules refresh every 3 minutes automatically, keeping labels current without user interaction
 
-- **Settings crash** — Fixed `AddSlider` being called with a table argument instead of positional args, which blocked the entire settings panel from loading (breaking `/ddt` and Options → Addons)
-- **CopyToClipboard** — Removed call to the hardware-protected `CopyToClipboard()` global; now always shows a scrollable popup editbox (Ctrl+A, Ctrl+C, Escape)
-- **SlashCmdList nil** — Added nil guard before calling `SlashCmdList["SIMULATIONCRAFT"]`
-- **LDB dataobj nil** — Added `LDB:GetDataObjectByName()` fallback for when the LDB name is already registered on reload
-- **Tooltip row overlap** — Label is now bounded by the status column so slot names never overlap "No Enchant" or socket warnings
-- **Summary row overflow** — Missing Enchants / Missing Gems / Needs Repair summary rows now use the full row width (slot list in label, value/status cleared)
-- **Frame type** — Tooltip rows now correctly created as `Button` frames (required for `OnClick` and `RegisterForClicks`)
+#### SpecSwitch
 
-#### Friends Module
-
-- Fixed class color detection: removed access to undocumented `FriendInfo` fields (`classTag`, `classFileName`, `classFile`, `classToken`); now uses only `className` (localized lookup) and the documented fields
-- Fixed BNet friends class detection similarly — removed nonexistent `classTag`/`classFile`/`classToken` from `BNetGameAccountInfo`
+- **Direct spec switching via click actions** — `spec1`/`spec2`/`spec3`/`spec4` click actions added; switch to a specific spec directly from the datatext
+- **Spec names in dropdown** — click action dropdown shows "Switch to Arms" instead of "Switch to Spec 1"; spec names resolved once on first data load
