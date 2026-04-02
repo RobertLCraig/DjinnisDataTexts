@@ -52,13 +52,13 @@ local DEFAULTS = {
     tooltipMaxHeight = 400,
     tooltipWidth     = 280,
     clickActions = {
-        leftClick       = "opentalents",
-        rightClick      = "none",
-        middleClick     = "none",
+        leftClick       = "spec1",
+        rightClick      = "spec2",
+        middleClick     = "spec3",
         shiftLeftClick  = "nextspec",
         shiftRightClick = "none",
         ctrlLeftClick   = "nextloadout",
-        ctrlRightClick  = "none",
+        ctrlRightClick  = "opentalents",
         altLeftClick    = "none",
         altRightClick   = "none",
     },
@@ -70,6 +70,10 @@ local DEFAULTS = {
 
 local SPEC_ACTION_VALUES = {
     opentalents  = "Open Talents",
+    spec1        = "Switch to Spec 1",
+    spec2        = "Switch to Spec 2",
+    spec3        = "Switch to Spec 3",
+    spec4        = "Switch to Spec 4",
     nextspec     = "Next Spec",
     nextloadout  = "Next Loadout",
     opensettings = "Open DDT Settings",
@@ -111,6 +115,18 @@ end
 
 local function ExecuteSpecAction(action)
     if not action or action == "none" then return end
+
+    -- Direct spec switch: spec1 / spec2 / spec3 / spec4
+    local specSlot = action:match("^spec(%d)$")
+    if specSlot then
+        local idx = tonumber(specSlot)
+        if SpecSwitch.demoMode then
+            DemoSwitchSpec(idx)
+        else
+            SwitchToSpec(idx)
+        end
+        return
+    end
 
     if action == "opentalents" then
         if InCombatLockdown() then
@@ -356,6 +372,17 @@ function SpecSwitch:UpdateData()
     -- Loadouts (Mainline talent system)
     -- Scan in a protected call so the label update below always runs
     self:UpdateLoadouts()
+
+    -- Update spec slot action labels once, when specs first become available
+    if not self.specNamesInitialized and #self.specCache > 0 then
+        self.specNamesInitialized = true
+        for i, spec in ipairs(self.specCache) do
+            SPEC_ACTION_VALUES["spec" .. i] = "Switch to " .. spec.name
+        end
+        for i = #self.specCache + 1, 4 do
+            SPEC_ACTION_VALUES["spec" .. i] = nil
+        end
+    end
 
     -- Update LDB text from label template
     local db = self:GetDB()
@@ -744,8 +771,17 @@ function SpecSwitch:BuildTooltipContent()
         y = y - ROW_HEIGHT
     end
 
-    -- Hint bar
-    local hintText = DDT:BuildHintText(db.clickActions or {}, SPEC_ACTION_VALUES)
+    -- Hint bar: resolve spec1/2/3/4 to actual spec names for display
+    local resolvedActions = {}
+    for k, v in pairs(SPEC_ACTION_VALUES) do resolvedActions[k] = v end
+    for slot = 1, 4 do
+        local key = "spec" .. slot
+        local spec = self.specCache[slot]
+        if spec then
+            resolvedActions[key] = spec.name
+        end
+    end
+    local hintText = DDT:BuildHintText(db.clickActions or {}, resolvedActions)
     f.hint:SetText(hintText ~= "" and hintText or "|cff888888Click a row to switch|r")
 
     -- Finalize layout
@@ -803,9 +839,7 @@ function SpecSwitch:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.specswitch end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "spec loadout lootspec role icon",
+    W.AddLabelEditBox(panel, "spec loadout lootspec role icon",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<spec>" },
@@ -814,10 +848,9 @@ function SpecSwitch:BuildSettingsPanel(panel)
         { "Loot Spec",  "<spec>  Loot: <lootspec>" },
         { "Full",       "<icon> <spec> / <loadout>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Tooltip", true)
-    y = 0
+    local body = W.AddSection(panel, "Tooltip", true)
+    local y = 0
     y = W.AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,

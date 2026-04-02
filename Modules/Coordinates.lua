@@ -395,9 +395,7 @@ function Coordinates:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.coordinates end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "coords zone subzone map",
+    W.AddLabelEditBox(panel, "coords zone subzone map",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
         { "Coords Only",  "<coords>" },
@@ -405,10 +403,9 @@ function Coordinates:BuildSettingsPanel(panel)
         { "Full Location", "<zone> - <subzone> (<coords>)" },
         { "Map Name",      "<map>: <coords>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddSlider(body, y, "Decimal places", 0, 4, 1,
         function() return db().coordDecimals end,
         function(v) db().coordDecimals = v; self:UpdateDisplay() end, r)

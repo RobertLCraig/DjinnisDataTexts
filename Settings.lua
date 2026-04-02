@@ -333,25 +333,34 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
     editbox:SetSize(380, 20)
     editbox:SetAutoFocus(false)
     editbox:SetText(getter())
-    editbox:SetTextColor(0, 0, 0, 0) -- hide native text; valText overlay renders instead
+    editbox:SetTextColor(0, 0, 0, 0)
 
-    -- FontString overlay -- always renders reliably inside scroll children
+    -- FontString overlay — EditBox text doesn't render in scroll children;
+    -- the overlay provides reliable display when unfocused.
     local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("LEFT", editbox, "LEFT", 6, 0)
     valText:SetPoint("RIGHT", editbox, "RIGHT", -6, 0)
     valText:SetJustifyH("LEFT")
     valText:SetText(getter())
 
-    editbox:SetScript("OnEditFocusGained", function(self)
-        valText:Hide()
-        self:SetTextColor(1, 1, 1, 1)
+    editbox:HookScript("OnEditFocusGained", function(self)
+        -- Sync buffer and make text visible; delay hiding overlay by one
+        -- frame so editbox text rendering has time to initialise.
         self:SetText(getter())
-        self:HighlightText()
+        self:SetTextColor(1, 1, 1, 1)
+        C_Timer.After(0, function()
+            if self:HasFocus() then
+                valText:Hide()
+                self:HighlightText(0, 0)
+                self:SetCursorPosition(#self:GetText())
+            end
+        end)
     end)
-    editbox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
+    editbox:HookScript("OnEditFocusLost", function(self)
+        local newVal = self:GetText()
+        setter(newVal)
         self:SetTextColor(0, 0, 0, 0)
-        valText:SetText(getter())
+        valText:SetText(newVal)
         valText:Show()
     end)
     editbox:SetScript("OnEnterPressed", function(self)
@@ -364,69 +373,91 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
         valText:SetText(getter())
         self:ClearFocus()
     end)
+    editbox:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            setter(self:GetText())
+        end
+    end)
 
     if refreshList then
         table.insert(refreshList, function()
-            editbox:SetText(getter())
-            valText:SetText(getter())
+            if not editbox:HasFocus() then
+                editbox:SetText(getter())
+                valText:SetText(getter())
+            end
         end)
     end
     return y - 44
 end
 
---- Label template edit box with clickable tag-insert buttons.
+--- Build a label template editor in a panel's fixed header (above scroll frame).
+--- Editbox lives outside the scroll child so text renders reliably.
+--- @param panel table  Panel created by CreateScrollPanel
 --- @param tags string  Space-separated tag names e.g. "fps latency world memory cpu"
---- @param suggestions table|nil  Optional list of { label, template } preset suggestions
-local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, suggestions)
-    local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-    text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
+--- @param getter function  Returns current template string
+--- @param setter function  Called with new template string
+--- @param refreshList table  Refresh callbacks
+--- @param suggestions table|nil  Optional list of { label, template } preset buttons
+local function AddLabelEditBox(panel, tags, getter, setter, refreshList, suggestions)
+    -- Container frame parented to panel (outside scroll child)
+    local header = CreateFrame("Frame", nil, panel)
+    header:SetPoint("TOPLEFT", panel, "TOPLEFT", 0, -5)
+    header:SetPoint("RIGHT", panel, "RIGHT", -24, 0)
+
+    local titleStr = header:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+    titleStr:SetPoint("TOPLEFT", 8, 0)
+    titleStr:SetText("Label Template")
+
+    local line = header:CreateTexture(nil, "ARTWORK")
+    line:SetPoint("LEFT", titleStr, "RIGHT", 8, 0)
+    line:SetPoint("RIGHT", header, "RIGHT", -10, 0)
+    line:SetHeight(1)
+    line:SetColorTexture(0.5, 0.5, 0.5, 0.3)
+
+    local text = header:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("TOPLEFT", header, "TOPLEFT", 18, -24)
     text:SetText("Template")
 
-    local editbox = CreateFrame("EditBox", nil, content, "InputBoxTemplate")
+    local editbox = CreateFrame("EditBox", nil, header, "InputBoxTemplate")
     editbox:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 4, -4)
     editbox:SetSize(380, 20)
     editbox:SetAutoFocus(false)
     editbox:SetText(getter())
-    editbox:SetTextColor(0, 0, 0, 0)
 
-    local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
-    valText:SetPoint("LEFT", editbox, "LEFT", 6, 0)
-    valText:SetPoint("RIGHT", editbox, "RIGHT", -6, 0)
-    valText:SetJustifyH("LEFT")
-    valText:SetText(getter())
+    -- Track cursor position so tag buttons can insert at the right spot
+    -- (clicking a tag button causes focus loss before OnClick fires)
+    local lastCursorPos = nil
+    local lastText = nil
 
-    editbox:SetScript("OnEditFocusGained", function(self)
-        valText:Hide()
-        self:SetTextColor(1, 1, 1, 1)
-        self:SetText(getter())
-        self:HighlightText()
-    end)
-    editbox:SetScript("OnEditFocusLost", function(self)
-        self:HighlightText(0, 0)
-        self:SetTextColor(0, 0, 0, 0)
-        valText:SetText(getter())
-        valText:Show()
+    editbox:HookScript("OnEditFocusLost", function(self)
+        lastCursorPos = self:GetCursorPosition()
+        lastText = self:GetText()
+        setter(lastText)
     end)
     editbox:SetScript("OnEnterPressed", function(self)
         setter(self:GetText())
-        valText:SetText(self:GetText())
         self:ClearFocus()
     end)
     editbox:SetScript("OnEscapePressed", function(self)
         self:SetText(getter())
-        valText:SetText(getter())
         self:ClearFocus()
+    end)
+    editbox:SetScript("OnTextChanged", function(self, userInput)
+        if userInput then
+            setter(self:GetText())
+        end
     end)
 
     if refreshList then
         table.insert(refreshList, function()
-            editbox:SetText(getter())
-            valText:SetText(getter())
+            if not editbox:HasFocus() then
+                editbox:SetText(getter())
+            end
         end)
     end
 
     -- Tag insert buttons row
-    local tagY = y - 44
+    local tagY = -68
     local tagList = {}
     for tag in tags:gmatch("%S+") do
         table.insert(tagList, tag)
@@ -439,7 +470,7 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
 
     for _, tag in ipairs(tagList) do
         local tagStr = "<" .. tag .. ">"
-        local btn = CreateFrame("Button", nil, content)
+        local btn = CreateFrame("Button", nil, header)
         btn:SetHeight(TAG_BTN_HEIGHT)
 
         local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
@@ -466,7 +497,7 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
             tagY = tagY - TAG_BTN_HEIGHT - TAG_BTN_PAD
         end
 
-        btn:SetPoint("TOPLEFT", content, "TOPLEFT", xOffset, tagY)
+        btn:SetPoint("TOPLEFT", header, "TOPLEFT", xOffset, tagY)
         xOffset = xOffset + btnWidth + TAG_BTN_PAD
 
         -- Hover effect
@@ -480,14 +511,16 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
         end)
 
         btn:SetScript("OnClick", function()
-            local cur = getter()
-            local pos = editbox:GetCursorPosition() or #cur
+            local cur = lastText or getter()
+            local pos = lastCursorPos or #cur
+            lastCursorPos = nil
+            lastText = nil
             local before = cur:sub(1, pos)
             local after  = cur:sub(pos + 1)
             local newVal = before .. tagStr .. after
             setter(newVal)
             editbox:SetText(newVal)
-            valText:SetText(newVal)
+            editbox:SetFocus()
             editbox:SetCursorPosition(pos + #tagStr)
         end)
     end
@@ -497,16 +530,16 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
     -- Preset suggestion buttons (click to replace template)
     if suggestions and #suggestions > 0 then
         tagY = tagY - 2
-        local sugLabel = content:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-        sugLabel:SetPoint("TOPLEFT", content, "TOPLEFT", 22, tagY)
+        local sugLabel = header:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+        sugLabel:SetPoint("TOPLEFT", header, "TOPLEFT", 22, tagY)
         sugLabel:SetText("Presets:")
         tagY = tagY - 14
 
         for _, sug in ipairs(suggestions) do
-            local btn = CreateFrame("Button", nil, content)
+            local btn = CreateFrame("Button", nil, header)
             btn:SetHeight(18)
-            btn:SetPoint("TOPLEFT", content, "TOPLEFT", 22, tagY)
-            btn:SetPoint("RIGHT", content, "RIGHT", -22, 0)
+            btn:SetPoint("TOPLEFT", header, "TOPLEFT", 22, tagY)
+            btn:SetPoint("RIGHT", header, "RIGHT", -22, 0)
 
             local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
             btnText:SetPoint("LEFT", 6, 0)
@@ -526,14 +559,19 @@ local function AddLabelEditBox(content, y, tags, getter, setter, refreshList, su
             btn:SetScript("OnClick", function()
                 setter(sug[2])
                 editbox:SetText(sug[2])
-                valText:SetText(sug[2])
             end)
 
             tagY = tagY - 20
         end
     end
 
-    return tagY
+    -- Size header and push scroll frame down
+    local headerHeight = math.abs(tagY) + 4
+    header:SetHeight(headerHeight)
+    panel.scroll:SetPoint("TOPLEFT", 0, -(headerHeight + 5))
+
+    panel.labelHeader = header
+    panel.labelEditBox = editbox
 end
 
 local function AddButton(content, y, label, onClick)
@@ -684,6 +722,7 @@ ns.SettingsWidgets = {
 
 local function CreateScrollPanel()
     local panel = CreateFrame("Frame")
+    panel:Hide()  -- start hidden so OnShow fires when Blizzard Settings displays it
 
     local scroll = CreateFrame("ScrollFrame", nil, panel, "ScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 0, -5)
@@ -837,6 +876,9 @@ local function BuildGeneralPanel(panel)
                 end
             end
             for _, cb in ipairs(r) do cb() end
+            for _, mod in pairs(ns.modules) do
+                if mod.UpdateData then mod:UpdateData() end
+            end
         end, r)
 
     -- Preview
@@ -850,7 +892,7 @@ local function BuildGeneralPanel(panel)
         local examples = {
             ns.FormatNumber(1234),
             ns.FormatNumber(1234567),
-            ns.FormatGoldShort(12345670000),
+            ns.FormatGold(12345670000, false),
         }
         previewValue:SetText("|cff66c7ff" .. table.concat(examples, "  |  ") .. "|r")
     end
@@ -938,16 +980,23 @@ local function BuildGeneralPanel(panel)
     y = AddDescription(body, y,
         "Controls how gold amounts appear in all module tooltips.\n" ..
         "Number formatting (separators, abbreviation) is inherited from above.")
+    local function OnGoldSettingChanged()
+        for _, cb in ipairs(r) do cb() end
+        -- Notify all modules so labels using gold formatting refresh
+        for _, mod in pairs(ns.modules) do
+            if mod.UpdateData then mod:UpdateData() end
+        end
+    end
     y = AddCheckbox(body, y, "Colorize gold (|cffe6cc80g|r |cffc0c0c0s|r |cffcc7722c|r)",
         function() return ns.db.global.goldColorize ~= false end,
-        function(v) ns.db.global.goldColorize = v; for _, cb in ipairs(r) do cb() end end, r)
+        function(v) ns.db.global.goldColorize = v; OnGoldSettingChanged() end, r)
     y = AddCheckboxPair(body, y,
         "Show silver",
         function() return ns.db.global.goldShowSilver ~= false end,
-        function(v) ns.db.global.goldShowSilver = v; for _, cb in ipairs(r) do cb() end end,
+        function(v) ns.db.global.goldShowSilver = v; OnGoldSettingChanged() end,
         "Show copper",
         function() return ns.db.global.goldShowCopper ~= false end,
-        function(v) ns.db.global.goldShowCopper = v; for _, cb in ipairs(r) do cb() end end, r)
+        function(v) ns.db.global.goldShowCopper = v; OnGoldSettingChanged() end, r)
 
     -- Gold preview
     local goldPreviewLabel = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
@@ -1021,20 +1070,17 @@ local function BuildFriendsPanel(panel)
     local refresh = function() if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end
 
     -- Label Template
-    local body = AddSection(panel, "Label Template")
-    local y = 0
-    y = AddLabelEditBox(body, y, "online total offline",
+    AddLabelEditBox(panel, "online total offline",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",  "Friends: <online>/<total>" },
         { "Short",    "F: <online>" },
         { "Detailed", "Friends: <online> on / <offline> off" },
     })
-    EndSection(panel, y)
 
     -- Tooltip (collapsed)
-    body = AddSection(panel, "Tooltip", true)
-    y = 0
+    local body = AddSection(panel, "Tooltip", true)
+    local y = 0
     y = AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
@@ -1105,9 +1151,7 @@ local function BuildGuildPanel(panel)
     local refresh = function() if ns.GuildBroker then ns.GuildBroker:UpdateData() end end
 
     -- Label Template
-    local body = AddSection(panel, "Label Template")
-    local y = 0
-    y = AddLabelEditBox(body, y, "online total offline guildname",
+    AddLabelEditBox(panel, "online total offline guildname",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",    "Guild: <online>/<total>" },
@@ -1115,11 +1159,10 @@ local function BuildGuildPanel(panel)
         { "Short",      "G: <online>" },
         { "Named",      "<guildname> (<online>)" },
     })
-    EndSection(panel, y)
 
     -- Tooltip (collapsed)
-    body = AddSection(panel, "Tooltip", true)
-    y = 0
+    local body = AddSection(panel, "Tooltip", true)
+    local y = 0
     y = AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
@@ -1188,20 +1231,17 @@ local function BuildCommunitiesPanel(panel)
     local refresh = function() if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end
 
     -- Label Template
-    local body = AddSection(panel, "Label Template")
-    local y = 0
-    y = AddLabelEditBox(body, y, "online",
+    AddLabelEditBox(panel, "online",
         function() return db().labelFormat end,
         function(v) db().labelFormat = v; refresh() end, r, {
         { "Default",  "Communities: <online>" },
         { "Short",    "Comm: <online>" },
         { "Labeled",  "<online> online" },
     })
-    EndSection(panel, y)
 
     -- Tooltip (collapsed)
-    body = AddSection(panel, "Tooltip", true)
-    y = 0
+    local body = AddSection(panel, "Tooltip", true)
+    local y = 0
     y = AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,

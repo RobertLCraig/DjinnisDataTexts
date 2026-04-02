@@ -671,9 +671,7 @@ function LFGStatus:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.lfgstatus end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "status queues apps role assigned wait elapsed",
+    W.AddLabelEditBox(panel, "status queues apps role assigned wait elapsed",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<status>" },
@@ -682,10 +680,9 @@ function LFGStatus:BuildSettingsPanel(panel)
         { "Compact",    "LFG: <queues>Q <apps>A" },
         { "Assigned",   "<status> <assigned>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddCheckbox(body, y, "Show active queues (Dungeon/Raid Finder)",
         function() return db().showQueues end,
         function(v) db().showQueues = v end, r)

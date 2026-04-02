@@ -357,9 +357,7 @@ function PlayedTime:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.playedtime end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "session total level",
+    W.AddLabelEditBox(panel, "session total level",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
         { "Default",   "<session>" },
@@ -368,10 +366,9 @@ function PlayedTime:BuildSettingsPanel(panel)
         { "Both",      "<session> / <total>" },
         { "Level",     "Lv: <level>  Total: <total>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Tooltip", true)
-    y = 0
+    local body = W.AddSection(panel, "Tooltip", true)
+    local y = 0
     y = W.AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,

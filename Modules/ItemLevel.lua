@@ -1012,9 +1012,7 @@ function ItemLevel:BuildSettingsPanel(panel)
         if tooltipFrame and tooltipFrame:IsShown() then self:BuildTooltipContent() end
     end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "ilvl overall enchants gems durability repair",
+    W.AddLabelEditBox(panel, "ilvl overall enchants gems durability repair",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",      "<ilvl>" },
@@ -1023,10 +1021,9 @@ function ItemLevel:BuildSettingsPanel(panel)
         { "Durability",   "<ilvl>  <durability>" },
         { "Full",         "<ilvl>  <durability>  E:<enchants> G:<gems>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddCheckbox(body, y, "Show per-slot item level breakdown",
         function() return db().showSlotDetails ~= false end,
         function(v) db().showSlotDetails = v; refreshTT() end, r)

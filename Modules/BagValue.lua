@@ -602,9 +602,7 @@ function BagVal:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.bagvalue end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "value vendor free total used",
+    W.AddLabelEditBox(panel, "value vendor free total used",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:ScanBags() end, r, {
         { "Default",    "<value>" },
@@ -612,10 +610,9 @@ function BagVal:BuildSettingsPanel(panel)
         { "Vendor",     "AH: <value>  Vendor: <vendor>" },
         { "Bags Only",  "<free>/<total> slots" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Price Source")
-    y = 0
+    local body = W.AddSection(panel, "Price Source")
+    local y = 0
     y = W.AddDropdown(body, y, "TSM Price Source", TSM_SOURCE_VALUES,
         function() return db().tsmPriceSource end,
         function(v) db().tsmPriceSource = v; self:ScanBags() end, r)

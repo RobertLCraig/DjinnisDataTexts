@@ -437,9 +437,7 @@ function TimeDate:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.timedate end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "time server local date",
+    W.AddLabelEditBox(panel, "time server local date",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r, {
         { "Default",    "<time>" },
@@ -447,10 +445,9 @@ function TimeDate:BuildSettingsPanel(panel)
         { "Both Times", "S: <server>  L: <local>" },
         { "Date Only",  "<date>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddCheckbox(body, y, "Use 24-hour format",
         function() return db().use24h end,
         function(v) db().use24h = v; self:UpdateDisplay() end, r)

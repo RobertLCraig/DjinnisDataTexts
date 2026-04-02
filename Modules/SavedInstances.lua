@@ -2121,9 +2121,7 @@ function SavedInst:BuildSettingsPanel(panel)
         if tooltipFrame and tooltipFrame:IsShown() then self:BuildTooltipContent() end
     end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "summary raids dungeons mplus delves total",
+    W.AddLabelEditBox(panel, "summary raids dungeons mplus delves total",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<summary>" },
@@ -2132,10 +2130,9 @@ function SavedInst:BuildSettingsPanel(panel)
         { "Delves",     "M+: <mplus>  Dv: <delves>" },
         { "Count",      "<total> lockouts" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddCheckbox(body, y, "Condensed raid view (group difficulties per instance)",
         function() return db().condensedRaids end,
         function(v) db().condensedRaids = v; refreshTT() end, r)

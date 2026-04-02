@@ -429,9 +429,7 @@ function CharInfo:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.characterinfo end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "name realm class level ilvl race shard",
+    W.AddLabelEditBox(panel, "name realm class level ilvl race shard",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<name>" },
@@ -440,10 +438,9 @@ function CharInfo:BuildSettingsPanel(panel)
         { "Realm",      "<name> - <realm>" },
         { "Full",       "<name> <level> <class> (<ilvl>)" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Display")
-    y = 0
+    local body = W.AddSection(panel, "Display")
+    local y = 0
     y = W.AddCheckbox(body, y, "Show item level",
         function() return db().showItemLevel end,
         function(v) db().showItemLevel = v end, r)

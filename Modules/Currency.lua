@@ -893,9 +893,7 @@ function Currency:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.currency end
 
-    local body = W.AddSection(panel, "Label & Gold Display")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "gold session token warbank auctions",
+    W.AddLabelEditBox(panel, "gold session token warbank auctions",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<gold>" },
@@ -905,6 +903,9 @@ function Currency:BuildSettingsPanel(panel)
         { "Full",       "<gold> (<session>)  <auctions> auctions" },
     })
 
+    local body = W.AddSection(panel, "Gold Display")
+    local y = 0
+
     -- Live label preview
     local labelPreview = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     labelPreview:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
@@ -912,6 +913,7 @@ function Currency:BuildSettingsPanel(panel)
     local labelPreviewVal = body:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     labelPreviewVal:SetPoint("LEFT", labelPreview, "RIGHT", 8, 0)
     local function UpdateLabelPreview()
+        self:UpdateData()
         labelPreviewVal:SetText("|cff66c7ff" .. (self.dataobj.text or "") .. "|r")
     end
     UpdateLabelPreview()

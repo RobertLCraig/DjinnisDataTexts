@@ -538,7 +538,7 @@ function ns.FormatGold(copper, colorize, opts)
     return str
 end
 
---- Short gold format for labels (no silver/copper when abbreviating)
+--- Short gold format for labels, respecting global silver/copper/colorize settings.
 --- @param copper number  Amount in copper
 --- @return string
 function ns.FormatGoldShort(copper)
@@ -546,35 +546,57 @@ function ns.FormatGoldShort(copper)
     local negative = copper < 0
     if negative then copper = -copper end
 
-    local gold = math.floor(copper / 10000)
-    local fmt = GetFormatSettings()
+    local gold   = math.floor(copper / 10000)
+    local silver = math.floor((copper % 10000) / 100)
+    local cop    = copper % 100
+    local fmt    = GetFormatSettings()
+    local gdb    = ns.db and ns.db.global or {}
+    local showSilver = gdb.goldShowSilver ~= false
+    local showCopper = gdb.goldShowCopper ~= false
+    local colorize   = gdb.goldColorize ~= false
     local str
 
     if fmt.abbr then
         if gold >= 1000000 then
             local val = string.format("%.1f", gold / 1000000)
             if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
-            str = val .. "M g"
+            str = colorize and string.format("|cffe6cc80%sM g|r", val) or (val .. "M g")
         elseif gold >= 10000 then
             local val = string.format("%.1f", gold / 1000)
             if fmt.dec ~= "." then val = val:gsub("%.", fmt.dec) end
-            str = val .. "K g"
+            str = colorize and string.format("|cffe6cc80%sK g|r", val) or (val .. "K g")
         elseif gold >= 1 then
-            str = InsertSeparators(tostring(gold), fmt.sep) .. "g"
-        else
-            local silver = math.floor((copper % 10000) / 100)
-            if silver > 0 then
-                str = silver .. "s"
+            local goldStr = InsertSeparators(tostring(gold), fmt.sep)
+            if colorize then
+                str = string.format("|cffe6cc80%s|r|cffe6cc80g|r", goldStr)
+                if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
+                if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
             else
-                str = (copper % 100) .. "c"
+                str = goldStr .. "g"
+                if showSilver then str = str .. " " .. silver .. "s" end
+                if showCopper then str = str .. " " .. cop .. "c" end
+            end
+        else
+            -- Less than 1g: show silver or copper regardless of settings
+            if silver > 0 then
+                str = colorize and string.format("|cffc0c0c0%d|r|cffc0c0c0s|r", silver) or (silver .. "s")
+                if showCopper then
+                    str = str .. (colorize and string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) or (" " .. cop .. "c"))
+                end
+            else
+                str = colorize and string.format("|cffcc7722%d|r|cffcc7722c|r", cop) or (cop .. "c")
             end
         end
     else
-        str = InsertSeparators(tostring(gold), fmt.sep) .. "g"
-        local silver = math.floor((copper % 10000) / 100)
-        local cop = copper % 100
-        if silver > 0 or cop > 0 then
-            str = str .. " " .. silver .. "s " .. cop .. "c"
+        local goldStr = InsertSeparators(tostring(gold), fmt.sep)
+        if colorize then
+            str = string.format("|cffe6cc80%s|r|cffe6cc80g|r", goldStr)
+            if showSilver then str = str .. string.format(" |cffc0c0c0%d|r|cffc0c0c0s|r", silver) end
+            if showCopper then str = str .. string.format(" |cffcc7722%d|r|cffcc7722c|r", cop) end
+        else
+            str = goldStr .. "g"
+            if showSilver then str = str .. " " .. silver .. "s" end
+            if showCopper then str = str .. " " .. cop .. "c" end
         end
     end
 
@@ -1327,4 +1349,20 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
 
     -- Check for DjinnisGuildFriends coexistence
     CheckDGFCoexistence()
+
+    -- Refresh all modules: initial update once data is available,
+    -- then periodically so labels stay current without requiring mouseover.
+    local function RefreshAllModules()
+        for _, mod in pairs(ns.modules) do
+            if mod.UpdateData then
+                pcall(mod.UpdateData, mod)
+            end
+        end
+    end
+
+    -- Initial refresh shortly after login/reload (data APIs need a frame)
+    C_Timer.After(1, RefreshAllModules)
+
+    -- Periodic refresh every 180 seconds
+    C_Timer.NewTicker(180, RefreshAllModules)
 end)

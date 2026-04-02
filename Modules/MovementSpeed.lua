@@ -641,9 +641,7 @@ function MoveSpeed:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.movementspeed end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "speed run fly swim mode",
+    W.AddLabelEditBox(panel, "speed run fly swim mode",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",    "<speed>%" },
@@ -651,10 +649,9 @@ function MoveSpeed:BuildSettingsPanel(panel)
         { "Labeled",    "Speed: <speed>%" },
         { "Run/Fly",    "R:<run>% F:<fly>%" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Performance")
-    y = 0
+    local body = W.AddSection(panel, "Performance")
+    local y = 0
     y = W.AddDropdown(body, y, "Update Frequency", UPDATE_INTERVAL_VALUES,
         function() return tostring(db().updateInterval) end,
         function(v) db().updateInterval = tonumber(v) end, r)

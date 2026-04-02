@@ -659,9 +659,7 @@ function Experience:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.experience end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "xp percent bar level remaining rested xphr questxp",
+    W.AddLabelEditBox(panel, "xp percent bar level remaining rested xphr questxp",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",     "<xp>" },
@@ -670,10 +668,9 @@ function Experience:BuildSettingsPanel(panel)
         { "XP/Hour",     "<percent> - <xphr>" },
         { "Bar + Level", "Lv<level> <bar>" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Progress Bar")
-    y = 0
+    local body = W.AddSection(panel, "Progress Bar")
+    local y = 0
     y = W.AddSlider(body, y, "Bar width (characters)", 10, 40, 1,
         function() return db().barWidth end,
         function(v) db().barWidth = v; self:UpdateData() end, r)

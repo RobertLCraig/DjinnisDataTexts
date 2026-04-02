@@ -412,9 +412,7 @@ function Mail:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.mail end
 
-    local body = W.AddSection(panel, "Label Template")
-    local y = 0
-    y = W.AddLabelEditBox(body, y, "status count new",
+    W.AddLabelEditBox(panel, "status count new",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateData() end, r, {
         { "Default",  "<status>" },
@@ -422,10 +420,9 @@ function Mail:BuildSettingsPanel(panel)
         { "New Only", "<new> new" },
         { "Full",     "Mail: <count> (<new> new)" },
     })
-    W.EndSection(panel, y)
 
-    body = W.AddSection(panel, "Sorting")
-    y = 0
+    local body = W.AddSection(panel, "Sorting")
+    local y = 0
     y = W.AddDropdown(body, y, "Mail Order", MAIL_SORT_VALUES,
         function() return db().mailSortOrder end,
         function(v) db().mailSortOrder = v end, r)
