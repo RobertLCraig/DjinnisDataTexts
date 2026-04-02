@@ -191,7 +191,7 @@ local function GetRow(parent, index)
     row.icon:SetSize(ICON_SIZE, ICON_SIZE)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
-    row.text = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.text = ns.FontString(row, "DDTFontNormal")
     row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.text:SetJustifyH("LEFT")
 
@@ -255,8 +255,7 @@ function MicroMenu:ShowTooltip(anchor)
     end
 
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:BuildTooltipContent()
@@ -312,6 +311,8 @@ function MicroMenu:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 200 x 350 for the full menu grid.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "micromenu", db, r)
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "micromenu", CLICK_ACTIONS,

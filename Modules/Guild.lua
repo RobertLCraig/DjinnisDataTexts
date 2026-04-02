@@ -11,6 +11,44 @@ local LDB = LibStub("LibDataBroker-1.1")
 local GuildBroker = {}
 ns.GuildBroker = GuildBroker
 
+local DEFAULTS = {
+    labelFormat = "Guild: <online>/<total>",
+    sortBy = "name",
+    sortAscending = true,
+    classColorNames = true,
+    showOfficerNotes = false,
+    showHintBar = true,
+    tooltipScale = 1.0,
+    tooltipWidth = 480,
+    tooltipMaxHeight = 500,
+    rowSpacing = 4,
+    groupBy = "none",
+    groupBy2 = "none",
+    groupCollapsed = {},
+    clickActions = {
+        leftClick       = "openguild",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
+    },
+    rowClickActions = {
+        leftClick       = "whisper",
+        rightClick      = "invite",
+        middleClick     = "none",
+        shiftLeftClick  = "copyname",
+        shiftRightClick = "who",
+        ctrlLeftClick   = "copyarmory",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
+    },
+}
+
 GuildBroker.guildCache = {}
 GuildBroker.onlineCount = 0
 GuildBroker.totalCount = 0
@@ -213,7 +251,7 @@ local function CreateTooltipFrame()
     local f = ns.CreateTooltipFrame(nil, GuildBroker)
 
     -- MOTD line (below title separator, above column headers)
-    f.motd = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    f.motd = ns.FontString(f, "DDTFontSmall")
     f.motd:SetPoint("TOPLEFT", f.titleSep, "BOTTOMLEFT", 0, -2)
     f.motd:SetPoint("TOPRIGHT", f.titleSep, "BOTTOMRIGHT", 0, -2)
     f.motd:SetJustifyH("LEFT")
@@ -221,24 +259,24 @@ local function CreateTooltipFrame()
     f.motd:SetMaxLines(2)
 
     -- Column headers (on outer frame, above scroll area)
-    f.colName = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colName = ns.FontString(f, "DDTFontNormal")
     f.colName:SetText("|cffaaaaaaName|r")
     f.colName:SetJustifyH("LEFT")
 
-    f.colLevel = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colLevel = ns.FontString(f, "DDTFontNormal")
     f.colLevel:SetText("|cffaaaaaaLvl|r")
     f.colLevel:SetWidth(30)
     f.colLevel:SetJustifyH("CENTER")
 
-    f.colRank = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colRank = ns.FontString(f, "DDTFontNormal")
     f.colRank:SetText("|cffaaaaaaRank|r")
     f.colRank:SetJustifyH("LEFT")
 
-    f.colZone = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colZone = ns.FontString(f, "DDTFontNormal")
     f.colZone:SetText("|cffaaaaaaZone|r")
     f.colZone:SetJustifyH("LEFT")
 
-    f.colNote = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colNote = ns.FontString(f, "DDTFontNormal")
     f.colNote:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
     f.colNote:SetText("|cffaaaaaaNotes|r")
     f.colNote:SetJustifyH("LEFT")
@@ -261,27 +299,27 @@ local function GetOrCreateRow(parent, index)
     row.highlight:SetAllPoints()
     row.highlight:SetColorTexture(1, 1, 1, 0.1)
 
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.nameText = ns.FontString(row, "DDTFontNormal")
     row.nameText:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.nameText:SetWidth(130)
     row.nameText:SetJustifyH("LEFT")
 
-    row.levelText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.levelText = ns.FontString(row, "DDTFontNormal")
     row.levelText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
     row.levelText:SetWidth(30)
     row.levelText:SetJustifyH("CENTER")
 
-    row.rankText = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    row.rankText = ns.FontString(row, "DDTFontSmall")
     row.rankText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
     row.rankText:SetWidth(70)
     row.rankText:SetJustifyH("LEFT")
 
-    row.zoneText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.zoneText = ns.FontString(row, "DDTFontNormal")
     row.zoneText:SetPoint("LEFT", row.rankText, "RIGHT", 4, 0)
     row.zoneText:SetWidth(100)
     row.zoneText:SetJustifyH("LEFT")
 
-    row.noteText = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    row.noteText = ns.FontString(row, "DDTFontSmall")
     row.noteText:SetPoint("LEFT", row.zoneText, "RIGHT", 4, 0)
     row.noteText:SetJustifyH("LEFT")
     row.noteText:SetWordWrap(false)
@@ -333,8 +371,7 @@ function GuildBroker:ShowTooltip(anchor)
     end
     self:UpdateData()
 
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, ns.db.guild.tooltipGrowDirection)
     tooltipFrame:SetScale(ns.db.guild.tooltipScale or 1.0)
 
     self:PopulateTooltip()
@@ -625,3 +662,94 @@ function GuildBroker:ExecuteAction(action, member)
     self:CancelTooltipHideTimer()
     DDT:ExecuteAction(action, member.name, GetRealmName(), member.fullName or member.name, nil, tooltipFrame)
 end
+
+---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+GuildBroker.settingsLabel = "Guild"
+
+function GuildBroker:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local r = panel.refreshCallbacks
+    local db = function() return ns.db.guild end
+    local refresh = function() self:UpdateData() end
+
+    -- Label Template
+    W.AddLabelEditBox(panel, "online total offline guildname",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",    "Guild: <online>/<total>" },
+        { "Guild Name", "<guildname>" },
+        { "Short",      "G: <online>" },
+        { "Named",      "<guildname> (<online>)" },
+    })
+
+    -- Tooltip (collapsed)
+    local body = W.AddSection(panel, "Tooltip", true)
+    local y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "guild", db, r)
+    W.EndSection(panel, y)
+
+    -- Display
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    y = W.AddCheckbox(body, y, "Show Officer Notes (inline)",
+        function() return db().showOfficerNotes end,
+        function(v) db().showOfficerNotes = v; refresh() end, r)
+    y = W.AddDescription(body, y, "Requires guild rank permission to view officer notes.")
+    W.EndSection(panel, y)
+
+    -- Grouping & Sorting
+    body = W.AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = W.AddDropdown(body, y, "Group By", ns.GUILD_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Then By", ns.GUILD_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", rank = "Rank", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = W.AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    W.EndSection(panel, y)
+
+    -- Label Click Actions (collapsed)
+    ns.AddModuleClickActionsSection(panel, r, "guild", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
+    ns.AddClickActionsSection(panel, r, "guild")
+
+    -- Social Settings (collapsed)
+    ns.AddSocialSettingsSection(panel, r)
+end
+
+---------------------------------------------------------------------------
+-- Module registration
+---------------------------------------------------------------------------
+
+ns:RegisterModule("guild", GuildBroker, DEFAULTS)

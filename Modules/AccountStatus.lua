@@ -208,10 +208,10 @@ local function GetLine(f, index)
         return f.lines[index]
     end
 
-    local label = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local label = ns.FontString(f, "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local value = ns.FontString(f, "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
     f.lines[index] = { label = label, value = value }
@@ -383,8 +383,7 @@ function AcctStatus:ShowTooltip(anchor)
     end
 
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:UpdateData()
@@ -442,6 +441,8 @@ function AcctStatus:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 300 x 300 for typical tooltip content.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "accountstatus", db, r)
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "accountstatus", CLICK_ACTIONS)

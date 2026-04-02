@@ -482,12 +482,12 @@ local function GetRow(parent, index)
     row.icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
 
     -- Text
-    row.text = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.text = ns.FontString(row, "DDTFontNormal")
     row.text:SetPoint("LEFT", row.icon, "RIGHT", 6, 0)
     row.text:SetJustifyH("LEFT")
 
     -- Status text (right side)
-    row.status = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.status = ns.FontString(row, "DDTFontNormal")
     row.status:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.status:SetJustifyH("RIGHT")
 
@@ -514,7 +514,7 @@ local function GetHeader(parent, index)
         return headerPool[index]
     end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local hdr = ns.FontString(parent, "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetTextColor(1, 0.82, 0)
 
@@ -802,8 +802,7 @@ function SpecSwitch:ShowTooltip(anchor)
 
     -- Anchor & scale
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     -- Build content
@@ -864,6 +863,8 @@ function SpecSwitch:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 350 x 300 for specs and loadouts.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "specswitch", db, r)
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "specswitch", SPEC_ACTION_VALUES)

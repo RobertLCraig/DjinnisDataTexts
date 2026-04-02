@@ -678,25 +678,25 @@ local function GetLine(parent, index)
     highlight:SetColorTexture(1, 1, 1, 0.06)
 
     -- Durability column (far right, fixed width)
-    local durability = frame:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    local durability = ns.FontString(frame, "DDTFontSmall")
     durability:SetPoint("RIGHT", frame, "RIGHT", -6, 0)
     durability:SetJustifyH("RIGHT")
     durability:SetWordWrap(false)
     durability:SetWidth(36)
 
     -- iLvl value (left of durability column)
-    local value = frame:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local value = ns.FontString(frame, "DDTFontNormal")
     value:SetPoint("RIGHT", durability, "LEFT", -4, 0)
     value:SetJustifyH("RIGHT")
     value:SetWordWrap(false)
 
     -- Status indicators (anchored left of value)
-    local status = frame:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    local status = ns.FontString(frame, "DDTFontSmall")
     status:SetPoint("RIGHT", value, "LEFT", -8, 0)
     status:SetJustifyH("RIGHT")
     status:SetWordWrap(false)
 
-    local label = frame:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local label = ns.FontString(frame, "DDTFontNormal")
     label:SetPoint("LEFT", frame, "LEFT", 6, 0)
     label:SetPoint("RIGHT", status, "LEFT", -4, 0)
     label:SetJustifyH("LEFT")
@@ -973,8 +973,7 @@ function ItemLevel:ShowTooltip(anchor)
     end
 
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:UpdateData()
@@ -1068,6 +1067,8 @@ function ItemLevel:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 400 x 450 for full slot breakdown with enhancements.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "itemlevel", db, r)
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "itemlevel", CLICK_ACTIONS,

@@ -768,26 +768,26 @@ local function GetRow(parent, index)
     row.highlight:SetColorTexture(1, 1, 1, 0.06)
 
     -- Instance name (left side, ~35-40% of row)
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.nameText = ns.FontString(row, "DDTFontNormal")
     row.nameText:SetPoint("LEFT", row, "LEFT", 6, 0)
     row.nameText:SetPoint("RIGHT", row, "CENTER", -35, 0)
     row.nameText:SetJustifyH("LEFT")
     row.nameText:SetWordWrap(false)
 
     -- Reset timer (far right, fixed width) — created first so others can anchor to it
-    row.resetText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.resetText = ns.FontString(row, "DDTFontNormal")
     row.resetText:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.resetText:SetJustifyH("RIGHT")
     row.resetText:SetWidth(56)
 
     -- Difficulty tag (right of name)
-    row.diffText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.diffText = ns.FontString(row, "DDTFontNormal")
     row.diffText:SetPoint("LEFT", row, "CENTER", -35, 0)
     row.diffText:SetJustifyH("CENTER")
     row.diffText:SetWidth(36)
 
     -- Progress (e.g. "4/8" or condensed "N 4/8  H 2/8") — fills space between diff and reset
-    row.progressText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.progressText = ns.FontString(row, "DDTFontNormal")
     row.progressText:SetPoint("LEFT", row.diffText, "RIGHT", 4, 0)
     row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
     row.progressText:SetJustifyH("LEFT")
@@ -819,7 +819,7 @@ local function GetHeader(parent, index)
         return headerPool[index]
     end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local hdr = ns.FontString(parent, "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetTextColor(1, 0.82, 0)
 
@@ -988,7 +988,7 @@ local function EnsureAltColumns(row, count)
 
     -- "You" (current character) column — same style as alt columns
     if not row.youText then
-        local yt = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+        local yt = ns.FontString(row, "DDTFontSmall")
         yt:SetJustifyH("CENTER")
         yt:SetWidth(ALT_COL_WIDTH)
         row.youText = yt
@@ -997,7 +997,7 @@ local function EnsureAltColumns(row, count)
 
     for i = 1, count do
         if not row.altTexts[i] then
-            local at = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+            local at = ns.FontString(row, "DDTFontSmall")
             at:SetJustifyH("CENTER")
             at:SetWidth(ALT_COL_WIDTH)
             row.altTexts[i] = at
@@ -2081,8 +2081,7 @@ function SavedInst:ShowTooltip(anchor)
 
     -- Anchor & scale
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     -- Ensure data is fresh
@@ -2128,6 +2127,7 @@ function SavedInst:BuildSettingsPanel(panel)
         { "Split",      "R:<raids> D:<dungeons>" },
         { "M+ Focus",   "M+: <mplus>  Saved: <total>" },
         { "Delves",     "M+: <mplus>  Dv: <delves>" },
+        { "Full",       "R: <raids>  M+: <mplus>  Dv: <delves>" },
         { "Count",      "<total> lockouts" },
     })
 
@@ -2176,6 +2176,8 @@ function SavedInst:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 400 x 600. Increase for many lockouts and alt data.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "savedinstances", db, r)
     W.EndSection(panel, y)
 
     -- Alt Lockouts (before click actions so it's easier to find)

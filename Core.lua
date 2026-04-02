@@ -20,81 +20,6 @@ ns.modules = {}
 -- Default settings (flat structure, no profiles)
 -- Each module merges its own defaults into this table via RegisterModule().
 ns.defaults = {
-    friends = {
-        labelFormat = "Friends: <online>/<total>",
-        sortBy = "name",
-        sortAscending = true,
-        showBNetFriends = true,
-        showWoWFriends = true,
-        classColorNames = true,
-        showHintBar = true,
-        tooltipScale = 1.0,
-        tooltipWidth = 420,
-        tooltipMaxHeight = 400,
-        rowSpacing = 4,
-        groupBy = "none",
-        groupBy2 = "none",
-        groupCollapsed = {},
-        clickActions = {
-            leftClick       = "openfriends",
-            rightClick      = "none",
-            middleClick     = "none",
-            shiftLeftClick  = "none",
-            shiftRightClick = "none",
-            ctrlLeftClick   = "none",
-            ctrlRightClick  = "none",
-            altLeftClick    = "opensettings",
-            altRightClick   = "none",
-        },
-        rowClickActions = {
-            leftClick       = "whisper",
-            rightClick      = "invite",
-            middleClick     = "none",
-            shiftLeftClick  = "copyname",
-            shiftRightClick = "who",
-            ctrlLeftClick   = "copyarmory",
-            ctrlRightClick  = "none",
-            altLeftClick    = "none",
-            altRightClick   = "none",
-        },
-    },
-    guild = {
-        labelFormat = "Guild: <online>/<total>",
-        sortBy = "name",
-        sortAscending = true,
-        classColorNames = true,
-        showOfficerNotes = false,
-        showHintBar = true,
-        tooltipScale = 1.0,
-        tooltipWidth = 480,
-        tooltipMaxHeight = 500,
-        rowSpacing = 4,
-        groupBy = "none",
-        groupBy2 = "none",
-        groupCollapsed = {},
-        clickActions = {
-            leftClick       = "openguild",
-            rightClick      = "none",
-            middleClick     = "none",
-            shiftLeftClick  = "none",
-            shiftRightClick = "none",
-            ctrlLeftClick   = "none",
-            ctrlRightClick  = "none",
-            altLeftClick    = "opensettings",
-            altRightClick   = "none",
-        },
-        rowClickActions = {
-            leftClick       = "whisper",
-            rightClick      = "invite",
-            middleClick     = "none",
-            shiftLeftClick  = "copyname",
-            shiftRightClick = "who",
-            ctrlLeftClick   = "copyarmory",
-            ctrlRightClick  = "none",
-            altLeftClick    = "none",
-            altRightClick   = "none",
-        },
-    },
     global = {
         tooltipFont = "Fonts\\FRIZQT__.TTF",
         tooltipFontSize = 12,
@@ -109,43 +34,6 @@ ns.defaults = {
         goldColorize = true,
         goldShowSilver = true,
         goldShowCopper = true,
-    },
-    communities = {
-        labelFormat = "Communities: <online>",
-        sortBy = "name",
-        sortAscending = true,
-        classColorNames = true,
-        showHintBar = true,
-        tooltipScale = 1.0,
-        tooltipWidth = 480,
-        tooltipMaxHeight = 500,
-        rowSpacing = 4,
-        groupBy = "community",
-        groupBy2 = "none",
-        groupCollapsed = {},
-        disabledClubs = {},
-        clickActions = {
-            leftClick       = "opencommunities",
-            rightClick      = "none",
-            middleClick     = "none",
-            shiftLeftClick  = "none",
-            shiftRightClick = "none",
-            ctrlLeftClick   = "none",
-            ctrlRightClick  = "none",
-            altLeftClick    = "opensettings",
-            altRightClick   = "none",
-        },
-        rowClickActions = {
-            leftClick       = "whisper",
-            rightClick      = "invite",
-            middleClick     = "none",
-            shiftLeftClick  = "copyname",
-            shiftRightClick = "who",
-            ctrlLeftClick   = "copyarmory",
-            ctrlRightClick  = "none",
-            altLeftClick    = "none",
-            altRightClick   = "none",
-        },
     },
 }
 
@@ -212,6 +100,34 @@ DDTFontNormal:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
 local DDTFontSmall = CreateFont("DDTFontSmall")
 DDTFontSmall:SetFont("Fonts\\FRIZQT__.TTF", 10, "")
 
+-- Font object lookup by template name
+local DDT_FONT_OBJECTS = {
+    DDTFontHeader = DDTFontHeader,
+    DDTFontNormal = DDTFontNormal,
+    DDTFontSmall  = DDTFontSmall,
+}
+
+-- Registry of all DDT FontStrings for live font updates (weak values so GC works)
+local fontStringRegistry = setmetatable({}, { __mode = "v" })
+local fontStringCount = 0
+
+--- Create a FontString that tracks DDT font object changes.
+--- Drop-in replacement for parent:CreateFontString(nil, "OVERLAY", "DDTFontXxx").
+--- @param parent Frame
+--- @param fontTemplate string  "DDTFontHeader", "DDTFontNormal", or "DDTFontSmall"
+--- @return FontString
+function ns.FontString(parent, fontTemplate)
+    local fs = parent:CreateFontString(nil, "OVERLAY")
+    local fontObj = DDT_FONT_OBJECTS[fontTemplate]
+    if fontObj then
+        fs:SetFontObject(fontObj)
+    end
+    fontStringCount = fontStringCount + 1
+    fontStringRegistry[fontStringCount] = fs
+    fs._ddtFontTemplate = fontTemplate
+    return fs
+end
+
 function ns:UpdateFonts()
     local db = self.db and self.db.global or {}
     local fontPath = db.tooltipFont or "Fonts\\FRIZQT__.TTF"
@@ -220,6 +136,18 @@ function ns:UpdateFonts()
     DDTFontHeader:SetFont(fontPath, fontSize + 4, "")
     DDTFontNormal:SetFont(fontPath, fontSize, "")
     DDTFontSmall:SetFont(fontPath, fontSize - 2, "")
+
+    -- Re-apply SetFontObject on all registered FontStrings to ensure propagation
+    for i, fs in pairs(fontStringRegistry) do
+        if fs and fs.GetObjectType and fs._ddtFontTemplate then
+            local fontObj = DDT_FONT_OBJECTS[fs._ddtFontTemplate]
+            if fontObj then
+                fs:SetFontObject(fontObj)
+            end
+        else
+            fontStringRegistry[i] = nil
+        end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -790,6 +718,34 @@ local FACTORY_CONTENT_GAP = 6   -- gap below separator before content
 local FACTORY_HINT_H      = 28  -- hint bar height reservation (minimum, grows with wrap)
 local FACTORY_HINT_H_NONE = 8   -- bottom padding when no hint
 
+--- Anchor a tooltip frame relative to a DataText anchor.
+--- @param tooltip Frame  The tooltip frame to position
+--- @param anchor Frame   The DataText button/frame that triggered the tooltip
+--- @param direction string|nil  "auto" (default), "up", or "down"
+function ns.AnchorTooltip(tooltip, anchor, direction)
+    direction = direction or "auto"
+    local gap = 4
+    tooltip:ClearAllPoints()
+
+    local growDown
+    if direction == "down" then
+        growDown = true
+    elseif direction == "up" then
+        growDown = false
+    else
+        -- auto: detect from screen position
+        local _, anchorY = anchor:GetCenter()
+        local screenH = UIParent:GetHeight()
+        growDown = anchorY and screenH and anchorY > screenH / 2
+    end
+
+    if growDown then
+        tooltip:SetPoint("TOPLEFT", anchor, "BOTTOMLEFT", 0, -gap)
+    else
+        tooltip:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, gap)
+    end
+end
+
 --- Create a scrollable tooltip frame with standard DDT styling.
 --- All content should be placed on f.content (the scroll child).
 --- After populating, call f:FinalizeLayout(width, contentHeight [, contentWidth]).
@@ -813,7 +769,7 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     f:SetBackdropBorderColor(0.3, 0.3, 0.3, 1)
 
     -- Header (title)
-    f.header = f:CreateFontString(nil, "OVERLAY", "DDTFontHeader")
+    f.header = ns.FontString(f, "DDTFontHeader")
     f.header:SetPoint("TOPLEFT", f, "TOPLEFT", FACTORY_PADDING, -FACTORY_PADDING)
     f.header:SetPoint("TOPRIGHT", f, "TOPRIGHT", -FACTORY_PADDING, -FACTORY_PADDING)
     f.header:SetJustifyH("LEFT")
@@ -837,7 +793,7 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     f.hintSep:Hide()
 
     -- Hint bar (anchored to bottom of outer frame)
-    f.hint = f:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    f.hint = ns.FontString(f, "DDTFontSmall")
     f.hint:SetPoint("BOTTOMLEFT", f, "BOTTOMLEFT", FACTORY_PADDING, 10)
     f.hint:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -FACTORY_PADDING, 10)
     f.hint:SetJustifyH("CENTER")
@@ -1002,7 +958,7 @@ function DDT:GetOrCreateGroupHeader(parent, name)
     if not parent.groupHeaders then parent.groupHeaders = {} end
     if parent.groupHeaders[name] then return parent.groupHeaders[name] end
 
-    local hdr = parent:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local hdr = ns.FontString(parent, "DDTFontNormal")
     hdr:SetJustifyH("LEFT")
     hdr:SetHeight(14)
     hdr:SetPoint("RIGHT", parent, "RIGHT", 0, 0)

@@ -1,28 +1,41 @@
 # Release Notes
 
-## Version: 0.5.3 — 2026-04-02
+## Version: 0.6.0 — 2026-04-02
 
-### Gold Display Fixes + Settings Label Template UX Improvements + Startup Data Load
+### Major Update: Social Module Refactor, Smart Tooltip Anchoring, Prey Tracker, Majestic Beast Enhancements
 
-#### Gold Display
+#### Social Module Consistency Refactor
 
-- **Colorize now applies to datatexts** — `FormatGoldShort()` now respects `goldColorize`, `goldShowSilver`, and `goldShowCopper` global settings, matching `FormatGold()` behavior; gold in all module labels (Currency, BagValue) now colors correctly
-- **Gold settings changes refresh immediately** — toggling colorize/silver/copper in General settings now calls `UpdateData()` on all modules, so labels refresh without needing a mouseover
-- **Number format preset change also refreshes modules** — changing the format preset now propagates to all module labels immediately
+- **Friends, Guild, Communities** now follow the standard module registration pattern — each has its own DEFAULTS, settingsLabel, BuildSettingsPanel, and RegisterModule call
+- Settings panels moved from centralized Settings.lua into each module file
+- Removed ~310 lines of hardcoded social panel code from Settings.lua
 
-#### Settings Label Template UX
+#### Smart Tooltip Anchoring
 
-- **Label Template editor lifted out of scroll frame** — the template editbox and tag buttons now render in a fixed header above the scroll area, resolving the persistent "blank editbox on first load" issue caused by WoW's EditBox text not rendering inside scroll children
-- **Editbox pre-populated on panel show** — panels now start hidden so `OnShow` fires when Blizzard Settings displays them, ensuring the refresh callback correctly populates the editbox
-- **Tag insertion at cursor** — clicking a tag button now inserts at the last cursor position rather than appending to the end; cursor position is saved on focus loss (before the tag button's OnClick fires)
-- **Live template updates** — `OnTextChanged` commits the value as you type; no need to press Enter
+- **Auto grow direction** — tooltips now detect whether the DataText is at the top or bottom of the screen and grow in the appropriate direction (down or up) to avoid overlapping the label
+- **Per-module grow direction** — each module has a new "Tooltip Grow Direction" dropdown (Auto/Up/Down) in its tooltip settings section
+- **Copy From** — tooltip grow direction is included in the "Copy Tooltip Settings From" feature
 
-#### Startup Data Load
+#### Prey Tracker (New Module)
 
-- **Initial data load on login/reload** — all modules now call `UpdateData()` 1 second after addon load, so datatexts are populated immediately rather than waiting for the first mouseover
-- **Periodic background refresh** — all modules refresh every 3 minutes automatically, keeping labels current without user interaction
+- **Zone mapping** — 30 prey targets mapped to their zones (Eversong Woods, Zul'Aman, Harandar, Voidstorm) sourced from Wowhead NPC spawn data
+- **Active hunt tracking** — shows prey name, zone, difficulty, and progress state (Cold/Warm/Hot/Final) via UI widget scanning
+- **Weekly completions** — tracks completed prey quests with zone and difficulty columns
+- **Currency tracking** — displays Remnant of Anguish quantity
+- **Waypoint click action** — set a waypoint to the active prey target
+- **Configurable zone overrides** — per-prey zone dropdowns in settings panel; prey names are clickable Wowhead links
+- **Label tags** — `<status>`, `<zone>`, `<progress>`, `<difficulty>`, `<prey>`, `<weekly>`, `<currency>`
 
-#### SpecSwitch
+#### Majestic Beast Tracker Enhancements
 
-- **Direct spec switching via click actions** — `spec1`/`spec2`/`spec3`/`spec4` click actions added; switch to a specific spec directly from the datatext
-- **Spec names in dropdown** — click action dropdown shows "Switch to Arms" instead of "Switch to Spec 1"; spec names resolved once on first data load
+- **Beast Routes section** — per-zone clickable rows with lure icon, zone name, reagent counts, and kill status; replaces the old Daily Kills grid
+- **Multi-character columns** — when multiple characters have skinning, beast route rows show checkmark/X icons per character aligned under class-colored name headers
+- **Secure lure buttons** — left-click uses the lure item via SecureActionButtonTemplate (matching MBT's implementation); right-click sets waypoint
+- **Row click actions** — configurable per beast row: Set Waypoint, Use Lure, Open Lure Recipe, Shop Zone Reagents, Open Map
+- **Consumable Buffs section** — shows Sanguithorn Tea, Haranir Phial of Perception, and Root Crab with stock count and active buff status; left-click uses the consumable, right-click creates AH search
+- **Buff Shopping List** — new click action creates an Auctionator shopping list for all three consumables
+- **Per-zone reagent shopping** — right-click a beast row to create an Auctionator shopping list for just that zone's lure ingredients
+
+#### Saved Instances
+
+- **New label preset** — "Full": `R: <raids>  M+: <mplus>  Dv: <delves>`

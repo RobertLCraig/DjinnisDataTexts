@@ -401,10 +401,10 @@ local function GetLine(c, index)
         return c.lines[index]
     end
 
-    local label = c:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local label = ns.FontString(c, "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = c:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local value = ns.FontString(c, "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
     c.lines[index] = { label = label, value = value }
@@ -627,8 +627,7 @@ function SysPerf:ShowTooltip(anchor)
     end
 
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     self:UpdateData()
@@ -687,6 +686,8 @@ function SysPerf:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 350 x 400 for FPS, latency, and addon memory list.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "systemperformance", db, r)
     W.EndSection(panel, y)
 
     body = W.AddSection(panel, "Addon Memory")

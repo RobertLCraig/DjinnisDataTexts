@@ -514,10 +514,10 @@ local function GetLine(f, index)
     local icon = f:CreateTexture(nil, "ARTWORK")
     icon:SetSize(14, 14)
 
-    local label = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local label = ns.FontString(f, "DDTFontNormal")
     label:SetJustifyH("LEFT")
 
-    local value = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    local value = ns.FontString(f, "DDTFontNormal")
     value:SetJustifyH("RIGHT")
 
     f.lines[index] = { label = label, value = value, icon = icon }
@@ -857,8 +857,7 @@ function Currency:ShowTooltip(anchor)
     end
 
     local db = self:GetDB()
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
     ScanCurrencies()
@@ -985,6 +984,8 @@ function Currency:BuildSettingsPanel(panel)
           set = function(v) db().tooltipMaxHeight = v end },
         nil, r)
     y = W.AddNote(body, y, "Suggested: 350 x 500. Increase height for more currencies/alts.")
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "currency", db, r)
     W.EndSection(panel, y)
 
     ns.AddModuleClickActionsSection(panel, r, "currency", CLICK_ACTIONS,

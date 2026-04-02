@@ -699,6 +699,64 @@ local function EndSection(panel, y)
     panel.currentSection = nil
 end
 
+---------------------------------------------------------------------------
+-- "Copy Tooltip From" dropdown — copies tooltipScale/Width/MaxHeight
+-- from another module's saved settings into the current module.
+---------------------------------------------------------------------------
+
+local TOOLTIP_COPY_KEYS = { "tooltipScale", "tooltipWidth", "tooltipMaxHeight", "tooltipGrowDirection" }
+
+local TOOLTIP_GROW_VALUES = {
+    auto = "Auto (detect from position)",
+    up   = "Up (above DataText)",
+    down = "Down (below DataText)",
+}
+
+local function AddTooltipGrowDirection(content, y, dbGetter, refreshList)
+    return AddDropdown(content, y, "Tooltip Grow Direction", TOOLTIP_GROW_VALUES,
+        function() return dbGetter().tooltipGrowDirection or "auto" end,
+        function(v) dbGetter().tooltipGrowDirection = v end, refreshList)
+end
+
+local function AddTooltipCopyFrom(content, y, currentKey, dbGetter, refreshList)
+    local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
+    text:SetText("Copy Tooltip Settings From")
+
+    local dropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+    dropdown:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
+    dropdown:SetWidth(200)
+
+    dropdown:SetupMenu(function(owner, rootDescription)
+        local sorted = {}
+        for key, mod in pairs(ns.modules) do
+            if key ~= currentKey then
+                local label = mod.settingsLabel or key
+                sorted[#sorted + 1] = { key = key, label = label }
+            end
+        end
+        table.sort(sorted, function(a, b) return a.label < b.label end)
+
+        for _, entry in ipairs(sorted) do
+            rootDescription:CreateButton(entry.label, function()
+                local srcDB = ns.db[entry.key]
+                if not srcDB then return end
+                local destDB = dbGetter()
+                if not destDB then return end
+                for _, k in ipairs(TOOLTIP_COPY_KEYS) do
+                    if srcDB[k] ~= nil then destDB[k] = srcDB[k] end
+                end
+                -- Refresh all sliders in this panel
+                if refreshList then
+                    for _, fn in ipairs(refreshList) do fn() end
+                end
+            end)
+        end
+    end)
+
+    return y - 54
+end
+
 -- Expose widget helpers for use by module settings panels
 ns.SettingsWidgets = {
     AddHeader       = AddHeader,
@@ -714,6 +772,8 @@ ns.SettingsWidgets = {
     AddNote         = AddNote,
     AddSection      = AddSection,
     EndSection      = EndSection,
+    AddTooltipCopyFrom = AddTooltipCopyFrom,
+    AddTooltipGrowDirection = AddTooltipGrowDirection,
 }
 
 ---------------------------------------------------------------------------
@@ -1059,316 +1119,7 @@ local function AddSocialSettingsSection(panel, r)
         function(v) ns.db.global.noteShowInAllGroups = v end, r)
     EndSection(panel, y)
 end
-
----------------------------------------------------------------------------
--- Friends panel
----------------------------------------------------------------------------
-
-local function BuildFriendsPanel(panel)
-    local r = panel.refreshCallbacks
-    local db = function() return ns.db.friends end
-    local refresh = function() if ns.FriendsBroker then ns.FriendsBroker:UpdateData() end end
-
-    -- Label Template
-    AddLabelEditBox(panel, "online total offline",
-        function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r, {
-        { "Default",  "Friends: <online>/<total>" },
-        { "Short",    "F: <online>" },
-        { "Detailed", "Friends: <online> on / <offline> off" },
-    })
-
-    -- Tooltip (collapsed)
-    local body = AddSection(panel, "Tooltip", true)
-    local y = 0
-    y = AddSliderPair(body, y,
-        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
-          get = function() return db().tooltipScale end,
-          set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 300, max = 800, step = 10,
-          get = function() return db().tooltipWidth end,
-          set = function(v) db().tooltipWidth = v end }, r)
-    y = AddSliderPair(body, y,
-        { label = "Row Spacing", min = 0, max = 16, step = 1,
-          get = function() return db().rowSpacing end,
-          set = function(v) db().rowSpacing = v end },
-        { label = "Max Height", min = 100, max = 1000, step = 10,
-          get = function() return db().tooltipMaxHeight end,
-          set = function(v) db().tooltipMaxHeight = v end }, r)
-    EndSection(panel, y)
-
-    -- Display
-    body = AddSection(panel, "Display")
-    y = 0
-    y = AddCheckboxPair(body, y, "Show Character Friends",
-        function() return db().showWoWFriends end,
-        function(v) db().showWoWFriends = v; refresh() end,
-        "Show Battle.net Friends",
-        function() return db().showBNetFriends end,
-        function(v) db().showBNetFriends = v; refresh() end, r)
-    y = AddCheckboxPair(body, y, "Class-Colored Names",
-        function() return db().classColorNames end,
-        function(v) db().classColorNames = v; refresh() end,
-        "Show Hint Bar",
-        function() return db().showHintBar end,
-        function(v) db().showHintBar = v; refresh() end, r)
-    EndSection(panel, y)
-
-    -- Grouping & Sorting
-    body = AddSection(panel, "Grouping & Sorting")
-    y = 0
-    y = AddDropdown(body, y, "Group By", ns.FRIENDS_GROUP_VALUES,
-        function() return db().groupBy end,
-        function(v) db().groupBy = v; refresh() end, r)
-    y = AddDropdown(body, y, "Then By", ns.FRIENDS_GROUP_VALUES,
-        function() return db().groupBy2 end,
-        function(v) db().groupBy2 = v; refresh() end, r)
-    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
-        function() return db().sortBy end,
-        function(v) db().sortBy = v; refresh() end, r)
-    y = AddCheckbox(body, y, "Ascending Order",
-        function() return db().sortAscending end,
-        function(v) db().sortAscending = v; refresh() end, r)
-    EndSection(panel, y)
-
-    -- Label Click Actions (collapsed)
-    AddModuleClickActionsSection(panel, r, "friends", ns.SOCIAL_LABEL_ACTION_VALUES)
-
-    -- Row Click Actions (collapsed)
-    AddClickActionsSection(panel, r, "friends")
-
-    -- Social Settings (collapsed)
-    AddSocialSettingsSection(panel, r)
-end
-
----------------------------------------------------------------------------
--- Guild panel
----------------------------------------------------------------------------
-
-local function BuildGuildPanel(panel)
-    local r = panel.refreshCallbacks
-    local db = function() return ns.db.guild end
-    local refresh = function() if ns.GuildBroker then ns.GuildBroker:UpdateData() end end
-
-    -- Label Template
-    AddLabelEditBox(panel, "online total offline guildname",
-        function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r, {
-        { "Default",    "Guild: <online>/<total>" },
-        { "Guild Name", "<guildname>" },
-        { "Short",      "G: <online>" },
-        { "Named",      "<guildname> (<online>)" },
-    })
-
-    -- Tooltip (collapsed)
-    local body = AddSection(panel, "Tooltip", true)
-    local y = 0
-    y = AddSliderPair(body, y,
-        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
-          get = function() return db().tooltipScale end,
-          set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 300, max = 800, step = 10,
-          get = function() return db().tooltipWidth end,
-          set = function(v) db().tooltipWidth = v end }, r)
-    y = AddSliderPair(body, y,
-        { label = "Row Spacing", min = 0, max = 16, step = 1,
-          get = function() return db().rowSpacing end,
-          set = function(v) db().rowSpacing = v end },
-        { label = "Max Height", min = 100, max = 1000, step = 10,
-          get = function() return db().tooltipMaxHeight end,
-          set = function(v) db().tooltipMaxHeight = v end }, r)
-    EndSection(panel, y)
-
-    -- Display
-    body = AddSection(panel, "Display")
-    y = 0
-    y = AddCheckboxPair(body, y, "Class-Colored Names",
-        function() return db().classColorNames end,
-        function(v) db().classColorNames = v; refresh() end,
-        "Show Hint Bar",
-        function() return db().showHintBar end,
-        function(v) db().showHintBar = v; refresh() end, r)
-    y = AddCheckbox(body, y, "Show Officer Notes (inline)",
-        function() return db().showOfficerNotes end,
-        function(v) db().showOfficerNotes = v; refresh() end, r)
-    y = AddDescription(body, y, "Requires guild rank permission to view officer notes.")
-    EndSection(panel, y)
-
-    -- Grouping & Sorting
-    body = AddSection(panel, "Grouping & Sorting")
-    y = 0
-    y = AddDropdown(body, y, "Group By", ns.GUILD_GROUP_VALUES,
-        function() return db().groupBy end,
-        function(v) db().groupBy = v; refresh() end, r)
-    y = AddDropdown(body, y, "Then By", ns.GUILD_GROUP_VALUES,
-        function() return db().groupBy2 end,
-        function(v) db().groupBy2 = v; refresh() end, r)
-    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", rank = "Rank", status = "Status" },
-        function() return db().sortBy end,
-        function(v) db().sortBy = v; refresh() end, r)
-    y = AddCheckbox(body, y, "Ascending Order",
-        function() return db().sortAscending end,
-        function(v) db().sortAscending = v; refresh() end, r)
-    EndSection(panel, y)
-
-    -- Label Click Actions (collapsed)
-    AddModuleClickActionsSection(panel, r, "guild", ns.SOCIAL_LABEL_ACTION_VALUES)
-
-    -- Row Click Actions (collapsed)
-    AddClickActionsSection(panel, r, "guild")
-
-    -- Social Settings (collapsed)
-    AddSocialSettingsSection(panel, r)
-end
-
----------------------------------------------------------------------------
--- Communities panel
----------------------------------------------------------------------------
-
-local function BuildCommunitiesPanel(panel)
-    local r = panel.refreshCallbacks
-    local db = function() return ns.db.communities end
-    local refresh = function() if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end end
-
-    -- Label Template
-    AddLabelEditBox(panel, "online",
-        function() return db().labelFormat end,
-        function(v) db().labelFormat = v; refresh() end, r, {
-        { "Default",  "Communities: <online>" },
-        { "Short",    "Comm: <online>" },
-        { "Labeled",  "<online> online" },
-    })
-
-    -- Tooltip (collapsed)
-    local body = AddSection(panel, "Tooltip", true)
-    local y = 0
-    y = AddSliderPair(body, y,
-        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
-          get = function() return db().tooltipScale end,
-          set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 300, max = 800, step = 10,
-          get = function() return db().tooltipWidth end,
-          set = function(v) db().tooltipWidth = v end }, r)
-    y = AddSliderPair(body, y,
-        { label = "Row Spacing", min = 0, max = 16, step = 1,
-          get = function() return db().rowSpacing end,
-          set = function(v) db().rowSpacing = v end },
-        { label = "Max Height", min = 100, max = 1000, step = 10,
-          get = function() return db().tooltipMaxHeight end,
-          set = function(v) db().tooltipMaxHeight = v end }, r)
-    EndSection(panel, y)
-
-    -- Display
-    body = AddSection(panel, "Display")
-    y = 0
-    y = AddCheckboxPair(body, y, "Class-Colored Names",
-        function() return db().classColorNames end,
-        function(v) db().classColorNames = v; refresh() end,
-        "Show Hint Bar",
-        function() return db().showHintBar end,
-        function(v) db().showHintBar = v; refresh() end, r)
-    EndSection(panel, y)
-
-    -- Grouping & Sorting
-    body = AddSection(panel, "Grouping & Sorting")
-    y = 0
-    y = AddDropdown(body, y, "Group By", ns.COMMUNITIES_GROUP_VALUES,
-        function() return db().groupBy end,
-        function(v) db().groupBy = v; refresh() end, r)
-    y = AddDropdown(body, y, "Then By", ns.COMMUNITIES_GROUP_VALUES,
-        function() return db().groupBy2 end,
-        function(v) db().groupBy2 = v; refresh() end, r)
-    y = AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
-        function() return db().sortBy end,
-        function(v) db().sortBy = v; refresh() end, r)
-    y = AddCheckbox(body, y, "Ascending Order",
-        function() return db().sortAscending end,
-        function(v) db().sortAscending = v; refresh() end, r)
-    EndSection(panel, y)
-
-    -- Label Click Actions (collapsed)
-    AddModuleClickActionsSection(panel, r, "communities", ns.SOCIAL_LABEL_ACTION_VALUES)
-
-    -- Row Click Actions (collapsed)
-    AddClickActionsSection(panel, r, "communities")
-
-    -- Social Settings (collapsed)
-    AddSocialSettingsSection(panel, r)
-
-    -- Dynamic section: Enabled Communities
-    body = AddSection(panel, "Enabled Communities")
-    y = 0
-    y = AddDescription(body, y, "Uncheck a community to hide it from the tooltip. New communities are shown by default.")
-
-    local dynamicSection = panel.currentSection
-    local dynamicStart = y
-    local dynamicWidgets = {}
-
-    local function RebuildClubList()
-        for _, widget in ipairs(dynamicWidgets) do
-            widget:Hide()
-            widget:SetParent(nil)
-        end
-        wipe(dynamicWidgets)
-
-        local dy = dynamicStart
-        local clubs = C_Club.GetSubscribedClubs()
-        if type(clubs) ~= "table" then clubs = {} end
-
-        local communityClubs = {}
-        for _, clubInfo in ipairs(clubs) do
-            if type(clubInfo.name) == "string"
-               and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet) then
-                table.insert(communityClubs, clubInfo)
-            end
-        end
-        table.sort(communityClubs, function(a, b) return (a.name or "") < (b.name or "") end)
-
-        if #communityClubs == 0 then
-            local noClubs = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
-            noClubs:SetPoint("TOPLEFT", body, "TOPLEFT", 18, dy)
-            noClubs:SetText("No communities found.")
-            table.insert(dynamicWidgets, noClubs)
-            dy = dy - 20
-        else
-            for _, clubInfo in ipairs(communityClubs) do
-                local cb = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
-                cb:SetPoint("TOPLEFT", body, "TOPLEFT", 14, dy)
-
-                local cbText = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-                cbText:SetPoint("LEFT", cb, "RIGHT", 2, 0)
-                cbText:SetText(clubInfo.name)
-
-                local clubId = clubInfo.clubId
-                cb:SetChecked(not ns.db.communities.disabledClubs[clubId])
-                cb:SetScript("OnClick", function(self)
-                    if self:GetChecked() then
-                        ns.db.communities.disabledClubs[clubId] = nil
-                    else
-                        ns.db.communities.disabledClubs[clubId] = true
-                    end
-                    if ns.CommunitiesBroker then ns.CommunitiesBroker:UpdateData() end
-                end)
-
-                table.insert(dynamicWidgets, cb)
-                table.insert(dynamicWidgets, cbText)
-                dy = dy - 26
-            end
-        end
-
-        -- Update section height dynamically
-        dynamicSection.bodyHeight = math.abs(dy) + 8
-        dynamicSection.body:SetHeight(dynamicSection.bodyHeight)
-        dynamicSection:UpdateLayout()
-    end
-
-    RebuildClubList()
-    panel.currentSection = nil  -- manual EndSection since height is dynamic
-
-    panel:HookScript("OnShow", function()
-        RebuildClubList()
-    end)
-end
+ns.AddSocialSettingsSection = AddSocialSettingsSection
 
 ---------------------------------------------------------------------------
 -- Registration
@@ -1378,24 +1129,11 @@ function DDT:SetupOptions()
     local generalPanel = CreateScrollPanel()
     BuildGeneralPanel(generalPanel)
 
-    local friendsPanel = CreateScrollPanel()
-    BuildFriendsPanel(friendsPanel)
-
-    local guildPanel = CreateScrollPanel()
-    BuildGuildPanel(guildPanel)
-
-    local commPanel = CreateScrollPanel()
-    BuildCommunitiesPanel(commPanel)
-
     -- Register with Blizzard Settings
     local mainCategory = Settings.RegisterCanvasLayoutCategory(generalPanel, "Djinni's Data Texts")
 
-    -- Collect all subcategories (social + standalone modules), sort alphabetically
-    local subcats = {
-        { label = "Communities", panel = commPanel },
-        { label = "Friends",     panel = friendsPanel },
-        { label = "Guild",       panel = guildPanel },
-    }
+    -- Collect all subcategories from registered modules, sort alphabetically
+    local subcats = {}
     for key, mod in pairs(ns.modules) do
         if mod.BuildSettingsPanel then
             local modPanel = CreateScrollPanel()

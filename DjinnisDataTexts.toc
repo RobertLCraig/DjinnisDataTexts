@@ -7,7 +7,7 @@
 ## X-Category: Data Broker
 ## IconTexture: Interface\Icons\INV_Misc_Gear_01
 ## SavedVariables: DjinnisDataTextsDB
-## OptionalDeps: ElvUI, DjinnisGuildFriends, TradeSkillMaster, SavedInstances, Auctionator, SimulationCraft
+## OptionalDeps: ElvUI, DjinnisGuildFriends, TradeSkillMaster, SavedInstances, Auctionator, SimulationCraft, MajesticBeastTracker
 
 # Libraries
 Libs\LibStub\LibStub.lua
@@ -55,6 +55,12 @@ Modules\LFGStatus.lua
 
 # Modules - Phase 9
 Modules\ItemLevel.lua
+
+# Modules - Phase 10
+Modules\PreyTracker.lua
+
+# Modules - Phase 11
+Modules\MajesticBeast.lua
 
 # Demo mode - uncomment to inject fake data, comment out for live use:
 # DemoMode.lua

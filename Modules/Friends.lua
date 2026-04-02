@@ -11,6 +11,45 @@ local LDB = LibStub("LibDataBroker-1.1")
 local FriendsBroker = {}
 ns.FriendsBroker = FriendsBroker
 
+local DEFAULTS = {
+    labelFormat = "Friends: <online>/<total>",
+    sortBy = "name",
+    sortAscending = true,
+    classColorNames = true,
+    showWoWFriends = true,
+    showBNetFriends = true,
+    showHintBar = true,
+    tooltipScale = 1.0,
+    tooltipWidth = 420,
+    tooltipMaxHeight = 500,
+    rowSpacing = 4,
+    groupBy = "none",
+    groupBy2 = "none",
+    groupCollapsed = {},
+    clickActions = {
+        leftClick       = "openfriends",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
+    },
+    rowClickActions = {
+        leftClick       = "whisper",
+        rightClick      = "invite",
+        middleClick     = "none",
+        shiftLeftClick  = "copyname",
+        shiftRightClick = "who",
+        ctrlLeftClick   = "copyarmory",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
+    },
+}
+
 FriendsBroker.friendsCache = {}
 FriendsBroker.onlineCount = 0
 FriendsBroker.totalCount = 0
@@ -261,23 +300,23 @@ local function CreateTooltipFrame()
     local f = ns.CreateTooltipFrame(nil, FriendsBroker)
 
     -- Column headers live on the outer frame (above scroll area)
-    f.colName = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colName = ns.FontString(f, "DDTFontNormal")
     f.colName:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -4)
     f.colName:SetText("|cffaaaaaaName|r")
     f.colName:SetJustifyH("LEFT")
 
-    f.colLevel = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colLevel = ns.FontString(f, "DDTFontNormal")
     f.colLevel:SetPoint("LEFT", f.colName, "RIGHT", 4, 0)
     f.colLevel:SetText("|cffaaaaaaLvl|r")
     f.colLevel:SetWidth(30)
     f.colLevel:SetJustifyH("CENTER")
 
-    f.colZone = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colZone = ns.FontString(f, "DDTFontNormal")
     f.colZone:SetPoint("LEFT", f.colLevel, "RIGHT", 4, 0)
     f.colZone:SetText("|cffaaaaaaZone|r")
     f.colZone:SetJustifyH("LEFT")
 
-    f.colNote = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colNote = ns.FontString(f, "DDTFontNormal")
     f.colNote:SetPoint("LEFT", f.colZone, "RIGHT", 4, 0)
     f.colNote:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
     f.colNote:SetText("|cffaaaaaaNotes|r")
@@ -305,22 +344,22 @@ local function GetOrCreateRow(parent, index)
     row.highlight:SetAllPoints()
     row.highlight:SetColorTexture(1, 1, 1, 0.1)
 
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.nameText = ns.FontString(row, "DDTFontNormal")
     row.nameText:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.nameText:SetWidth(130)
     row.nameText:SetJustifyH("LEFT")
 
-    row.levelText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.levelText = ns.FontString(row, "DDTFontNormal")
     row.levelText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
     row.levelText:SetWidth(30)
     row.levelText:SetJustifyH("CENTER")
 
-    row.zoneText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.zoneText = ns.FontString(row, "DDTFontNormal")
     row.zoneText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
     row.zoneText:SetWidth(130)
     row.zoneText:SetJustifyH("LEFT")
 
-    row.noteText = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    row.noteText = ns.FontString(row, "DDTFontSmall")
     row.noteText:SetPoint("LEFT", row.zoneText, "RIGHT", 4, 0)
     row.noteText:SetJustifyH("LEFT")
     row.noteText:SetWordWrap(false)
@@ -359,8 +398,7 @@ function FriendsBroker:ShowTooltip(anchor)
     self:CancelTooltipHideTimer()
     self:UpdateData()
 
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, ns.db.friends.tooltipGrowDirection)
     tooltipFrame:SetScale(ns.db.friends.tooltipScale or 1.0)
 
     self:PopulateTooltip()
@@ -608,3 +646,95 @@ function FriendsBroker:ExecuteAction(action, friend)
 
     DDT:ExecuteAction(action, charName, realmName, fullName, bnet, tooltipFrame)
 end
+
+---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+FriendsBroker.settingsLabel = "Friends"
+
+function FriendsBroker:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local r = panel.refreshCallbacks
+    local db = function() return ns.db.friends end
+    local refresh = function() self:UpdateData() end
+
+    -- Label Template
+    W.AddLabelEditBox(panel, "online total offline",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",  "Friends: <online>/<total>" },
+        { "Short",    "F: <online>" },
+        { "Detailed", "Friends: <online> on / <offline> off" },
+    })
+
+    -- Tooltip (collapsed)
+    local body = W.AddSection(panel, "Tooltip", true)
+    local y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "friends", db, r)
+    W.EndSection(panel, y)
+
+    -- Display
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckboxPair(body, y, "Show Character Friends",
+        function() return db().showWoWFriends end,
+        function(v) db().showWoWFriends = v; refresh() end,
+        "Show Battle.net Friends",
+        function() return db().showBNetFriends end,
+        function(v) db().showBNetFriends = v; refresh() end, r)
+    y = W.AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    W.EndSection(panel, y)
+
+    -- Grouping & Sorting
+    body = W.AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = W.AddDropdown(body, y, "Group By", ns.FRIENDS_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Then By", ns.FRIENDS_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = W.AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    W.EndSection(panel, y)
+
+    -- Label Click Actions (collapsed)
+    ns.AddModuleClickActionsSection(panel, r, "friends", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
+    ns.AddClickActionsSection(panel, r, "friends")
+
+    -- Social Settings (collapsed)
+    ns.AddSocialSettingsSection(panel, r)
+end
+
+---------------------------------------------------------------------------
+-- Module registration
+---------------------------------------------------------------------------
+
+ns:RegisterModule("friends", FriendsBroker, DEFAULTS)

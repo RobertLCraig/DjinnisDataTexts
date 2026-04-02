@@ -11,6 +11,44 @@ local LDB = LibStub("LibDataBroker-1.1")
 local CommunitiesBroker = {}
 ns.CommunitiesBroker = CommunitiesBroker
 
+local DEFAULTS = {
+    labelFormat = "Communities: <online>",
+    sortBy = "name",
+    sortAscending = true,
+    classColorNames = true,
+    showHintBar = true,
+    tooltipScale = 1.0,
+    tooltipWidth = 480,
+    tooltipMaxHeight = 500,
+    rowSpacing = 4,
+    groupBy = "community",
+    groupBy2 = "none",
+    groupCollapsed = {},
+    disabledClubs = {},
+    clickActions = {
+        leftClick       = "opencommunities",
+        rightClick      = "none",
+        middleClick     = "none",
+        shiftLeftClick  = "none",
+        shiftRightClick = "none",
+        ctrlLeftClick   = "none",
+        ctrlRightClick  = "none",
+        altLeftClick    = "opensettings",
+        altRightClick   = "none",
+    },
+    rowClickActions = {
+        leftClick       = "whisper",
+        rightClick      = "invite",
+        middleClick     = "none",
+        shiftLeftClick  = "copyname",
+        shiftRightClick = "who",
+        ctrlLeftClick   = "copyarmory",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
+    },
+}
+
 CommunitiesBroker.clubsCache = {}   -- { clubId = { info=ClubInfo, members={...} } }
 CommunitiesBroker.onlineCount = 0
 CommunitiesBroker.totalOnline = 0
@@ -225,30 +263,30 @@ local function CreateTooltipFrame()
     local f = ns.CreateTooltipFrame(nil, CommunitiesBroker)
 
     -- Column headers live on the outer frame (above scroll area)
-    f.colName = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colName = ns.FontString(f, "DDTFontNormal")
     f.colName:SetPoint("TOPLEFT", f.header, "BOTTOMLEFT", 0, -4)
     f.colName:SetText("|cffaaaaaaName|r")
     f.colName:SetJustifyH("LEFT")
 
-    f.colLevel = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colLevel = ns.FontString(f, "DDTFontNormal")
     f.colLevel:SetPoint("LEFT", f.colName, "RIGHT", 4, 0)
     f.colLevel:SetText("|cffaaaaaaLvl|r")
     f.colLevel:SetWidth(30)
     f.colLevel:SetJustifyH("CENTER")
 
-    f.colScore = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colScore = ns.FontString(f, "DDTFontNormal")
     f.colScore:SetPoint("LEFT", f.colLevel, "RIGHT", 4, 0)
     f.colScore:SetText("|cffaaaaaaScore|r")
     f.colScore:SetWidth(45)
     f.colScore:SetJustifyH("CENTER")
     f.colScore:Hide()
 
-    f.colZone = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colZone = ns.FontString(f, "DDTFontNormal")
     f.colZone:SetPoint("LEFT", f.colScore, "RIGHT", 4, 0)
     f.colZone:SetText("|cffaaaaaaZone|r")
     f.colZone:SetJustifyH("LEFT")
 
-    f.colNote = f:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    f.colNote = ns.FontString(f, "DDTFontNormal")
     f.colNote:SetPoint("LEFT", f.colZone, "RIGHT", 4, 0)
     f.colNote:SetPoint("RIGHT", f, "RIGHT", -TOOLTIP_PADDING, 0)
     f.colNote:SetText("|cffaaaaaaNotes|r")
@@ -276,27 +314,27 @@ local function GetOrCreateRow(parent, index)
     row.highlight:SetAllPoints()
     row.highlight:SetColorTexture(1, 1, 1, 0.1)
 
-    row.nameText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.nameText = ns.FontString(row, "DDTFontNormal")
     row.nameText:SetPoint("LEFT", row, "LEFT", 0, 0)
     row.nameText:SetWidth(130)
     row.nameText:SetJustifyH("LEFT")
 
-    row.levelText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.levelText = ns.FontString(row, "DDTFontNormal")
     row.levelText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
     row.levelText:SetWidth(30)
     row.levelText:SetJustifyH("CENTER")
 
-    row.scoreText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.scoreText = ns.FontString(row, "DDTFontNormal")
     row.scoreText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
     row.scoreText:SetWidth(45)
     row.scoreText:SetJustifyH("CENTER")
 
-    row.zoneText = row:CreateFontString(nil, "OVERLAY", "DDTFontNormal")
+    row.zoneText = ns.FontString(row, "DDTFontNormal")
     row.zoneText:SetPoint("LEFT", row.scoreText, "RIGHT", 4, 0)
     row.zoneText:SetWidth(130)
     row.zoneText:SetJustifyH("LEFT")
 
-    row.noteText = row:CreateFontString(nil, "OVERLAY", "DDTFontSmall")
+    row.noteText = ns.FontString(row, "DDTFontSmall")
     row.noteText:SetPoint("LEFT", row.zoneText, "RIGHT", 4, 0)
     row.noteText:SetJustifyH("LEFT")
     row.noteText:SetWordWrap(false)
@@ -335,8 +373,7 @@ function CommunitiesBroker:ShowTooltip(anchor)
     self:CancelTooltipHideTimer()
     self:UpdateData()
 
-    tooltipFrame:ClearAllPoints()
-    tooltipFrame:SetPoint("BOTTOMLEFT", anchor, "TOPLEFT", 0, 4)
+    ns.AnchorTooltip(tooltipFrame, anchor, ns.db.communities.tooltipGrowDirection)
     tooltipFrame:SetScale(ns.db.communities.tooltipScale or 1.0)
 
     self:PopulateTooltip()
@@ -678,3 +715,162 @@ function CommunitiesBroker:ExecuteAction(action, member)
     local realmName = member.fullName and member.fullName:match("%-(.+)$") or GetRealmName()
     DDT:ExecuteAction(action, member.name, realmName, member.fullName or member.name, nil, tooltipFrame)
 end
+
+---------------------------------------------------------------------------
+-- Settings panel
+---------------------------------------------------------------------------
+
+CommunitiesBroker.settingsLabel = "Communities"
+
+function CommunitiesBroker:BuildSettingsPanel(panel)
+    local W = ns.SettingsWidgets
+    local r = panel.refreshCallbacks
+    local db = function() return ns.db.communities end
+    local refresh = function() self:UpdateData() end
+
+    -- Label Template
+    W.AddLabelEditBox(panel, "online",
+        function() return db().labelFormat end,
+        function(v) db().labelFormat = v; refresh() end, r, {
+        { "Default",  "Communities: <online>" },
+        { "Short",    "Comm: <online>" },
+        { "Labeled",  "<online> online" },
+    })
+
+    -- Tooltip (collapsed)
+    local body = W.AddSection(panel, "Tooltip", true)
+    local y = 0
+    y = W.AddSliderPair(body, y,
+        { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
+          get = function() return db().tooltipScale end,
+          set = function(v) db().tooltipScale = v end },
+        { label = "Width", min = 300, max = 800, step = 10,
+          get = function() return db().tooltipWidth end,
+          set = function(v) db().tooltipWidth = v end }, r)
+    y = W.AddSliderPair(body, y,
+        { label = "Row Spacing", min = 0, max = 16, step = 1,
+          get = function() return db().rowSpacing end,
+          set = function(v) db().rowSpacing = v end },
+        { label = "Max Height", min = 100, max = 1000, step = 10,
+          get = function() return db().tooltipMaxHeight end,
+          set = function(v) db().tooltipMaxHeight = v end }, r)
+    y = W.AddTooltipGrowDirection(body, y, db, r)
+    y = W.AddTooltipCopyFrom(body, y, "communities", db, r)
+    W.EndSection(panel, y)
+
+    -- Display
+    body = W.AddSection(panel, "Display")
+    y = 0
+    y = W.AddCheckboxPair(body, y, "Class-Colored Names",
+        function() return db().classColorNames end,
+        function(v) db().classColorNames = v; refresh() end,
+        "Show Hint Bar",
+        function() return db().showHintBar end,
+        function(v) db().showHintBar = v; refresh() end, r)
+    W.EndSection(panel, y)
+
+    -- Grouping & Sorting
+    body = W.AddSection(panel, "Grouping & Sorting")
+    y = 0
+    y = W.AddDropdown(body, y, "Group By", ns.COMMUNITIES_GROUP_VALUES,
+        function() return db().groupBy end,
+        function(v) db().groupBy = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Then By", ns.COMMUNITIES_GROUP_VALUES,
+        function() return db().groupBy2 end,
+        function(v) db().groupBy2 = v; refresh() end, r)
+    y = W.AddDropdown(body, y, "Sort By", { name = "Name", class = "Class", level = "Level", zone = "Zone", status = "Status" },
+        function() return db().sortBy end,
+        function(v) db().sortBy = v; refresh() end, r)
+    y = W.AddCheckbox(body, y, "Ascending Order",
+        function() return db().sortAscending end,
+        function(v) db().sortAscending = v; refresh() end, r)
+    W.EndSection(panel, y)
+
+    -- Label Click Actions (collapsed)
+    ns.AddModuleClickActionsSection(panel, r, "communities", ns.SOCIAL_LABEL_ACTION_VALUES)
+
+    -- Row Click Actions (collapsed)
+    ns.AddClickActionsSection(panel, r, "communities")
+
+    -- Social Settings (collapsed)
+    ns.AddSocialSettingsSection(panel, r)
+
+    -- Enabled Communities (dynamic section)
+    body = W.AddSection(panel, "Enabled Communities")
+    y = 0
+    y = W.AddDescription(body, y, "Uncheck a community to hide it from the tooltip. New communities are shown by default.")
+
+    local dynamicSection = panel.currentSection
+    local dynamicStart = y
+    local dynamicWidgets = {}
+
+    local function RebuildClubList()
+        for _, widget in ipairs(dynamicWidgets) do
+            widget:Hide()
+            widget:SetParent(nil)
+        end
+        wipe(dynamicWidgets)
+
+        local dy = dynamicStart
+        local clubs = C_Club.GetSubscribedClubs()
+        if type(clubs) ~= "table" then clubs = {} end
+
+        local communityClubs = {}
+        for _, clubInfo in ipairs(clubs) do
+            if type(clubInfo.name) == "string"
+               and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet) then
+                table.insert(communityClubs, clubInfo)
+            end
+        end
+        table.sort(communityClubs, function(a, b) return (a.name or "") < (b.name or "") end)
+
+        if #communityClubs == 0 then
+            local noClubs = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+            noClubs:SetPoint("TOPLEFT", body, "TOPLEFT", 18, dy)
+            noClubs:SetText("No communities found.")
+            table.insert(dynamicWidgets, noClubs)
+            dy = dy - 20
+        else
+            for _, clubInfo in ipairs(communityClubs) do
+                local cb = CreateFrame("CheckButton", nil, body, "UICheckButtonTemplate")
+                cb:SetPoint("TOPLEFT", body, "TOPLEFT", 14, dy)
+
+                local cbText = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+                cbText:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+                cbText:SetText(clubInfo.name)
+
+                local clubId = clubInfo.clubId
+                cb:SetChecked(not ns.db.communities.disabledClubs[clubId])
+                cb:SetScript("OnClick", function(self)
+                    if self:GetChecked() then
+                        ns.db.communities.disabledClubs[clubId] = nil
+                    else
+                        ns.db.communities.disabledClubs[clubId] = true
+                    end
+                    refresh()
+                end)
+
+                table.insert(dynamicWidgets, cb)
+                table.insert(dynamicWidgets, cbText)
+                dy = dy - 26
+            end
+        end
+
+        dynamicSection.bodyHeight = math.abs(dy) + 8
+        dynamicSection.body:SetHeight(dynamicSection.bodyHeight)
+        dynamicSection:UpdateLayout()
+    end
+
+    RebuildClubList()
+    panel.currentSection = nil  -- manual EndSection since height is dynamic
+
+    panel:HookScript("OnShow", function()
+        RebuildClubList()
+    end)
+end
+
+---------------------------------------------------------------------------
+-- Module registration
+---------------------------------------------------------------------------
+
+ns:RegisterModule("communities", CommunitiesBroker, DEFAULTS)
