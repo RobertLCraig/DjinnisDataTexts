@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 300
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -432,7 +431,7 @@ function Experience:BuildTooltipContent()
         lvlLine.value:SetText(playerLevel .. " / " .. maxLevel)
         lvlLine.value:SetTextColor(0.4, 0.78, 1)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     if not isMaxLevel then
         -- XP
@@ -443,7 +442,7 @@ function Experience:BuildTooltipContent()
         xpLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         xpLine.value:SetText(string.format("%s / %s (%.1f%%)", FormatNumber(currentXP), FormatNumber(maxXP), GetXPPercent()))
         xpLine.value:SetTextColor(0.58, 0.0, 0.82)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- XP bar
         y = y - 2
@@ -479,7 +478,7 @@ function Experience:BuildTooltipContent()
         remLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         remLine.value:SetText(FormatNumber(maxXP - currentXP))
         remLine.value:SetTextColor(0.7, 0.7, 0.7)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Rested XP
         if restedXP > 0 then
@@ -490,7 +489,7 @@ function Experience:BuildTooltipContent()
             restLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             restLine.value:SetText(string.format("%s (%.0f%%)", FormatNumber(restedXP), GetRestedPercent()))
             restLine.value:SetTextColor(0.0, 0.39, 0.88)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- XP per hour
@@ -506,7 +505,7 @@ function Experience:BuildTooltipContent()
             xphrLine.value:SetText("--")
             xphrLine.value:SetTextColor(0.5, 0.5, 0.5)
         end
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Time to level (at current XP/hr rate)
         if xpPerHour > 0 then
@@ -519,7 +518,7 @@ function Experience:BuildTooltipContent()
             ttlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             ttlLine.value:SetText(FormatDuration(secondsToLevel))
             ttlLine.value:SetTextColor(0.7, 0.7, 0.7)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- Quest XP (ready to turn in)
@@ -531,7 +530,7 @@ function Experience:BuildTooltipContent()
             qLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             qLine.value:SetText(string.format("%s (%.1f%%)", FormatNumber(questXPTotal), maxXP > 0 and (questXPTotal / maxXP * 100) or 0))
             qLine.value:SetTextColor(1.0, 0.82, 0.0)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- Session stats
@@ -544,7 +543,7 @@ function Experience:BuildTooltipContent()
             sessLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             sessLine.value:SetText(string.format("%s XP in %s", FormatNumber(totalXPGained), FormatDuration(GetTime() - sessionStartTime)))
             sessLine.value:SetTextColor(0.7, 0.7, 0.7)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     else
         c.xpBarBG:Hide()
@@ -575,7 +574,7 @@ function Experience:BuildTooltipContent()
         local sc = STANDING_COLORS[watchedFaction.standing] or { 0.7, 0.7, 0.7 }
         fLine.value:SetText(standingLabel)
         fLine.value:SetTextColor(sc[1], sc[2], sc[3])
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Rep progress
         local repRange = watchedFaction.barMax - watchedFaction.barMin
@@ -589,7 +588,7 @@ function Experience:BuildTooltipContent()
         rpLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         rpLine.value:SetText(string.format("%s / %s (%.1f%%)", FormatNumber(repCurrent), FormatNumber(repRange), repPct))
         rpLine.value:SetTextColor(sc[1], sc[2], sc[3])
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Rep bar
         y = y - 2

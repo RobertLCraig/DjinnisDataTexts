@@ -414,7 +414,6 @@ PreyTracker.dataobj = dataobj
 -- Tooltip
 ---------------------------------------------------------------------------
 
-local ROW_HEIGHT      = ns.ROW_HEIGHT
 local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
 
 local function GetOrCreateRow(parent, index)
@@ -424,18 +423,21 @@ local function GetOrCreateRow(parent, index)
     end
 
     local row = CreateFrame("Frame", nil, parent)
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     row.left = ns.FontString(row, "DDTFontNormal")
-    row.left:SetPoint("LEFT", row, "LEFT", 0, 0)
+    row.left:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
     row.left:SetJustifyH("LEFT")
+    row.left:SetJustifyV("TOP")
 
     row.mid = ns.FontString(row, "DDTFontSmall")
     row.mid:SetJustifyH("LEFT")
+    row.mid:SetJustifyV("TOP")
 
     row.right = ns.FontString(row, "DDTFontSmall")
-    row.right:SetPoint("RIGHT", row, "RIGHT", 0, 0)
+    row.right:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
     row.right:SetJustifyH("RIGHT")
+    row.right:SetJustifyV("TOP")
 
     rowPool[index] = row
     return row
@@ -463,21 +465,21 @@ function PreyTracker:PopulateTooltip()
 
     local rowIdx = 0
     local yOffset = 0
-    local rowStep = ROW_HEIGHT + 2
+    local rowStep = ns.ROW_HEIGHT + 2
 
     local function AddRow(leftText, midText, rightText, leftColor, midColor, rightColor)
         rowIdx = rowIdx + 1
         local row = GetOrCreateRow(sc, rowIdx)
         row:ClearAllPoints()
         row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
-        row:SetSize(innerWidth, ROW_HEIGHT)
 
         row.left:SetWidth(nameW)
+        row.left:SetWordWrap(true)
         row.left:SetText(leftText or "")
         if leftColor then row.left:SetTextColor(unpack(leftColor)) else row.left:SetTextColor(1, 1, 1) end
 
         row.mid:ClearAllPoints()
-        row.mid:SetPoint("LEFT", row.left, "RIGHT", 4, 0)
+        row.mid:SetPoint("TOPLEFT", row.left, "TOPRIGHT", 4, 0)
         row.mid:SetWidth(zoneW)
         row.mid:SetText(midText or "")
         if midColor then row.mid:SetTextColor(unpack(midColor)) else row.mid:SetTextColor(0.63, 0.82, 1) end
@@ -486,7 +488,11 @@ function PreyTracker:PopulateTooltip()
         row.right:SetText(rightText or "")
         if rightColor then row.right:SetTextColor(unpack(rightColor)) else row.right:SetTextColor(0.7, 0.7, 0.7) end
 
-        yOffset = yOffset - rowStep
+        -- Measure actual text height (accounts for word-wrap)
+        local textH = math.max(row.left:GetStringHeight(), ns.ROW_HEIGHT)
+        row:SetSize(innerWidth, textH)
+
+        yOffset = yOffset - textH - 2
     end
 
     -- Active hunt
@@ -545,7 +551,7 @@ function PreyTracker:PopulateTooltip()
     -- Hint bar
     tooltipFrame.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))
 
-    local contentH = math.max(math.abs(yOffset), ROW_HEIGHT)
+    local contentH = math.max(math.abs(yOffset), ns.ROW_HEIGHT)
     tooltipFrame:FinalizeLayout(tooltipWidth, contentH)
 end
 

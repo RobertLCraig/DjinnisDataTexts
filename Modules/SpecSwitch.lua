@@ -36,7 +36,6 @@ local separatorPool = {}
 
 -- Layout constants
 local TOOLTIP_WIDTH  = 280
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local ICON_SIZE      = 18
@@ -468,7 +467,7 @@ local function GetRow(parent, index)
     end
 
     local row = CreateFrame("Button", nil, parent)
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     -- Highlight
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
@@ -494,7 +493,7 @@ local function GetRow(parent, index)
     -- Active indicator
     row.activeBar = row:CreateTexture(nil, "BACKGROUND")
     row.activeBar:SetPoint("LEFT", row, "LEFT", 0, 0)
-    row.activeBar:SetSize(3, ROW_HEIGHT - 4)
+    row.activeBar:SetSize(3, ns.ROW_HEIGHT - 4)
     row.activeBar:SetColorTexture(0.2, 0.8, 0.2, 0.8)
 
     row:SetScript("OnEnter", function(self)
@@ -600,7 +599,7 @@ function SpecSwitch:BuildTooltipContent()
             SwitchToSpec(specIndex)
         end)
 
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- ── Talent Loadouts ──────────────────────────────────────
@@ -645,7 +644,7 @@ function SpecSwitch:BuildTooltipContent()
             end
 
             row:SetScript("OnClick", nil) -- starter can't be loaded via API
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         for _, loadout in ipairs(currentLoadouts) do
@@ -684,7 +683,7 @@ function SpecSwitch:BuildTooltipContent()
                 end
             end)
 
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 
@@ -735,7 +734,7 @@ function SpecSwitch:BuildTooltipContent()
         end
         SetLootSpecialization(0)
     end)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Per-spec loot options
     for i, spec in ipairs(self.specCache) do
@@ -768,7 +767,7 @@ function SpecSwitch:BuildTooltipContent()
             end
             SetLootSpecialization(specID)
         end)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint bar: resolve spec1/2/3/4 to actual spec names for display

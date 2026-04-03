@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 260
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 
@@ -291,7 +290,7 @@ function TimeDate:BuildTooltipContent()
     dateLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     dateLine.value:SetText(GetDateString(db.dateTimeFormat))
     dateLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Server time
     local sHour, sMin = GetGameTime()
@@ -302,7 +301,7 @@ function TimeDate:BuildTooltipContent()
     serverLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     serverLine.value:SetText(FormatTime(sHour, sMin, nil, use24h, false))
     serverLine.value:SetTextColor(0.4, 0.78, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Local time
     local lTime = date("*t")
@@ -313,7 +312,7 @@ function TimeDate:BuildTooltipContent()
     localLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     localLine.value:SetText(FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true))
     localLine.value:SetTextColor(0.4, 0.78, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Separator
     y = y - 4
@@ -327,7 +326,7 @@ function TimeDate:BuildTooltipContent()
     dailyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     dailyLine.value:SetText(FormatCountdown(dailyReset))
     dailyLine.value:SetTextColor(0.0, 1.0, 0.0)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Weekly reset
     local weeklyReset = C_DateAndTime.GetSecondsUntilWeeklyReset and C_DateAndTime.GetSecondsUntilWeeklyReset() or 0
@@ -338,7 +337,7 @@ function TimeDate:BuildTooltipContent()
     weeklyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     weeklyLine.value:SetText(FormatCountdown(weeklyReset))
     weeklyLine.value:SetTextColor(1.0, 0.82, 0.0)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Calendar events / holidays
     if C_Calendar and C_Calendar.GetNumDayEvents then
@@ -382,7 +381,7 @@ function TimeDate:BuildTooltipContent()
                     end
                     evLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                     evLine.value:SetText("")
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             end
         end

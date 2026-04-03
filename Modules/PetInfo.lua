@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 300
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -332,7 +331,7 @@ function PetInfo:BuildTooltipContent()
         statusLine.value:SetText("Locked")
         statusLine.value:SetTextColor(1.0, 0.2, 0.2)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Battle capability
     lineIdx = lineIdx + 1
@@ -350,7 +349,7 @@ function PetInfo:BuildTooltipContent()
         battleLine.value:SetText("Disabled")
         battleLine.value:SetTextColor(1.0, 0.5, 0.0)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Find Battle queue
     lineIdx = lineIdx + 1
@@ -369,7 +368,7 @@ function PetInfo:BuildTooltipContent()
         queueLine.value:SetText("Unavailable")
         queueLine.value:SetTextColor(0.5, 0.5, 0.5)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Collection stats
     if db.showCollection and journalUnlocked then
@@ -393,7 +392,7 @@ function PetInfo:BuildTooltipContent()
         local pct = numPetsTotal > 0 and math.floor(numPetsOwned / numPetsTotal * 100) or 0
         collLine.value:SetText(string.format("%d / %d  (%d%%)", numPetsOwned, numPetsTotal, pct))
         collLine.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Max level
         lineIdx = lineIdx + 1
@@ -404,7 +403,7 @@ function PetInfo:BuildTooltipContent()
         maxLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         maxLine.value:SetText(tostring(numMaxLevel))
         maxLine.value:SetTextColor(1.0, 0.82, 0.0)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Rare quality
         lineIdx = lineIdx + 1
@@ -415,7 +414,7 @@ function PetInfo:BuildTooltipContent()
         rareLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         rareLine.value:SetText(tostring(numRareQuality))
         rareLine.value:SetTextColor(0.0, 0.44, 0.87)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Favorites
         lineIdx = lineIdx + 1
@@ -426,7 +425,7 @@ function PetInfo:BuildTooltipContent()
         favLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         favLine.value:SetText(tostring(favoriteCount))
         favLine.value:SetTextColor(0.9, 0.9, 0.9)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     elseif not journalUnlocked then
         y = y - 4
 
@@ -436,7 +435,7 @@ function PetInfo:BuildTooltipContent()
         lockInfo.label:SetText("|cff888888Pet Journal is locked on this account.|r")
         lockInfo.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         lineIdx = lineIdx + 1
         local lockInfo2 = GetLine(c, lineIdx)
@@ -444,7 +443,7 @@ function PetInfo:BuildTooltipContent()
         lockInfo2.label:SetText("|cff888888Pet battles, summoning, and caging|r")
         lockInfo2.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo2.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         lineIdx = lineIdx + 1
         local lockInfo3 = GetLine(c, lineIdx)
@@ -452,7 +451,7 @@ function PetInfo:BuildTooltipContent()
         lockInfo3.label:SetText("|cff888888are unavailable.|r")
         lockInfo3.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lockInfo3.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint

@@ -113,7 +113,6 @@ local headerPool   = {}
 local separatorPool = {}
 
 -- Layout
-local ROW_HEIGHT    = 20
 local HEADER_HEIGHT = 18
 local PADDING       = 10
 local ICON_SIZE     = 18
@@ -1038,7 +1037,7 @@ local function GetRow(parent, index)
     end
     local row = CreateFrame("Button", nil, parent)
     row:RegisterForClicks("AnyUp")
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
     row.highlight:SetAllPoints()
     row.highlight:SetColorTexture(1, 1, 1, 0.08)
@@ -1058,7 +1057,7 @@ local function GetRow(parent, index)
 
     row.activeBar = row:CreateTexture(nil, "BACKGROUND")
     row.activeBar:SetPoint("LEFT", row, "LEFT", 0, 0)
-    row.activeBar:SetSize(3, ROW_HEIGHT - 4)
+    row.activeBar:SetSize(3, ns.ROW_HEIGHT - 4)
     row.activeBar:SetColorTexture(0.2, 0.8, 0.2, 0.8)
 
     row:SetScript("OnEnter", function() MajesticBeast:CancelHideTimer() end)
@@ -1103,7 +1102,7 @@ local function GetLureButton(parent, index)
 
     local row = CreateFrame("Button", "DDTMBLure" .. index, parent, "SecureActionButtonTemplate")
     row:RegisterForClicks("AnyUp", "AnyDown")
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
     row.highlight:SetAllPoints()
@@ -1124,7 +1123,7 @@ local function GetLureButton(parent, index)
 
     row.activeBar = row:CreateTexture(nil, "BACKGROUND")
     row.activeBar:SetPoint("LEFT", row, "LEFT", 0, 0)
-    row.activeBar:SetSize(3, ROW_HEIGHT - 4)
+    row.activeBar:SetSize(3, ns.ROW_HEIGHT - 4)
     row.activeBar:SetColorTexture(0.2, 0.8, 0.2, 0.8)
 
     row:SetScript("OnEnter", function() MajesticBeast:CancelHideTimer() end)
@@ -1193,7 +1192,7 @@ local function GetConsButton(parent, index)
     local cons = CONSUMABLES[index]
     local row = CreateFrame("Button", "DDTMBCons" .. index, parent, "SecureActionButtonTemplate")
     row:RegisterForClicks("AnyUp", "AnyDown")
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
     row.highlight:SetAllPoints()
@@ -1214,7 +1213,7 @@ local function GetConsButton(parent, index)
 
     row.activeBar = row:CreateTexture(nil, "BACKGROUND")
     row.activeBar:SetPoint("LEFT", row, "LEFT", 0, 0)
-    row.activeBar:SetSize(3, ROW_HEIGHT - 4)
+    row.activeBar:SetSize(3, ns.ROW_HEIGHT - 4)
     row.activeBar:SetColorTexture(0.2, 0.8, 0.2, 0.8)
 
     row:SetScript("OnEnter", function() MajesticBeast:CancelHideTimer() end)
@@ -1340,7 +1339,7 @@ function MajesticBeast:BuildTooltipContent()
                 names[#names + 1] = cc .. charName:sub(1, 4) .. "|r"
             end
             hdrRow.status:SetText(table.concat(names, " "))
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         local charData = chars and chars[self.charKey]
@@ -1421,7 +1420,7 @@ function MajesticBeast:BuildTooltipContent()
                 row.activeBar:Show()
             end
 
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- Consumable buffs row
@@ -1462,7 +1461,7 @@ function MajesticBeast:BuildTooltipContent()
             row.text:SetText(cons.name)
             row.text:SetTextColor(0.9, 0.9, 0.9)
             row.status:SetText(buffStatus)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 
@@ -1508,7 +1507,7 @@ function MajesticBeast:BuildTooltipContent()
                 row.text:SetText(itemName)
                 row.text:SetTextColor(0.9, 0.9, 0.9)
                 row.status:SetText("|cffff9900Need " .. count .. "|r")
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         end
     end
@@ -1571,7 +1570,7 @@ function MajesticBeast:BuildTooltipContent()
                     priceStr = "  " .. ns.FormatGoldShort(price)
                 end
                 row.status:SetText("x" .. entry.count .. priceStr)
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         end
     end
@@ -1627,7 +1626,7 @@ function MajesticBeast:BuildTooltipContent()
                             row.text:SetTextColor(0.9, 0.9, 0.9)
                         end
                     end
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             end
         end
@@ -1653,7 +1652,7 @@ function MajesticBeast:BuildTooltipContent()
     resetRow.text:SetTextColor(0.6, 0.6, 0.6)
     local secsUntilReset = C_DateAndTime.GetSecondsUntilDailyReset()
     resetRow.status:SetText(FormatTimeLeft(secsUntilReset))
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Hint bar
     local hintText = DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS)

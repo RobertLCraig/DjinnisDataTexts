@@ -44,7 +44,6 @@ local expandedAlts = {}
 
 -- Layout constants
 local TOOLTIP_WIDTH   = 380
-local ROW_HEIGHT      = 20
 local BOSS_ROW_HEIGHT = 16
 local HEADER_HEIGHT   = 18
 local PADDING         = 10
@@ -760,7 +759,7 @@ local function GetRow(parent, index)
     end
 
     local row = CreateFrame("Button", nil, parent)
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     -- Highlight
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
@@ -796,7 +795,7 @@ local function GetRow(parent, index)
     -- Extended indicator (left bar)
     row.extendedBar = row:CreateTexture(nil, "BACKGROUND")
     row.extendedBar:SetPoint("LEFT", row, "LEFT", 0, 0)
-    row.extendedBar:SetSize(3, ROW_HEIGHT - 4)
+    row.extendedBar:SetSize(3, ns.ROW_HEIGHT - 4)
     row.extendedBar:SetColorTexture(0.3, 1, 0.3, 0.8)
 
     -- Boss sub-row support
@@ -852,7 +851,7 @@ local function RenderAltLockoutRow(c, rowIndex, y, lo, elapsed)
     local lrow = GetRow(c, rowIndex)
     lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
     lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-    lrow:SetHeight(ROW_HEIGHT)
+    lrow:SetHeight(ns.ROW_HEIGHT)
     lrow.isBossRow = false
 
     lrow.nameText:SetText(lo.name)
@@ -889,7 +888,7 @@ local function RenderAltLockoutRow(c, rowIndex, y, lo, elapsed)
     if lo.extended then lrow.extendedBar:Show() else lrow.extendedBar:Hide() end
     lrow:SetScript("OnClick", nil)
 
-    return rowIndex, y - ROW_HEIGHT
+    return rowIndex, y - ns.ROW_HEIGHT
 end
 
 ---------------------------------------------------------------------------
@@ -1208,7 +1207,7 @@ local function AddInstanceRow(c, rowIndex, y, entry)
     local row = GetRow(c, rowIndex)
     row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
     row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
     row.isBossRow = false
 
     -- Name
@@ -1257,7 +1256,7 @@ local function AddInstanceRow(c, rowIndex, y, entry)
         SavedInst:BuildTooltipContent()
     end)
 
-    return rowIndex, y - ROW_HEIGHT
+    return rowIndex, y - ns.ROW_HEIGHT
 end
 
 local function AddBossRow(c, rowIndex, y, boss)
@@ -1474,7 +1473,7 @@ function SavedInst:BuildTooltipContent()
                     local row = GetRow(c, rowIndex)
                     row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                     row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                    row:SetHeight(ROW_HEIGHT)
+                    row:SetHeight(ns.ROW_HEIGHT)
 
                     row.nameText:SetText(raidName)
                     row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1489,7 +1488,7 @@ function SavedInst:BuildTooltipContent()
                     row:SetScript("OnClick", nil)
                     if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName, #entries) end
 
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             else
                 -- Full view
@@ -1596,7 +1595,7 @@ function SavedInst:BuildTooltipContent()
                 local row = GetRow(c, rowIndex)
                 row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                 row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                row:SetHeight(ROW_HEIGHT)
+                row:SetHeight(ns.ROW_HEIGHT)
 
                 row.nameText:SetText(dungeonName)
                 row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1612,7 +1611,7 @@ function SavedInst:BuildTooltipContent()
                 -- Highest key for this dungeon (runs are sorted desc)
                 if numAltCols > 0 then SetAltColumnsForMPlus(row, dungeonName, runs[1].level) end
 
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         else
             -- Full view: one row per run
@@ -1621,7 +1620,7 @@ function SavedInst:BuildTooltipContent()
                 local row = GetRow(c, rowIndex)
                 row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                 row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                row:SetHeight(ROW_HEIGHT)
+                row:SetHeight(ns.ROW_HEIGHT)
 
                 row.nameText:SetText(run.name)
                 row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1641,7 +1640,7 @@ function SavedInst:BuildTooltipContent()
                 row:SetScript("OnClick", nil)
                 if numAltCols > 0 then SetAltColumnsForMPlus(row, run.name, run.level) end
 
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         end
     end
@@ -1705,7 +1704,7 @@ function SavedInst:BuildTooltipContent()
                     local row = GetRow(c, rowIndex)
                     row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                     row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                    row:SetHeight(ROW_HEIGHT)
+                    row:SetHeight(ns.ROW_HEIGHT)
 
                     row.nameText:SetText(delveName)
                     row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1719,7 +1718,7 @@ function SavedInst:BuildTooltipContent()
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
 
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             else
                 -- Condensed without tracked names: single row with tier breakdown
@@ -1737,7 +1736,7 @@ function SavedInst:BuildTooltipContent()
                 local row = GetRow(c, rowIndex)
                 row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                 row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                row:SetHeight(ROW_HEIGHT)
+                row:SetHeight(ns.ROW_HEIGHT)
 
                 row.nameText:SetText("All Delves")
                 row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1751,7 +1750,7 @@ function SavedInst:BuildTooltipContent()
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
 
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         else
             if hasTrackedNames then
@@ -1785,7 +1784,7 @@ function SavedInst:BuildTooltipContent()
                     local row = GetRow(c, rowIndex)
                     row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                     row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                    row:SetHeight(ROW_HEIGHT)
+                    row:SetHeight(ns.ROW_HEIGHT)
 
                     row.nameText:SetText(run.name)
                     row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1800,7 +1799,7 @@ function SavedInst:BuildTooltipContent()
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
 
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             else
                 -- Full view without tracked names: one row per tier (aggregate)
@@ -1810,7 +1809,7 @@ function SavedInst:BuildTooltipContent()
                     local row = GetRow(c, rowIndex)
                     row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
                     row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                    row:SetHeight(ROW_HEIGHT)
+                    row:SetHeight(ns.ROW_HEIGHT)
 
                     row.nameText:SetText("Delve")
                     row.nameText:SetTextColor(0.9, 0.9, 0.9)
@@ -1825,7 +1824,7 @@ function SavedInst:BuildTooltipContent()
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
 
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             end
         end
@@ -1946,7 +1945,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
         local row = GetRow(c, rowIndex)
         row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
         row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-        row:SetHeight(ROW_HEIGHT)
+        row:SetHeight(ns.ROW_HEIGHT)
         row.isBossRow = false
 
         row.nameText:SetText(arrow .. DDT:ClassColorText(altData.name or alt.key, (altData.class or ""):upper()))
@@ -1964,7 +1963,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
             SavedInst:BuildTooltipContent()
         end)
 
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Expanded: show individual lockout rows
         if isExpanded then
@@ -1997,7 +1996,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                     local lrow = GetRow(c, rowIndex)
                     lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
                     lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                    lrow:SetHeight(ROW_HEIGHT)
+                    lrow:SetHeight(ns.ROW_HEIGHT)
                     lrow.isBossRow = false
 
                     lrow.nameText:SetText(run.name)
@@ -2009,7 +2008,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                     lrow.extendedBar:Hide()
                     lrow:SetScript("OnClick", nil)
 
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             end
 
@@ -2025,7 +2024,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                         local lrow = GetRow(c, rowIndex)
                         lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
                         lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                        lrow:SetHeight(ROW_HEIGHT)
+                        lrow:SetHeight(ns.ROW_HEIGHT)
                         lrow.isBossRow = false
 
                         lrow.nameText:SetText(run.name)
@@ -2037,7 +2036,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                         lrow.extendedBar:Hide()
                         lrow:SetScript("OnClick", nil)
 
-                        y = y - ROW_HEIGHT
+                        y = y - ns.ROW_HEIGHT
                     end
                 else
                     for _, run in ipairs(altDvRuns) do
@@ -2045,7 +2044,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                         local lrow = GetRow(c, rowIndex)
                         lrow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 12, y)
                         lrow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
-                        lrow:SetHeight(ROW_HEIGHT)
+                        lrow:SetHeight(ns.ROW_HEIGHT)
                         lrow.isBossRow = false
 
                         lrow.nameText:SetText("Delve")
@@ -2058,7 +2057,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
                         lrow.extendedBar:Hide()
                         lrow:SetScript("OnClick", nil)
 
-                        y = y - ROW_HEIGHT
+                        y = y - ns.ROW_HEIGHT
                     end
                 end
             end

@@ -18,7 +18,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 320
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -462,7 +461,7 @@ function MoveSpeed:BuildTooltipContent()
     curLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     curLine.value:SetText(string.format("%.0f%%  (%.1f yd/s)", currentPercent, currentSpeed))
     curLine.value:SetTextColor(0.4, 0.78, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     y = y - 4
 
@@ -474,7 +473,7 @@ function MoveSpeed:BuildTooltipContent()
     runLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     runLine.value:SetText(FormatSpeed(runPercent))
     runLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Flying speed
     if flyPercent > 0 then
@@ -485,7 +484,7 @@ function MoveSpeed:BuildTooltipContent()
         flyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         flyLine.value:SetText(FormatSpeed(flyPercent))
         flyLine.value:SetTextColor(0.9, 0.9, 0.9)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Swimming speed
@@ -496,7 +495,7 @@ function MoveSpeed:BuildTooltipContent()
     swimLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     swimLine.value:SetText(FormatSpeed(swimPercent))
     swimLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Gliding speed (if currently skyriding)
     if isGliding and glideSpeed > 0 then
@@ -507,7 +506,7 @@ function MoveSpeed:BuildTooltipContent()
         glideLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         glideLine.value:SetText(string.format("%.0f%%  (%.1f yd/s)", glideSpeed / BASE_SPEED * 100, glideSpeed))
         glideLine.value:SetTextColor(0.0, 1.0, 0.5)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Active speed buffs
@@ -540,7 +539,7 @@ function MoveSpeed:BuildTooltipContent()
                 row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 row.value:SetText(CATEGORY_LABELS[buff.cat] or "")
                 row.value:SetTextColor(0.5, 0.5, 0.5)
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         else
             y = y - 4
@@ -550,7 +549,7 @@ function MoveSpeed:BuildTooltipContent()
             noBuff.label:SetText("|cff888888No speed effects active|r")
             noBuff.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             noBuff.value:SetText("")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- Speed source reference
@@ -579,7 +578,7 @@ function MoveSpeed:BuildTooltipContent()
             srcRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             srcRow.value:SetText(src[2])
             srcRow.value:SetTextColor(0.6, 0.6, 0.6)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 

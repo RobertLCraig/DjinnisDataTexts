@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 320
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 
@@ -438,7 +437,7 @@ function SysPerf:BuildTooltipContent()
     fpsLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     fpsLine.value:SetText(string.format("%.0f fps", fps))
     fpsLine.value:SetTextColor(FPSColor(fps))
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Home latency
     lineIdx = lineIdx + 1
@@ -448,7 +447,7 @@ function SysPerf:BuildTooltipContent()
     homeLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     homeLine.value:SetText(latencyHome .. " ms")
     homeLine.value:SetTextColor(LatencyColor(latencyHome))
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- World latency
     lineIdx = lineIdx + 1
@@ -458,7 +457,7 @@ function SysPerf:BuildTooltipContent()
     worldLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     worldLine.value:SetText(latencyWorld .. " ms")
     worldLine.value:SetTextColor(LatencyColor(latencyWorld))
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Separator
     y = y - 4
@@ -471,7 +470,7 @@ function SysPerf:BuildTooltipContent()
     memLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     memLine.value:SetText(FormatMemory(memoryTotal))
     memLine.value:SetTextColor(0.4, 0.78, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Top addons (memory)
     if db.showTopAddons and #addonMemory > 0 then
@@ -497,7 +496,7 @@ function SysPerf:BuildTooltipContent()
             row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             row.value:SetText(FormatMemory(addon.memory))
             row.value:SetTextColor(0.6, 0.6, 0.6)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 
@@ -515,7 +514,7 @@ function SysPerf:BuildTooltipContent()
             cpuHdr.label:SetText("|cffffd100CPU Profiling|r")
             cpuHdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             cpuHdr.value:SetText("|cffff3333Not Available|r")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             lineIdx = lineIdx + 1
             local note = GetLine(c, lineIdx)
@@ -523,7 +522,7 @@ function SysPerf:BuildTooltipContent()
             note.label:SetText("|cff888888C_AddOnProfiler not enabled in this session.|r")
             note.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             note.value:SetText("")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         else
             -- Overall CPU summary row
             lineIdx = lineIdx + 1
@@ -542,7 +541,7 @@ function SysPerf:BuildTooltipContent()
             curLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             curLine.value:SetText(FormatCPU(overallCPU.current))
             curLine.value:SetTextColor(CPUColor(overallCPU.current))
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             lineIdx = lineIdx + 1
             local avgLine = GetLine(c, lineIdx)
@@ -551,7 +550,7 @@ function SysPerf:BuildTooltipContent()
             avgLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             avgLine.value:SetText(FormatCPU(overallCPU.average))
             avgLine.value:SetTextColor(CPUColor(overallCPU.average))
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             lineIdx = lineIdx + 1
             local encLine = GetLine(c, lineIdx)
@@ -565,7 +564,7 @@ function SysPerf:BuildTooltipContent()
             else
                 encLine.value:SetTextColor(0.5, 0.5, 0.5)
             end
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             lineIdx = lineIdx + 1
             local pkLine = GetLine(c, lineIdx)
@@ -574,7 +573,7 @@ function SysPerf:BuildTooltipContent()
             pkLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             pkLine.value:SetText(FormatCPU(overallCPU.peak))
             pkLine.value:SetTextColor(CPUColor(overallCPU.peak))
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             -- Per-addon CPU breakdown
             if #addonCPU > 0 then
@@ -606,7 +605,7 @@ function SysPerf:BuildTooltipContent()
                     row.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                     row.value:SetText(FormatCPU(val))
                     row.value:SetTextColor(CPUColor(val))
-                    y = y - ROW_HEIGHT
+                    y = y - ns.ROW_HEIGHT
                 end
             end
         end

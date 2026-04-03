@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 360
-local ROW_HEIGHT     = 20
 local PADDING        = 10
 
 -- State
@@ -670,7 +669,7 @@ local function GetLine(parent, index)
     end
 
     local frame = CreateFrame("Button", nil, parent)
-    frame:SetHeight(ROW_HEIGHT)
+    frame:SetHeight(ns.ROW_HEIGHT)
     frame:RegisterForClicks("AnyUp")
 
     local highlight = frame:CreateTexture(nil, "HIGHLIGHT")
@@ -743,7 +742,7 @@ function ItemLevel:BuildTooltipContent()
     summaryLine.status:SetText("")
     summaryLine.durability:SetText("")
     summaryLine.frame:SetScript("OnClick", nil)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     if overallIlvl ~= equippedIlvl then
         lineIdx = lineIdx + 1
@@ -755,7 +754,7 @@ function ItemLevel:BuildTooltipContent()
         overallLine.status:SetText("")
         overallLine.durability:SetText("")
         overallLine.frame:SetScript("OnClick", nil)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Durability summary
@@ -785,7 +784,7 @@ function ItemLevel:BuildTooltipContent()
             durLine.status:SetText("")
             durLine.durability:SetText("|c" .. durColor .. pct .. "%|r")
             durLine.frame:SetScript("OnClick", nil)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 
@@ -868,7 +867,7 @@ function ItemLevel:BuildTooltipContent()
                     ItemLevel:ExecuteRowAction(act, capturedInfo, capturedSlot)
                 end)
 
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         end
 
@@ -890,7 +889,7 @@ function ItemLevel:BuildTooltipContent()
             enchLine.frame:SetScript("OnClick", nil)
             enchLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
             enchLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         if db.showMissingGems ~= false and #missingGems > 0 then
@@ -911,7 +910,7 @@ function ItemLevel:BuildTooltipContent()
             gemLine.frame:SetScript("OnClick", nil)
             gemLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
             gemLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         -- Needs Repair summary
@@ -939,7 +938,7 @@ function ItemLevel:BuildTooltipContent()
                 repLine.frame:SetScript("OnClick", nil)
                 repLine.frame:SetScript("OnEnter", function() ItemLevel:CancelHideTimer() end)
                 repLine.frame:SetScript("OnLeave", function() ItemLevel:StartHideTimer() end)
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
             end
         end
     end

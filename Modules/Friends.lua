@@ -57,7 +57,6 @@ FriendsBroker.totalCount = 0
 -- Tooltip frame and row pool
 local tooltipFrame = nil
 local rowPool = {}
-local ROW_HEIGHT      = ns.ROW_HEIGHT
 local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
 
 local STATUS_STRINGS = {
@@ -336,7 +335,7 @@ local function GetOrCreateRow(parent, index)
     end
 
     local row = CreateFrame("Button", nil, parent)
-    row:SetSize(360, ROW_HEIGHT)
+    row:SetSize(360, ns.ROW_HEIGHT)
     row:EnableMouse(true)
     row:RegisterForClicks("AnyUp")
 
@@ -345,24 +344,30 @@ local function GetOrCreateRow(parent, index)
     row.highlight:SetColorTexture(1, 1, 1, 0.1)
 
     row.nameText = ns.FontString(row, "DDTFontNormal")
-    row.nameText:SetPoint("LEFT", row, "LEFT", 0, 0)
+    row.nameText:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
     row.nameText:SetWidth(130)
     row.nameText:SetJustifyH("LEFT")
+    row.nameText:SetJustifyV("TOP")
+    row.nameText:SetWordWrap(true)
 
     row.levelText = ns.FontString(row, "DDTFontNormal")
-    row.levelText:SetPoint("LEFT", row.nameText, "RIGHT", 4, 0)
+    row.levelText:SetPoint("TOPLEFT", row.nameText, "TOPRIGHT", 4, 0)
     row.levelText:SetWidth(30)
     row.levelText:SetJustifyH("CENTER")
+    row.levelText:SetJustifyV("TOP")
 
     row.zoneText = ns.FontString(row, "DDTFontNormal")
-    row.zoneText:SetPoint("LEFT", row.levelText, "RIGHT", 4, 0)
+    row.zoneText:SetPoint("TOPLEFT", row.levelText, "TOPRIGHT", 4, 0)
     row.zoneText:SetWidth(130)
     row.zoneText:SetJustifyH("LEFT")
+    row.zoneText:SetJustifyV("TOP")
+    row.zoneText:SetWordWrap(true)
 
     row.noteText = ns.FontString(row, "DDTFontSmall")
-    row.noteText:SetPoint("LEFT", row.zoneText, "RIGHT", 4, 0)
+    row.noteText:SetPoint("TOPLEFT", row.zoneText, "TOPRIGHT", 4, 0)
     row.noteText:SetJustifyH("LEFT")
-    row.noteText:SetWordWrap(false)
+    row.noteText:SetJustifyV("TOP")
+    row.noteText:SetWordWrap(true)
 
     row:SetScript("OnMouseUp", function(self, button)
         FriendsBroker:OnRowClick(self, button)
@@ -455,7 +460,7 @@ function FriendsBroker:PopulateTooltip()
     end
 
     local rowSpacing = db.rowSpacing or 4
-    local rowStep = ROW_HEIGHT + rowSpacing
+    local rowStep = ns.ROW_HEIGHT + rowSpacing
     local groupBy = db.groupBy or "none"
     local groups, groupOrder = self:BuildGroups(onlineFriends, groupBy)
 
@@ -497,7 +502,11 @@ function FriendsBroker:PopulateTooltip()
         row.zoneText:SetText(DDT:ColorText(friend.area, 0.63, 0.82, 1))
         row.noteText:SetText(friend.notes or "")
 
-        yOffset = yOffset - rowStep
+        -- Measure actual text height (accounts for word-wrap)
+        local textH = math.max(row.nameText:GetStringHeight(), row.zoneText:GetStringHeight(), row.noteText:GetStringHeight(), ns.ROW_HEIGHT)
+        row:SetHeight(textH)
+
+        yOffset = yOffset - textH - rowSpacing
     end
 
     if groupBy == "none" then
@@ -564,7 +573,7 @@ function FriendsBroker:PopulateTooltip()
         yOffset = yOffset - rowStep
     end
 
-    local contentH = math.max(math.abs(yOffset), ROW_HEIGHT)
+    local contentH = math.max(math.abs(yOffset), ns.ROW_HEIGHT)
     tooltipFrame:FinalizeLayout(tooltipWidth, contentH)
 end
 

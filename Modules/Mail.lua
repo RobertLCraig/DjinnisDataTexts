@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 300
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 
@@ -278,7 +277,7 @@ function Mail:BuildTooltipContent()
         statusLine.value:SetText("No new mail")
         statusLine.value:SetTextColor(0.5, 0.5, 0.5)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Mail items (only available when mailbox has been opened)
     local db = self:GetDB()
@@ -302,7 +301,7 @@ function Mail:BuildTooltipContent()
                 moreRow.label:SetText("|cff888888... and " .. (#mailItems - 15) .. " more|r")
                 moreRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
                 moreRow.value:SetText("")
-                y = y - ROW_HEIGHT
+                y = y - ns.ROW_HEIGHT
                 break
             end
 
@@ -338,7 +337,7 @@ function Mail:BuildTooltipContent()
                 end
             end
 
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     elseif mailboxOpen then
         lineIdx = lineIdx + 1
@@ -347,7 +346,7 @@ function Mail:BuildTooltipContent()
         emptyLine.label:SetText("|cff888888Mailbox is empty.|r")
         emptyLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         emptyLine.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     else
         lineIdx = lineIdx + 1
         local notOpenLine = GetLine(c, lineIdx)
@@ -355,7 +354,7 @@ function Mail:BuildTooltipContent()
         notOpenLine.label:SetText("|cff888888Visit a mailbox to see details.|r")
         notOpenLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         notOpenLine.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint

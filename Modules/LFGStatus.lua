@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 360
-local ROW_HEIGHT     = 20
 
 -- State
 local activeQueues = {}   -- { {category, categoryName, mode, instanceName, waitTime, queuedTime} }
@@ -482,7 +481,7 @@ function LFGStatus:BuildTooltipContent()
         hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("Queued as: " .. roleString)
         hdr.value:SetTextColor(0.8, 0.8, 0.8)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Show assigned role prominently when known
         if assignedRole then
@@ -494,7 +493,7 @@ function LFGStatus:BuildTooltipContent()
             assignLine.label:SetText(roleIcon .. " |cff00ff00Assigned as: " .. roleLabel .. "|r")
             assignLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             assignLine.value:SetText("")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         for _, q in ipairs(activeQueues) do
@@ -515,7 +514,7 @@ function LFGStatus:BuildTooltipContent()
             catLine.label:SetTextColor(1, 0.82, 0)
             catLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             catLine.value:SetText("")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
 
             -- Row 2: instance name + wait/elapsed
             lineIdx = lineIdx + 1
@@ -534,7 +533,7 @@ function LFGStatus:BuildTooltipContent()
             instLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             instLine.value:SetText(table.concat(timeParts, " / "))
             instLine.value:SetTextColor(0.7, 0.7, 0.7)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         y = y - 4
@@ -550,7 +549,7 @@ function LFGStatus:BuildTooltipContent()
         hdr.label:SetText("|cff66c7ffPremade Applications|r")
         hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         for _, app in ipairs(pendingApps) do
             lineIdx = lineIdx + 1
@@ -572,7 +571,7 @@ function LFGStatus:BuildTooltipContent()
             line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             line.value:SetText(rightText)
             line.value:SetTextColor(unpack(statusColor))
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         y = y - 4
@@ -588,7 +587,7 @@ function LFGStatus:BuildTooltipContent()
         hdr.label:SetText("|cff66c7ffYour Listed Group|r")
         hdr.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         hdr.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         lineIdx = lineIdx + 1
         local line = GetLine(c, lineIdx)
@@ -603,7 +602,7 @@ function LFGStatus:BuildTooltipContent()
         local n = activeEntry.numApplicants
         line.value:SetText(n .. " applicant" .. (n ~= 1 and "s" or ""))
         line.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         y = y - 4
     end
@@ -618,7 +617,7 @@ function LFGStatus:BuildTooltipContent()
         line.label:SetText("|cff888888Not queued or applied to any groups.|r")
         line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         line.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint

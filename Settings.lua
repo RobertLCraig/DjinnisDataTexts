@@ -323,6 +323,131 @@ local function AddDropdown(content, y, label, values, getter, setter, refreshLis
     return y - 54
 end
 
+-- Font preview dropdown: shows each font name rendered in its own typeface.
+-- Blizzard's menu system blocks SetFont inside initializers, so we build
+-- a custom popup list instead of using WowStyle1DropdownTemplate.
+local function AddFontDropdown(content, y, label, values, getter, setter, refreshList)
+    local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
+    text:SetText(label)
+
+    -- Sort font entries once
+    local sorted = {}
+    for path, displayName in pairs(values) do
+        sorted[#sorted + 1] = { path = path, name = displayName }
+    end
+    table.sort(sorted, function(a, b) return a.name < b.name end)
+
+    -- Clickable selection button (styled like WoW dropdown)
+    local btn = CreateFrame("Button", nil, content, "BackdropTemplate")
+    btn:SetPoint("TOPLEFT", text, "BOTTOMLEFT", 0, -2)
+    btn:SetSize(240, 24)
+    btn:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\ChatFrame\\ChatFrameBackground",
+        tile = true, edgeSize = 1, tileSize = 5,
+    })
+    btn:SetBackdropColor(0.1, 0.1, 0.1, 0.8)
+    btn:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+
+    local btnText = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    btnText:SetPoint("LEFT", btn, "LEFT", 8, 0)
+    btnText:SetPoint("RIGHT", btn, "RIGHT", -20, 0)
+    btnText:SetJustifyH("LEFT")
+
+    local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    arrow:SetPoint("RIGHT", btn, "RIGHT", -6, 0)
+    arrow:SetText("v")
+
+    local function UpdateSelection()
+        local v = getter()
+        btnText:SetText(values[v] or "Unknown")
+        btnText:SetFont(v, 13, "")
+    end
+    UpdateSelection()
+
+    btn:SetScript("OnEnter", function(self)
+        self:SetBackdropBorderColor(0.6, 0.6, 0.6, 1)
+    end)
+    btn:SetScript("OnLeave", function(self)
+        self:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    end)
+
+    -- Popup list frame
+    local popup = CreateFrame("Frame", nil, btn, "BackdropTemplate")
+    popup:SetPoint("TOPLEFT", btn, "BOTTOMLEFT", 0, -2)
+    popup:SetSize(280, 10)
+    popup:SetBackdrop({
+        bgFile   = "Interface\\ChatFrame\\ChatFrameBackground",
+        edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+        edgeSize = 12, insets = { left = 2, right = 2, top = 2, bottom = 2 },
+    })
+    popup:SetBackdropColor(0.08, 0.08, 0.08, 0.97)
+    popup:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    popup:SetFrameStrata("DIALOG")
+    popup:Hide()
+
+    -- Build font rows
+    local fontRows = {}
+    local ry = -6
+    local PREVIEW_SIZE = 14
+    local PREVIEW_ROW_H = 22
+    for _, item in ipairs(sorted) do
+        local row = CreateFrame("Button", nil, popup)
+        row:SetPoint("TOPLEFT", popup, "TOPLEFT", 6, ry)
+        row:SetPoint("RIGHT", popup, "RIGHT", -6, 0)
+        row:SetHeight(PREVIEW_ROW_H)
+
+        local highlight = row:CreateTexture(nil, "HIGHLIGHT")
+        highlight:SetAllPoints()
+        highlight:SetColorTexture(1, 1, 1, 0.1)
+
+        local fs = row:CreateFontString(nil, "OVERLAY")
+        fs:SetFont(item.path, PREVIEW_SIZE, "")
+        fs:SetPoint("LEFT", row, "LEFT", 4, 0)
+        fs:SetPoint("RIGHT", row, "RIGHT", -20, 0)
+        fs:SetJustifyH("LEFT")
+        fs:SetText(item.name)
+
+        local fontPath = item.path
+        row:SetScript("OnClick", function()
+            setter(fontPath)
+            UpdateSelection()
+            popup:Hide()
+        end)
+
+        fontRows[#fontRows + 1] = { row = row, fs = fs, path = fontPath }
+        ry = ry - PREVIEW_ROW_H
+    end
+    popup:SetHeight(math.abs(ry) + 6)
+
+    -- Refresh active markers when popup opens
+    local function RefreshActive()
+        local active = getter()
+        for _, entry in ipairs(fontRows) do
+            if entry.path == active then
+                entry.fs:SetTextColor(0.2, 1.0, 0.2)
+            else
+                entry.fs:SetTextColor(0.85, 0.85, 0.85)
+            end
+        end
+    end
+
+    btn:SetScript("OnClick", function()
+        if popup:IsShown() then
+            popup:Hide()
+        else
+            RefreshActive()
+            popup:Show()
+        end
+    end)
+
+    if refreshList then
+        table.insert(refreshList, function() UpdateSelection() end)
+    end
+    return y - 54
+end
+
 local function AddEditBox(content, y, label, getter, setter, refreshList)
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
@@ -911,7 +1036,14 @@ local FONT_OPTIONS = {
     ["Fonts\\ARIALN.TTF"]    = "Arial Narrow",
     ["Fonts\\MORPHEUS.TTF"]  = "Morpheus",
     ["Fonts\\skurri.TTF"]    = "Skurri",
-    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\AtkinsonHyperlegibleNext.ttf"] = "Atkinson Hyperlegible Next",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\AtkinsonHyperlegible-Regular.ttf"]     = "Atkinson Hyperlegible",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\AtkinsonHyperlegibleNext-Regular.ttf"] = "Atkinson Hyperlegible Next",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\IBMPlexSans-Regular.ttf"]              = "IBM Plex Sans",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\Montserrat-Regular.ttf"]               = "Montserrat",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\OpenSans-Regular.ttf"]                 = "Open Sans",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\OpenSans-Medium.ttf"]                  = "Open Sans Medium",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\Saira-Regular.ttf"]                    = "Saira",
+    ["Interface\\AddOns\\DjinnisDataTexts\\Fonts\\SpaceGrotesk-Regular.ttf"]             = "Space Grotesk",
 }
 
 local function BuildGeneralPanel(panel)
@@ -1083,12 +1215,17 @@ local function BuildGeneralPanel(panel)
     body = AddSection(panel, "Tooltip Font")
     y = 0
     y = AddDescription(body, y, "Global font used by all module tooltips.")
-    y = AddDropdown(body, y, "Font Face", FONT_OPTIONS,
+    y = AddFontDropdown(body, y, "Font Face", FONT_OPTIONS,
         function() return ns.db.global.tooltipFont end,
         function(v) ns.db.global.tooltipFont = v; ns:UpdateFonts() end, r)
-    y = AddSlider(body, y, "Font Size", 8, 20, 1,
+    local fontSizeTimer
+    y = AddSlider(body, y, "Font Size", 8, 50, 1,
         function() return ns.db.global.tooltipFontSize end,
-        function(v) ns.db.global.tooltipFontSize = v; ns:UpdateFonts() end, r)
+        function(v)
+            ns.db.global.tooltipFontSize = v
+            if fontSizeTimer then fontSizeTimer:Cancel() end
+            fontSizeTimer = C_Timer.NewTimer(0.15, function() ns:UpdateFonts() end)
+        end, r)
     EndSection(panel, y)
 end
 

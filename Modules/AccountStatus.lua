@@ -18,7 +18,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 300
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 
 -- State
@@ -251,7 +250,7 @@ function AcctStatus:BuildTooltipContent()
         charLine.value:SetText(charName)
     end
     charLine.value:SetTextColor(1, 1, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     y = y - 4
 
@@ -278,7 +277,7 @@ function AcctStatus:BuildTooltipContent()
         wbEnabledLine.value:SetText("Disabled / Unavailable")
         wbEnabledLine.value:SetTextColor(1.0, 0.2, 0.2)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Warband: Access lock
     lineIdx = lineIdx + 1
@@ -297,7 +296,7 @@ function AcctStatus:BuildTooltipContent()
         wbLockLine.value:SetText("Locked (another client)")
         wbLockLine.value:SetTextColor(1.0, 0.2, 0.2)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     y = y - 4
 
@@ -324,7 +323,7 @@ function AcctStatus:BuildTooltipContent()
         petUnlockLine.value:SetText("Locked")
         petUnlockLine.value:SetTextColor(1.0, 0.2, 0.2)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Pet: Battle capability
     lineIdx = lineIdx + 1
@@ -343,7 +342,7 @@ function AcctStatus:BuildTooltipContent()
         petBattleLine.value:SetText("Disabled")
         petBattleLine.value:SetTextColor(1.0, 0.5, 0.0)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     y = y - 4
 
@@ -366,7 +365,7 @@ function AcctStatus:BuildTooltipContent()
     end
     summaryLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     summaryLine.value:SetText("")
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Hint
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))

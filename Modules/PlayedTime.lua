@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 280
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -247,7 +246,7 @@ function PlayedTime:BuildTooltipContent()
     sessLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     sessLine.value:SetText(FormatDurationLong(GetSessionTime()))
     sessLine.value:SetTextColor(0.0, 1.0, 0.0)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Separator
     y = y - 4
@@ -262,7 +261,7 @@ function PlayedTime:BuildTooltipContent()
         totalLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         totalLine.value:SetText(FormatDurationLong(adjustedTotal))
         totalLine.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
 
         -- Level played
         local adjustedLevel = levelPlayed + GetSessionTime()
@@ -273,7 +272,7 @@ function PlayedTime:BuildTooltipContent()
         lvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         lvlLine.value:SetText(FormatDurationLong(adjustedLevel))
         lvlLine.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     else
         lineIdx = lineIdx + 1
         local pendLine = GetLine(c, lineIdx)
@@ -281,7 +280,7 @@ function PlayedTime:BuildTooltipContent()
         pendLine.label:SetText("|cff888888Waiting for /played data...|r")
         pendLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         pendLine.value:SetText("")
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Character info
@@ -304,7 +303,7 @@ function PlayedTime:BuildTooltipContent()
     end
     charLine.value:SetText(nameStr .. " (Lv " .. level .. ")")
     charLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     local db = self:GetDB()
 

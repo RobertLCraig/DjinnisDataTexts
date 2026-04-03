@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 300
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -284,7 +283,7 @@ function CharInfo:BuildTooltipContent()
     realmLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     realmLine.value:SetText(charRealm)
     realmLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Class
     lineIdx = lineIdx + 1
@@ -294,7 +293,7 @@ function CharInfo:BuildTooltipContent()
     classLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     classLine.value:SetText(DDT:ColorText(charClass, r, g, b))
     classLine.value:SetTextColor(1, 1, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Race
     lineIdx = lineIdx + 1
@@ -304,7 +303,7 @@ function CharInfo:BuildTooltipContent()
     raceLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     raceLine.value:SetText(charRace)
     raceLine.value:SetTextColor(0.9, 0.9, 0.9)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Level
     lineIdx = lineIdx + 1
@@ -314,7 +313,7 @@ function CharInfo:BuildTooltipContent()
     lvlLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
     lvlLine.value:SetText(tostring(charLevel))
     lvlLine.value:SetTextColor(1, 0.82, 0)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Item Level
     if db.showItemLevel then
@@ -330,7 +329,7 @@ function CharInfo:BuildTooltipContent()
         elseif charIlvl >= 400 then ilvlColor = {0, 0.44, 0.87}
         else ilvlColor = {0, 1, 0} end
         ilvlLine.value:SetTextColor(unpack(ilvlColor))
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Faction
@@ -347,7 +346,7 @@ function CharInfo:BuildTooltipContent()
     else
         facLine.value:SetTextColor(0.9, 0.9, 0.9)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Guild
     if db.showGuild and charGuild ~= "" then
@@ -358,7 +357,7 @@ function CharInfo:BuildTooltipContent()
         guildLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
         guildLine.value:SetText(charGuild)
         guildLine.value:SetTextColor(0.0, 0.8, 0.0)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Shard ID (best-effort)
@@ -376,7 +375,7 @@ function CharInfo:BuildTooltipContent()
             shardLine.value:SetText("Unknown (target an NPC)")
             shardLine.value:SetTextColor(0.5, 0.5, 0.5)
         end
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint

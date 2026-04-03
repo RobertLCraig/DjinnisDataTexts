@@ -118,9 +118,16 @@ local fontStringCount = 0
 --- @return FontString
 function ns.FontString(parent, fontTemplate)
     local fs = parent:CreateFontString(nil, "OVERLAY")
+    -- Apply font directly rather than via SetFontObject so live updates work.
+    -- SetFontObject blocks subsequent SetFont calls, preventing size changes.
     local fontObj = DDT_FONT_OBJECTS[fontTemplate]
     if fontObj then
-        fs:SetFontObject(fontObj)
+        local path, sz, flags = fontObj:GetFont()
+        if path then
+            fs:SetFont(path, sz, flags or "")
+        else
+            fs:SetFontObject(fontTemplate)
+        end
     end
     fontStringCount = fontStringCount + 1
     fontStringRegistry[fontStringCount] = fs
@@ -133,17 +140,25 @@ function ns:UpdateFonts()
     local fontPath = db.tooltipFont or "Fonts\\FRIZQT__.TTF"
     local fontSize = db.tooltipFontSize or 12
 
+    -- Update the CreateFont objects (for newly created FontStrings)
     DDTFontHeader:SetFont(fontPath, fontSize + 4, "")
     DDTFontNormal:SetFont(fontPath, fontSize, "")
     DDTFontSmall:SetFont(fontPath, fontSize - 2, "")
 
-    -- Re-apply SetFontObject on all registered FontStrings to ensure propagation
+    -- Update dynamic row height for tooltip layouts
+    ns.ROW_HEIGHT = math.max(16, fontSize + 8)
+
+    -- Update all registered FontStrings directly (font object propagation
+    -- is unreliable for addon-bundled fonts and size-only changes).
+    local sizeMap = {
+        DDTFontHeader = fontSize + 4,
+        DDTFontNormal = fontSize,
+        DDTFontSmall  = fontSize - 2,
+    }
     for i, fs in pairs(fontStringRegistry) do
         if fs and fs.GetObjectType and fs._ddtFontTemplate then
-            local fontObj = DDT_FONT_OBJECTS[fs._ddtFontTemplate]
-            if fontObj then
-                fs:SetFontObject(fontObj)
-            end
+            local sz = sizeMap[fs._ddtFontTemplate] or fontSize
+            fs:SetFont(fontPath, sz, "")
         else
             fontStringRegistry[i] = nil
         end
@@ -154,7 +169,7 @@ end
 -- Shared tooltip constants
 ---------------------------------------------------------------------------
 
-ns.ROW_HEIGHT      = 16
+ns.ROW_HEIGHT      = 20
 ns.TOOLTIP_PADDING = 10
 ns.HEADER_HEIGHT   = 24
 ns.FIXED_TOP       = ns.TOOLTIP_PADDING + ns.HEADER_HEIGHT + 20   -- header + column headers row

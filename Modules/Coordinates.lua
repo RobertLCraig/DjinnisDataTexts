@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 280
-local ROW_HEIGHT     = 20
 local PADDING        = 10
 
 -- State
@@ -294,7 +293,7 @@ function Coordinates:BuildTooltipContent()
         zoneLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         zoneLine.value:SetText(currentZone)
         zoneLine.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Subzone (if different from zone)
@@ -306,7 +305,7 @@ function Coordinates:BuildTooltipContent()
         subLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         subLine.value:SetText(currentSubZone)
         subLine.value:SetTextColor(0.4, 0.78, 1)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Map name (if different from zone)
@@ -318,7 +317,7 @@ function Coordinates:BuildTooltipContent()
         mapLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         mapLine.value:SetText(currentMapName)
         mapLine.value:SetTextColor(0.9, 0.9, 0.9)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Separator
@@ -332,7 +331,7 @@ function Coordinates:BuildTooltipContent()
     coordLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     coordLine.value:SetText(FormatCoords(playerX, playerY, db.coordDecimals))
     coordLine.value:SetTextColor(0.0, 1.0, 0.0)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Map ID (small reference)
     if currentMapID then
@@ -343,7 +342,7 @@ function Coordinates:BuildTooltipContent()
         idLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
         idLine.value:SetText(tostring(currentMapID))
         idLine.value:SetTextColor(0.6, 0.6, 0.6)
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Hint

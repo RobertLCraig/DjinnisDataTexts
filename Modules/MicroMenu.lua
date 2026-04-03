@@ -18,7 +18,6 @@ local rowPool = {}
 
 -- Layout
 local TOOLTIP_WIDTH  = 220
-local ROW_HEIGHT     = 20
 local ICON_SIZE      = 16
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -180,7 +179,7 @@ local function GetRow(parent, index)
     end
 
     local row = CreateFrame("Button", nil, parent)
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
 
     row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
     row.highlight:SetAllPoints()
@@ -238,7 +237,7 @@ function MicroMenu:BuildTooltipContent()
             action()
         end)
 
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     f.hint:SetText(DDT:BuildHintText(db.clickActions or {}, CLICK_ACTIONS))

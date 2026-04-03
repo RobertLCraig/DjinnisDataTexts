@@ -17,7 +17,6 @@ local hideTimer = nil
 
 -- Layout
 local TOOLTIP_WIDTH  = 340
-local ROW_HEIGHT     = 20
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -368,7 +367,7 @@ local function GetRowFrame(f, index)
         return f.rowFrames[index]
     end
     local row = CreateFrame("Button", nil, f, "BackdropTemplate")
-    row:SetHeight(ROW_HEIGHT)
+    row:SetHeight(ns.ROW_HEIGHT)
     row:EnableMouse(true)
     row:RegisterForClicks("AnyUp")
     row:SetScript("OnEnter", function(self)
@@ -443,7 +442,7 @@ function BagVal:BuildTooltipContent()
     totalLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     totalLine.value:SetText(FormatGold(totalValue))
     totalLine.value:SetTextColor(1, 1, 1)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Vendor value
     lineIdx = lineIdx + 1
@@ -453,7 +452,7 @@ function BagVal:BuildTooltipContent()
     vendLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
     vendLine.value:SetText(FormatGold(vendorValue))
     vendLine.value:SetTextColor(0.6, 0.6, 0.6)
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Price source
     lineIdx = lineIdx + 1
@@ -468,7 +467,7 @@ function BagVal:BuildTooltipContent()
         srcLine.value:SetText("Vendor (TSM not loaded)")
         srcLine.value:SetTextColor(1.0, 0.5, 0.0)
     end
-    y = y - ROW_HEIGHT
+    y = y - ns.ROW_HEIGHT
 
     -- Bag slots
     if db.showFreeSlots then
@@ -485,7 +484,7 @@ function BagVal:BuildTooltipContent()
         else
             slotLine.value:SetTextColor(0.0, 1.0, 0.0)
         end
-        y = y - ROW_HEIGHT
+        y = y - ns.ROW_HEIGHT
     end
 
     -- Top items
@@ -530,7 +529,7 @@ function BagVal:BuildTooltipContent()
             rf.itemData = item
             rf:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
             rf:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
 
         if #sorted > count then
@@ -540,7 +539,7 @@ function BagVal:BuildTooltipContent()
             moreRow.label:SetText("|cff888888... and " .. (#sorted - count) .. " more items|r")
             moreRow.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
             moreRow.value:SetText("")
-            y = y - ROW_HEIGHT
+            y = y - ns.ROW_HEIGHT
         end
     end
 
