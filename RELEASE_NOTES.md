@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version: 0.6.0 — 2026-04-02
+## Version: 0.6.1 — 2026-04-02
 
 ### Major Update: Social Module Refactor, Smart Tooltip Anchoring, Prey Tracker, Majestic Beast Enhancements
 
