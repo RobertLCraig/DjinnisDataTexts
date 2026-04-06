@@ -5,13 +5,13 @@ Works with any LDB display addon (ElvUI, Titan Panel, Bazooka, ChocolateBar, etc
 
 ## Summary
 
-Djinni's Data Texts (DDT) provides 20 information-rich DataText modules covering social, character, economy, instance, time/location, and system categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
+Djinni's Data Texts (DDT) provides 24+ information-rich DataText modules covering social, character, economy, instance, time/location, system, professions, and audio categories. Each module features configurable label templates, tooltip sizing, click actions, and sort orders, all accessible through the Blizzard Settings interface.
 
 DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing settings on first load.
 
 ## Features
 
-- **20 DataText modules** covering every major information category
+- **24+ DataText modules** covering every major information category (several in alpha)
 - **Configurable label templates** with `<tag>` syntax, clickable tag-insert buttons, and preset suggestions in settings
 - **Global number formatting** with 8 locale presets (US, EU, French/SI, plain, custom) -- configurable thousands separator, decimal point, and abbreviation (k/m/b vs full numbers)
 - **Configurable click actions** with 9 modifier combinations (Left, Right, Middle, Shift, Ctrl, Alt) on every module
@@ -70,6 +70,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Assigned role tracking shows which role you were accepted as. Live wait time and elapsed counters. Icon changes based on queue state. |
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, delve tracking with instance names and tiers. Difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. Column hover highlighting for improved alt data readability. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
+| **Prey Tracker** | Tracks active Midnight prey hunts — current target, zone, difficulty, kill progress. Weekly completion history with prey names and earned currency. |
 
 ![Saved Instances](Docs/SavedInstances.png) ![Saved Instances (extended)](Docs/SavedInstances2.png) ![Saved Instances (condensed)](Docs/SavedInstances3.png)
 
@@ -93,6 +94,28 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Micro Menu** | Quick-access clickable launcher for all game panels (character, spellbook, talents, achievements, collections, etc.). |
 
 ![System Performance](Docs/SystemPerformance.png)
+
+### Audio *(alpha)*
+
+| Module | Description |
+|--------|-------------|
+| **Volume Control** *(alpha)* | Interactive tooltip with per-stream volume sliders and mute toggles for Master, Music, Effects, Ambience, and Dialog. Drag sliders or use mouse wheel to adjust. Left-click to toggle master mute. Scroll wheel on tooltip adjusts master volume. |
+| **Audio Output** *(alpha)* | Switch between available system audio output devices from a tooltip list. Click any device to switch; scroll or click actions to cycle. |
+
+### Professions *(alpha)*
+
+A per-profession framework creating one LDB broker per detected character profession.
+
+| Feature | Description |
+|---------|-------------|
+| **Knowledge Points** | Tracks KP from unique treasures, books, and weekly sources. Counts earned vs total with Darkmoon Faire awareness. Hides completed sources by default (configurable). |
+| **Skill & Concentration** | Current skill level and available concentration currency. |
+| **Majestic Beasts** *(Skinning)* | Daily lure-based beast tracking — shows lure count in bags, missing reagents, and kill status per beast. Talent point gating respected. Click rows to set waypoints. |
+| **Buffs** | Active gathering/crafting buff detection and profession-specific consumable tracking. |
+| **Weekly Timers** | Daily and weekly reset countdowns. |
+| **MajesticBeastTracker migration** | Automatically imports lure kill history, talent points, and settings from the standalone MajesticBeastTracker addon. |
+
+Supported professions: Alchemy, Blacksmithing, Enchanting, Engineering, Herbalism, Inscription, Jewelcrafting, Leatherworking, Mining, Skinning, Tailoring.
 
 ## Installation
 
@@ -127,7 +150,7 @@ Every module supports configurable click actions across 9 modifier combinations:
 ## Dependencies
 
 - **Required**: LibStub, CallbackHandler-1.0, LibDataBroker-1.1 (bundled)
-- **Optional**: ElvUI (LDB display), TradeSkillMaster (bag value pricing, TSM shopping lists), SavedInstances (alt lockout data), Auctionator (shopping lists), SimulationCraft (ItemLevel SimC export), TomTom (waypoints)
+- **Optional**: ElvUI (LDB display), TradeSkillMaster (bag value pricing, TSM shopping lists), SavedInstances (alt lockout data), Auctionator (shopping lists), SimulationCraft (ItemLevel SimC export), TomTom (waypoints), MajesticBeastTracker (Skinning KP migration)
 
 ## Slash Commands
 
