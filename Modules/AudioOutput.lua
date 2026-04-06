@@ -66,7 +66,8 @@ local function GetDeviceCount()
 end
 
 local function GetDeviceName(index)
-    return Sound_GameSystem_GetOutputDriverNameByIndex(index) or ("Device " .. index)
+    local name = Sound_GameSystem_GetOutputDriverNameByIndex(index)
+    return (name and name ~= "") and name or ("Device " .. index)
 end
 
 local function SwitchToDevice(index)
@@ -88,13 +89,12 @@ local dataobj  -- forward ref
 local function ExpandLabel(template)
     local E = ns.ExpandTag
     local db = AudioOutput:GetDB()
-    local idx   = GetCurrentDeviceIndex()
-    local count = GetDeviceCount()
-    local name  = count > 0 and GetDeviceName(idx) or "None"
+    local idx    = GetCurrentDeviceIndex()
+    local name   = GetDeviceName(idx)
     local result = template
     result = E(result, "device", TruncateName(name, db.maxLabelLength or 24))
     result = E(result, "index",  tostring(idx + 1))   -- 1-based for display
-    result = E(result, "count",  tostring(count))
+    result = E(result, "count",  tostring(GetDeviceCount()))
     return result
 end
 
@@ -179,8 +179,9 @@ function AudioOutput:PopulateTooltip()
         row:SetScript("OnClick", function()
             SwitchToDevice(capturedIdx)
             AudioOutput:UpdateLabel()
-            -- Brief "Switching…" feedback then repopulate
+            -- Re-sync label and tooltip after sound system restart completes
             C_Timer.After(0.5, function()
+                AudioOutput:UpdateLabel()
                 if tooltipFrame and tooltipFrame:IsShown() then
                     AudioOutput:PopulateTooltip()
                 end
@@ -245,9 +246,12 @@ function AudioOutput:CycleDevice(direction)
     local next = (cur + direction) % count
     SwitchToDevice(next)
     self:UpdateLabel()
-    if tooltipFrame and tooltipFrame:IsShown() then
-        C_Timer.After(0.5, function() self:PopulateTooltip() end)
-    end
+    C_Timer.After(0.5, function()
+        AudioOutput:UpdateLabel()
+        if tooltipFrame and tooltipFrame:IsShown() then
+            AudioOutput:PopulateTooltip()
+        end
+    end)
 end
 
 ---------------------------------------------------------------------------
@@ -310,10 +314,10 @@ dataobj = LDB:NewDataObject("DDT-AudioOutput", {
 ---------------------------------------------------------------------------
 
 local eventFrame = CreateFrame("Frame")
-eventFrame:RegisterEvent("PLAYER_LOGIN")
+eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
 eventFrame:RegisterEvent("CVAR_UPDATE")
 eventFrame:SetScript("OnEvent", function(_, event, cvarName)
-    if event == "PLAYER_LOGIN" then
+    if event == "PLAYER_ENTERING_WORLD" then
         AudioOutput:UpdateLabel()
     elseif event == "CVAR_UPDATE" and cvarName == "Sound_OutputDriverIndex" then
         AudioOutput:UpdateLabel()

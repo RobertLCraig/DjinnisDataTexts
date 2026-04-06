@@ -39,6 +39,7 @@ local STREAMS = {
 local DEFAULTS = {
     labelTemplate    = "Vol: <master>%",
     increment        = 5,
+    invertScroll     = false,
     tooltipScale     = 1.0,
     tooltipWidth     = TOOLTIP_WIDTH,
     tooltipMaxHeight = 500,
@@ -67,6 +68,13 @@ local CLICK_ACTIONS = {
 
 function VolumeControl:GetDB()
     return ns.db and ns.db.volumecontrol or DEFAULTS
+end
+
+local function ScrollDelta(delta)
+    local db = VolumeControl:GetDB()
+    local dir = db.invertScroll and -1 or 1
+    local step = IsShiftKeyDown() and 1 or (db.increment or 5)
+    return delta * step * dir
 end
 
 local function GetVolPct(cvar)
@@ -139,9 +147,7 @@ local function MakeStreamSlider(parent, stream)
 
     slider:EnableMouseWheel(true)
     slider:SetScript("OnMouseWheel", function(self, delta)
-        local db = VolumeControl:GetDB()
-        local step = IsShiftKeyDown() and 1 or (db.increment or 5)
-        SetVolPct(stream.cvar, math.max(0, math.min(100, GetVolPct(stream.cvar) + delta * step)))
+        SetVolPct(stream.cvar, math.max(0, math.min(100, GetVolPct(stream.cvar) + ScrollDelta(delta))))
         VolumeControl:RefreshTooltip()
         VolumeControl:UpdateLabel()
     end)
@@ -233,9 +239,7 @@ local function BuildTooltipFrame()
 
     -- Outer-frame mouse wheel adjusts master volume
     f:SetScript("OnMouseWheel", function(self, delta)
-        local db = VolumeControl:GetDB()
-        local step = IsShiftKeyDown() and 1 or (db.increment or 5)
-        SetVolPct("Sound_MasterVolume", math.max(0, math.min(100, GetVolPct("Sound_MasterVolume") + delta * step)))
+        SetVolPct("Sound_MasterVolume", math.max(0, math.min(100, GetVolPct("Sound_MasterVolume") + ScrollDelta(delta))))
         VolumeControl:RefreshTooltip()
         VolumeControl:UpdateLabel()
     end)
@@ -337,6 +341,11 @@ dataobj = LDB:NewDataObject("DDT-VolumeControl", {
     OnLeave = function(self)
         VolumeControl:StartHideTimer()
     end,
+    OnMouseWheel = function(self, delta)
+        SetVolPct("Sound_MasterVolume", math.max(0, math.min(100, GetVolPct("Sound_MasterVolume") + ScrollDelta(delta))))
+        VolumeControl:RefreshTooltip()
+        VolumeControl:UpdateLabel()
+    end,
     OnClick = function(self, button)
         local db = VolumeControl:GetDB()
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
@@ -397,6 +406,10 @@ function VolumeControl:BuildSettingsPanel(panel)
     y = W.AddSlider(body, y, "Scroll Increment (%)", 1, 20, 1,
         function() return db().increment end,
         function(v) db().increment = v end, r)
+
+    y = W.AddCheckbox(body, y, "Invert Scroll (scroll up = volume down)",
+        function() return db().invertScroll end,
+        function(v) db().invertScroll = v end, r)
 
     y = W.AddSliderPair(body, y,
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
