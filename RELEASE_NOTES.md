@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version: 0.8.1 — 2026-04-06
+## Version: 0.8.2 — 2026-04-06
 
 ### Major Update: Professions Framework, Volume Control, Audio Output
 
@@ -52,7 +52,7 @@ Switch between system audio output devices from a tooltip list.
 
 ---
 
-## Version: 0.8.1 — 2026-04-02
+## Version: 0.8.2 — 2026-04-02
 
 ### Major Update: Social Module Refactor, Smart Tooltip Anchoring, Prey Tracker, Majestic Beast Enhancements
 
