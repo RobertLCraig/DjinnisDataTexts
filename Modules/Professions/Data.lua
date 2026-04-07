@@ -181,6 +181,10 @@ ns.PROF_CLICK_ACTIONS = {
 }
 
 ns.PROF_ROW_CLICK_ACTIONS = {
-    waypoint = "Set Waypoint",
-    none     = "None",
+    placelure = "Use Lure",
+    waypoint  = "Set Waypoint",
+    craftlure = "Open Lure Recipe",
+    shopzone  = "Shop Zone Reagents",
+    openmap   = "Open Map",
+    none      = "None",
 }

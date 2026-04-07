@@ -896,7 +896,8 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     --- @param width number  Desired tooltip width
     --- @param contentHeight number  Total content height (positive)
     --- @param contentWidth number|nil  Total content width (nil = use inner width)
-    function f:FinalizeLayout(width, contentHeight, contentWidth)
+    --- @param maxHeightOverride number|nil  Override for max tooltip height
+    function f:FinalizeLayout(width, contentHeight, contentWidth, maxHeightOverride)
         local padding = FACTORY_PADDING
         local innerWidth = width - 2 * padding
 
@@ -919,7 +920,7 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
 
         -- Determine max scroll area height
         local db = moduleRef.GetDB and moduleRef:GetDB() or {}
-        local maxH = db.tooltipMaxHeight or math.floor(UIParent:GetHeight() * 0.7)
+        local maxH = maxHeightOverride or self.maxHeightOverride or db.tooltipMaxHeight or math.floor(UIParent:GetHeight() * 0.7)
         local scrollAreaH = math.min(contentHeight,
             math.max(20, maxH - fixedTop - hintH))
 

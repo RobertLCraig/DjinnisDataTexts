@@ -1028,7 +1028,7 @@ local function SetAltColumnsForInstance(row, instanceName, diffTag, entry)
     EnsureAltColumns(row, count)
 
     -- "You" column: current character's progress for this lockout
-    if entry then
+    if entry and not entry.isGhost then
         row.youText:SetText(entry.encounterProgress .. "/" .. entry.numEncounters)
         local ratio = entry.numEncounters > 0 and (entry.encounterProgress / entry.numEncounters) or 0
         if ratio >= 1 then
@@ -1221,40 +1221,48 @@ local function AddInstanceRow(c, rowIndex, y, entry)
     row.diffText:SetTextColor(colors[1], colors[2], colors[3])
 
     -- Progress
-    local prog = entry.encounterProgress
-    local total = entry.numEncounters
-    if total > 0 then
-        local ratio = prog / total
-        local pr, pg, pb
-        if ratio >= 1 then
-            pr, pg, pb = 0.0, 1.0, 0.0     -- All cleared: green
-        elseif ratio > 0 then
-            pr, pg, pb = 1.0, 0.82, 0.0    -- Partial: gold
-        else
-            pr, pg, pb = 0.5, 0.5, 0.5     -- None: gray
-        end
-        row.progressText:SetText(string.format("%d/%d", prog, total))
-        row.progressText:SetTextColor(pr, pg, pb)
-    else
-        row.progressText:SetText("")
-    end
-
-    -- Reset timer
-    row.resetText:SetText(FormatResetTime(entry.reset))
-    row.resetText:SetTextColor(0.7, 0.7, 0.7)
-
-    -- Extended indicator
-    if entry.extended then
-        row.extendedBar:Show()
-    else
+    if entry.isGhost then
+        row.progressText:SetText("|cff555555-|r")
+        row.resetText:SetText("")
         row.extendedBar:Hide()
-    end
+        row.nameText:SetTextColor(0.5, 0.5, 0.5)
+        row:SetScript("OnClick", nil)
+    else
+        local prog = entry.encounterProgress
+        local total = entry.numEncounters
+        if total > 0 then
+            local ratio = prog / total
+            local pr, pg, pb
+            if ratio >= 1 then
+                pr, pg, pb = 0.0, 1.0, 0.0     -- All cleared: green
+            elseif ratio > 0 then
+                pr, pg, pb = 1.0, 0.82, 0.0    -- Partial: gold
+            else
+                pr, pg, pb = 0.5, 0.5, 0.5     -- None: gray
+            end
+            row.progressText:SetText(string.format("%d/%d", prog, total))
+            row.progressText:SetTextColor(pr, pg, pb)
+        else
+            row.progressText:SetText("")
+        end
 
-    -- Click to expand/collapse boss list
-    row:SetScript("OnClick", function()
-        entry.expanded = not entry.expanded
-        SavedInst:BuildTooltipContent()
-    end)
+        -- Reset timer
+        row.resetText:SetText(FormatResetTime(entry.reset))
+        row.resetText:SetTextColor(0.7, 0.7, 0.7)
+
+        -- Extended indicator
+        if entry.extended then
+            row.extendedBar:Show()
+        else
+            row.extendedBar:Hide()
+        end
+
+        -- Click to expand/collapse boss list
+        row:SetScript("OnClick", function()
+            entry.expanded = not entry.expanded
+            SavedInst:BuildTooltipContent()
+        end)
+    end
 
     return rowIndex, y - ns.ROW_HEIGHT
 end
@@ -1305,7 +1313,18 @@ function SavedInst:BuildTooltipContent()
     local sepIndex = 0
     local y = 0
 
-    if #lockoutCache == 0 then
+    -- Check if any alt has lockouts or M+ data (for alt-column mode)
+    local anyAltHasData = false
+    if numAltCols > 0 then
+        for _, alt in ipairs(activeAltCols) do
+            local altMap = altLockoutMap[alt.key]
+            if altMap and next(altMap) then anyAltHasData = true; break end
+            local mpMap = altMPlusMap[alt.key]
+            if mpMap and next(mpMap) then anyAltHasData = true; break end
+        end
+    end
+
+    if #lockoutCache == 0 and #mythicPlusRuns == 0 and not anyAltHasData then
         -- No lockouts message
         headerIndex = headerIndex + 1
         local noData = GetHeader(c, headerIndex)
@@ -1426,13 +1445,48 @@ function SavedInst:BuildTooltipContent()
 
         -- Separate raids and dungeons, then sort per user setting
         local raids, dungeons = {}, {}
+        local currentInstanceKeys = {}  -- track what current char already has
         for _, entry in ipairs(lockoutCache) do
+            currentInstanceKeys[entry.name .. "|" .. entry.difficultyTag] = true
             if entry.isRaid then
                 table.insert(raids, entry)
             else
                 table.insert(dungeons, entry)
             end
         end
+
+        -- Inject alt-only lockouts as synthetic entries (ghost rows)
+        if numAltCols > 0 then
+            local altOnlyKeys = {}  -- deduplicate across alts
+            for _, alt in ipairs(activeAltCols) do
+                local altData = ns.db.altLockouts and ns.db.altLockouts[alt.key]
+                if altData and altData.lockouts then
+                    for _, lo in ipairs(altData.lockouts) do
+                        local mapKey = lo.name .. "|" .. lo.difficultyTag
+                        if not currentInstanceKeys[mapKey] and not altOnlyKeys[mapKey] then
+                            altOnlyKeys[mapKey] = true
+                            local ghost = {
+                                name = lo.name,
+                                difficultyTag = lo.difficultyTag,
+                                encounterProgress = 0,
+                                numEncounters = lo.total or 0,
+                                reset = 0,
+                                isRaid = lo.isRaid,
+                                extended = false,
+                                bosses = {},
+                                isGhost = true,  -- flag: current char has no lockout here
+                            }
+                            if lo.isRaid then
+                                table.insert(raids, ghost)
+                            else
+                                table.insert(dungeons, ghost)
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
         SortRaidEntries(raids, db.raidSortOrder)
         SortRaidEntries(dungeons, db.raidSortOrder)
 
@@ -1459,14 +1513,18 @@ function SavedInst:BuildTooltipContent()
                 for _, raidName in ipairs(raidOrder) do
                     local entries = raidGroups[raidName]
                     local diffParts = {}
+                    local youCount = 0
                     for _, entry in ipairs(entries) do
-                        local colors = DIFFICULTY_COLORS[entry.difficultyTag] or { 0.7, 0.7, 0.7 }
-                        local hex = string.format("|cff%02x%02x%02x", colors[1] * 255, colors[2] * 255, colors[3] * 255)
-                        local prog = ""
-                        if entry.numEncounters > 0 then
-                            prog = " " .. entry.encounterProgress .. "/" .. entry.numEncounters
+                        if not entry.isGhost then
+                            youCount = youCount + 1
+                            local colors = DIFFICULTY_COLORS[entry.difficultyTag] or { 0.7, 0.7, 0.7 }
+                            local hex = string.format("|cff%02x%02x%02x", colors[1] * 255, colors[2] * 255, colors[3] * 255)
+                            local prog = ""
+                            if entry.numEncounters > 0 then
+                                prog = " " .. entry.encounterProgress .. "/" .. entry.numEncounters
+                            end
+                            table.insert(diffParts, hex .. entry.difficultyTag .. prog .. "|r")
                         end
-                        table.insert(diffParts, hex .. entry.difficultyTag .. prog .. "|r")
                     end
 
                     rowIndex = rowIndex + 1
@@ -1478,15 +1536,19 @@ function SavedInst:BuildTooltipContent()
                     row.nameText:SetText(raidName)
                     row.nameText:SetTextColor(0.9, 0.9, 0.9)
 
-                    row.diffText:SetText("x" .. #entries)
-                    row.diffText:SetTextColor(0.7, 0.7, 0.7)
-
-                    row.progressText:SetText(table.concat(diffParts, " "))
-                    row.progressText:SetTextColor(1, 1, 1)
+                    if youCount > 0 then
+                        row.diffText:SetText("x" .. youCount)
+                        row.diffText:SetTextColor(0.7, 0.7, 0.7)
+                        row.progressText:SetText(table.concat(diffParts, " "))
+                        row.progressText:SetTextColor(1, 1, 1)
+                    else
+                        row.diffText:SetText("")
+                        row.progressText:SetText("|cff555555(alt only)|r")
+                    end
                     row.resetText:SetText("")
                     row.extendedBar:Hide()
                     row:SetScript("OnClick", nil)
-                    if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName, #entries) end
+                    if numAltCols > 0 then SetAltColumnsForCondensedRaid(row, raidName, youCount) end
 
                     y = y - ns.ROW_HEIGHT
                 end
@@ -1538,8 +1600,18 @@ function SavedInst:BuildTooltipContent()
         end
     end
 
+    -- Check if any alt has M+ runs
+    local anyAltHasMPlus = false
+    if numAltCols > 0 then
+        for _, alt in ipairs(activeAltCols) do
+            if altMPlusMap[alt.key] and next(altMPlusMap[alt.key]) then
+                anyAltHasMPlus = true; break
+            end
+        end
+    end
+
     -- M+ runs this week
-    if #mythicPlusRuns > 0 then
+    if #mythicPlusRuns > 0 or anyAltHasMPlus then
         y = y - 4
         sepIndex = sepIndex + 1
         local mpSep = GetSeparator(c, sepIndex)
@@ -1639,6 +1711,44 @@ function SavedInst:BuildTooltipContent()
                 row.extendedBar:Hide()
                 row:SetScript("OnClick", nil)
                 if numAltCols > 0 then SetAltColumnsForMPlus(row, run.name, run.level) end
+
+                y = y - ns.ROW_HEIGHT
+            end
+        end
+
+        -- Inject alt-only M+ dungeon rows (dungeons no current char run exists for)
+        if numAltCols > 0 then
+            local currentDungeons = {}
+            for _, run in ipairs(mythicPlusRuns) do
+                currentDungeons[run.name] = true
+            end
+            -- Collect unique alt-only dungeon names
+            local altOnlyDungeons = {}
+            local altOnlyOrder = {}
+            for _, alt in ipairs(activeAltCols) do
+                for dungeonName in pairs(altMPlusMap[alt.key] or {}) do
+                    if not currentDungeons[dungeonName] and not altOnlyDungeons[dungeonName] then
+                        altOnlyDungeons[dungeonName] = true
+                        table.insert(altOnlyOrder, dungeonName)
+                    end
+                end
+            end
+            table.sort(altOnlyOrder)
+            for _, dungeonName in ipairs(altOnlyOrder) do
+                rowIndex = rowIndex + 1
+                local row = GetRow(c, rowIndex)
+                row:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+                row:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
+                row:SetHeight(ns.ROW_HEIGHT)
+
+                row.nameText:SetText(dungeonName)
+                row.nameText:SetTextColor(0.5, 0.5, 0.5)
+                row.diffText:SetText("")
+                row.progressText:SetText("|cff555555-|r")
+                row.resetText:SetText("")
+                row.extendedBar:Hide()
+                row:SetScript("OnClick", nil)
+                if numAltCols > 0 then SetAltColumnsForMPlus(row, dungeonName, nil) end
 
                 y = y - ns.ROW_HEIGHT
             end

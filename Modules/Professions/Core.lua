@@ -82,9 +82,20 @@ local PROF_DEFAULTS = {
         leftClick       = "openprofessions",
         rightClick      = "none",
         middleClick     = "none",
-        shiftLeftClick  = "none",
+        shiftLeftClick  = "shoppinglist",
         shiftRightClick = "none",
         ctrlLeftClick   = "opensettings",
+        ctrlRightClick  = "none",
+        altLeftClick    = "none",
+        altRightClick   = "none",
+    },
+    rowClickActions = {
+        leftClick       = "waypoint",
+        rightClick      = "placelure",
+        middleClick     = "none",
+        shiftLeftClick  = "craftlure",
+        shiftRightClick = "shopzone",
+        ctrlLeftClick   = "openmap",
         ctrlRightClick  = "none",
         altLeftClick    = "none",
         altRightClick   = "none",
@@ -500,6 +511,146 @@ local function GetOrCreateRow(profKey, parent, index)
     return row
 end
 
+---------------------------------------------------------------------------
+-- Secure lure button pool (SecureActionButtonTemplate for Use Lure)
+---------------------------------------------------------------------------
+
+local lureButtons = {}  -- { [profKey] = { [index] = Button } }
+
+local function GetOrCreateLureButton(profKey, parent, index, lure)
+    if not lureButtons[profKey] then lureButtons[profKey] = {} end
+    if lureButtons[profKey][index] then
+        lureButtons[profKey][index]:Show()
+        return lureButtons[profKey][index]
+    end
+
+    local row = CreateFrame("Button", "DDTProfLure_" .. profKey .. "_" .. index, parent, "SecureActionButtonTemplate")
+    row:SetSize(360, ns.ROW_HEIGHT)
+    row:EnableMouse(true)
+    row:RegisterForClicks("AnyUp", "AnyDown")
+
+    row.highlight = row:CreateTexture(nil, "HIGHLIGHT")
+    row.highlight:SetAllPoints()
+    row.highlight:SetColorTexture(1, 1, 1, 0.1)
+
+    row.icon = row:CreateTexture(nil, "ARTWORK")
+    row.icon:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+    row.icon:SetSize(ICON_SIZE, ICON_SIZE)
+    row.icon:Hide()
+
+    row.text = ns.FontString(row, "DDTFontNormal")
+    row.text:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 4, 0)
+    row.text:SetJustifyH("LEFT")
+    row.text:SetJustifyV("TOP")
+    row.text:SetWordWrap(true)
+
+    row.status = ns.FontString(row, "DDTFontSmall")
+    row.status:SetPoint("TOPRIGHT", row, "TOPRIGHT", 0, 0)
+    row.status:SetJustifyH("RIGHT")
+    row.status:SetJustifyV("TOP")
+
+    row:SetScript("OnEnter", function()
+        Professions:CancelHideTimer(profKey)
+    end)
+    row:SetScript("OnLeave", function()
+        Professions:StartHideTimer(profKey)
+    end)
+
+    -- Secure item attribute: set item for lure usage
+    row:SetAttribute("type", "item")
+    row:SetAttribute("item", "item:" .. lure.itemID)
+    C_Item.RequestLoadItemDataByID(lure.itemID)
+    local ticker
+    ticker = C_Timer.NewTicker(1, function()
+        local itemName = C_Item.GetItemNameByID(lure.itemID)
+        if itemName and not InCombatLockdown() then
+            row:SetAttribute("item", itemName)
+            ticker:Cancel()
+        end
+    end, 10)
+
+    -- PreClick: only allow secure item use when the resolved action is "placelure"
+    row:SetScript("PreClick", function(self, button)
+        if InCombatLockdown() then return end
+        local pdb = Professions:GetProfDB(profKey)
+        local action = DDT:ResolveClickAction(button, pdb.rowClickActions or {})
+        if action ~= "placelure" then
+            self:SetAttribute("type", nil)
+        else
+            self:SetAttribute("type", "item")
+        end
+    end)
+
+    -- PostClick: restore attribute and handle non-item actions
+    row:SetScript("PostClick", function(self, button)
+        if not InCombatLockdown() then
+            self:SetAttribute("type", "item")
+        end
+        -- Throttle AnyUp/AnyDown double-fire
+        local now = GetTime()
+        if (now - (self._lastPostClick or 0)) < 0.1 then return end
+        self._lastPostClick = now
+
+        local pdb = Professions:GetProfDB(profKey)
+        local action = DDT:ResolveClickAction(button, pdb.rowClickActions or {})
+        if action and action ~= "placelure" and action ~= "none" then
+            Professions:ExecuteRowClickAction(profKey, action, self._lureIndex)
+        end
+    end)
+
+    lureButtons[profKey][index] = row
+    return row
+end
+
+--- Execute a row-level click action on a beast lure row
+function Professions:ExecuteRowClickAction(profKey, action, lureIndex)
+    if not action or action == "none" then return end
+    local profData = ns.ProfessionData[profKey]
+    if not profData or not profData.activities or not profData.activities.majesticBeasts then return end
+    local lure = profData.activities.majesticBeasts.lures[lureIndex]
+    if not lure then return end
+
+    if action == "waypoint" then
+        if lure.waypoint then
+            local wp = lure.waypoint
+            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
+            C_Map.SetUserWaypoint(mapPoint)
+            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+            DDT:Print("Waypoint: " .. lure.color .. lure.name .. "|r")
+        end
+
+    elseif action == "craftlure" then
+        if lure.recipeID then
+            C_TradeSkillUI.OpenRecipe(lure.recipeID)
+        else
+            DDT:Print("No recipe found for " .. lure.color .. lure.name .. "|r")
+        end
+
+    elseif action == "shopzone" then
+        if Auctionator and Auctionator.API and Auctionator.API.v1 then
+            local items = {}
+            for _, reagent in ipairs(lure.reagents) do
+                local name = C_Item.GetItemNameByID(reagent.itemID)
+                if name then
+                    local searchStr = Auctionator.API.v1.ConvertToSearchString("DDT", { searchString = name })
+                    items[#items + 1] = searchStr
+                end
+            end
+            if #items > 0 then
+                pcall(Auctionator.API.v1.CreateShoppingList, "DDT", "DDT " .. lure.name .. " Reagents", items)
+                DDT:Print("Shopping list: DDT " .. lure.name .. " Reagents")
+            end
+        else
+            DDT:Print("Auctionator not installed.")
+        end
+
+    elseif action == "openmap" then
+        if lure.waypoint then
+            OpenWorldMap(lure.waypoint.map)
+        end
+    end
+end
+
 local function GetOrCreateHeader(profKey, parent, index)
     local pool = pools[profKey]
     if pool.headers[index] then
@@ -521,6 +672,10 @@ local function HideAllPooled(profKey)
     if not pool then return end
     for _, row in pairs(pool.rows) do row:Hide() end
     for _, hdr in pairs(pool.headers) do hdr:Hide() end
+    -- Also hide secure lure buttons
+    if lureButtons[profKey] then
+        for _, btn in pairs(lureButtons[profKey]) do btn:Hide() end
+    end
 end
 
 ---------------------------------------------------------------------------
@@ -541,6 +696,7 @@ function Professions:PopulateTooltip(profKey)
     local innerWidth = tooltipWidth - 2 * TOOLTIP_PADDING
 
     tf:SetWidth(tooltipWidth)
+    tf.maxHeightOverride = ResolveTooltipSetting(pdb, db, "tooltipMaxHeight")
 
     -- Header
     tf.header:SetText(DDT:ColorText(state.profDef.name, 1, 0.82, 0))
@@ -613,7 +769,16 @@ function Professions:PopulateTooltip(profKey)
     -- ── Hint bar ──
     local showHint = pdb.showHintBar ~= false
     if showHint then
-        tf.hint:SetText(DDT:BuildHintText(pdb.clickActions or {}, ns.PROF_CLICK_ACTIONS))
+        local hintText = DDT:BuildHintText(pdb.clickActions or {}, ns.PROF_CLICK_ACTIONS)
+        -- Add row click hints if this profession has activities (beast rows)
+        local profData = ns.ProfessionData[profKey]
+        if profData and profData.activities and profData.activities.majesticBeasts then
+            local rowHint = DDT:BuildHintText(pdb.rowClickActions or {}, ns.PROF_ROW_CLICK_ACTIONS)
+            if rowHint and rowHint ~= "" then
+                hintText = hintText .. "\nRow: " .. rowHint
+            end
+        end
+        tf.hint:SetText(hintText)
         tf.hint:Show()
     else
         tf.hint:SetText("")
@@ -622,7 +787,8 @@ function Professions:PopulateTooltip(profKey)
 
     -- Finalize layout
     local contentH = math.max(math.abs(yOffset), ns.ROW_HEIGHT)
-    tf:FinalizeLayout(tooltipWidth, contentH)
+    local maxH = ResolveTooltipSetting(pdb, db, "tooltipMaxHeight")
+    tf:FinalizeLayout(tooltipWidth, contentH, nil, maxH)
 end
 
 ---------------------------------------------------------------------------
@@ -1037,13 +1203,7 @@ function Professions:RenderMajesticBeasts(sc, yOffset, rowIdx, hdrIdx, profKey, 
                     local count = C_Item.GetItemCount(reagent.itemID, true, false, true, true)
                     if count < reagent.count then
                         hasReagents = false
-                        local name = C_Item.GetItemNameByID(reagent.itemID)
-                        if name then
-                            -- Shorten: just show "3/8 Name"
-                            missingParts[#missingParts + 1] = count .. "/" .. reagent.count
-                        else
-                            missingParts[#missingParts + 1] = count .. "/" .. reagent.count
-                        end
+                        missingParts[#missingParts + 1] = count .. "/" .. reagent.count
                     end
                 end
                 if hasReagents then
@@ -1062,15 +1222,31 @@ function Professions:RenderMajesticBeasts(sc, yOffset, rowIdx, hdrIdx, profKey, 
             row.status:SetWidth(STATUS_W)
             row:SetHeight(ns.ROW_HEIGHT)
 
-            -- Click to set waypoint
-            row:SetScript("OnMouseUp", function(_, button)
-                if button == "LeftButton" and lure.waypoint then
-                    local wp = lure.waypoint
-                    local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-                    C_Map.SetUserWaypoint(mapPoint)
-                    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+            -- Click handler for row actions (waypoint, craftlure, shopzone, openmap)
+            local lureIndex = i
+            row:SetScript("OnClick", function(self, button)
+                local pdb = Professions:GetProfDB(profKey)
+                local action = DDT:ResolveClickAction(button, pdb.rowClickActions or {})
+                if action == "placelure" then
+                    -- Secure item usage handled by overlay button
+                    return
                 end
+                Professions:ExecuteRowClickAction(profKey, action, lureIndex)
             end)
+
+            -- Secure lure overlay for placelure action
+            if not InCombatLockdown() then
+                local lureBtn = GetOrCreateLureButton(profKey, sc, i, lure)
+                lureBtn:ClearAllPoints()
+                lureBtn:SetAllPoints(row)
+                lureBtn:SetFrameLevel(row:GetFrameLevel() + 1)
+                -- Hide overlay visuals — only the highlight and click behavior remain
+                lureBtn.icon:Hide()
+                lureBtn.text:SetText("")
+                lureBtn.status:SetText("")
+                lureBtn._lureIndex = i
+                lureBtn:Show()
+            end
 
             yOffset = yOffset - ns.ROW_HEIGHT - 2
         end
@@ -1094,13 +1270,54 @@ function Professions:RenderBuffs(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidt
         and profData.activities.majesticBeasts
         and profData.activities.majesticBeasts.consumables
 
-    -- Section header
-    hdrIdx = hdrIdx + 1
-    local hdr = GetOrCreateHeader(profKey, sc, hdrIdx)
-    hdr:ClearAllPoints()
-    hdr:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
-    hdr:SetWidth(innerWidth)
-    hdr:SetText(DDT:ColorText("Consumable Buffs", 1, 0.82, 0))
+    -- Build combined list for shopping list action
+    local allBuffs = {}
+    local sharedSet = {}
+    for _, b in ipairs(buffs) do
+        allBuffs[#allBuffs + 1] = b
+        sharedSet[b.itemID] = true
+    end
+    if activityBuffs then
+        for _, b in ipairs(activityBuffs) do
+            if not sharedSet[b.itemID] then
+                allBuffs[#allBuffs + 1] = b
+            end
+        end
+    end
+
+    -- Section header (use a row for click support)
+    rowIdx = rowIdx + 1
+    local hdrRow = GetOrCreateRow(profKey, sc, rowIdx)
+    hdrRow:ClearAllPoints()
+    hdrRow:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+    hdrRow:SetWidth(innerWidth)
+    hdrRow.icon:Hide()
+    hdrRow.text:SetPoint("TOPLEFT", hdrRow, "TOPLEFT", 0, 0)
+    hdrRow.text:SetWidth(innerWidth)
+    hdrRow.text:SetText(DDT:ColorText("Consumable Buffs", 1, 0.82, 0))
+    hdrRow.text:SetTextColor(1, 0.82, 0)
+    hdrRow.status:SetText("|cff888888Shift+Click: Shop All|r")
+    hdrRow.status:SetWidth(120)
+    hdrRow:SetHeight(HEADER_HEIGHT)
+    hdrRow:SetScript("OnClick", function(_, button)
+        if IsShiftKeyDown() and button == "LeftButton" then
+            if Auctionator and Auctionator.API and Auctionator.API.v1 then
+                local items = {}
+                for _, buff in ipairs(allBuffs) do
+                    local name = C_Item.GetItemNameByID(buff.itemID)
+                    if name then
+                        items[#items + 1] = Auctionator.API.v1.ConvertToSearchString("DDT", { searchString = name })
+                    end
+                end
+                if #items > 0 then
+                    pcall(Auctionator.API.v1.CreateShoppingList, "DDT", "DDT Consumable Buffs", items)
+                    DDT:Print("Shopping list created: DDT Consumable Buffs")
+                end
+            else
+                DDT:Print("Auctionator not installed.")
+            end
+        end
+    end)
     yOffset = yOffset - HEADER_HEIGHT
 
     local function RenderBuff(buff)
@@ -1139,7 +1356,23 @@ function Professions:RenderBuffs(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidt
         end
         row.status:SetWidth(60)
         row:SetHeight(ns.ROW_HEIGHT)
-        row:SetScript("OnMouseUp", nil)
+
+        -- Shift+Click: search AH for this consumable
+        local buffRef = buff
+        row:SetScript("OnClick", function(_, button)
+            if IsShiftKeyDown() and button == "LeftButton" then
+                if Auctionator and Auctionator.API and Auctionator.API.v1 then
+                    local name = C_Item.GetItemNameByID(buffRef.itemID)
+                    if name then
+                        pcall(Auctionator.API.v1.CreateShoppingList, "DDT", "DDT " .. name, {
+                            Auctionator.API.v1.ConvertToSearchString("DDT", { searchString = name })
+                        })
+                    end
+                else
+                    DDT:Print("Auctionator not installed.")
+                end
+            end
+        end)
 
         yOffset = yOffset - ns.ROW_HEIGHT - 2
     end
@@ -1150,8 +1383,6 @@ function Professions:RenderBuffs(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidt
 
     -- Render profession-specific consumables (that aren't already in the shared list)
     if activityBuffs then
-        local sharedSet = {}
-        for _, b in ipairs(buffs) do sharedSet[b.itemID] = true end
         for _, buff in ipairs(activityBuffs) do
             if not sharedSet[buff.itemID] then
                 RenderBuff(buff)
@@ -1432,7 +1663,7 @@ function Professions:MigrateMajesticBeastData()
     local pdb = self:GetProfDB("skinning")
     if mbDB.tooltipScale then pdb.tooltipScale = mbDB.tooltipScale end
     if mbDB.tooltipWidth then pdb.tooltipWidth = mbDB.tooltipWidth end
-    if mbDB.tooltipMaxHeight then pdb.tooltipMaxHeight = mbDB.tooltipMaxHeight end
+    -- Don't migrate tooltipMaxHeight — let it inherit from module-level setting
     -- Use profession-centric default rather than copying old beast-only template
     pdb.labelTemplate = "<name>: <kp_earned>/<kp_total> KP  <mb_kills>/<mb_total> Beasts"
     if mbDB.clickActions then
@@ -1477,6 +1708,8 @@ function Professions:FixMBLabelMigration()
                 if actionMap[v] then pdb.clickActions[k] = actionMap[v] end
             end
         end
+        -- Clear migrated tooltipMaxHeight so it inherits from module-level setting
+        pdb.tooltipMaxHeight = nil
     end
     db._mbLabelV2 = true
 end
@@ -1487,6 +1720,13 @@ function Professions:Init()
     -- Run migrations
     self:MigrateMajesticBeastData()
     self:FixMBLabelMigration()
+    -- Clear stale per-prof tooltipMaxHeight from MB migration (should inherit module-level)
+    local mdb = self:GetDB()
+    if not mdb._fixMaxHeight then
+        local spdb = mdb.perProf and mdb.perProf.skinning
+        if spdb then spdb.tooltipMaxHeight = nil end
+        mdb._fixMaxHeight = true
+    end
 
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         Professions:OnEvent(event, ...)
@@ -1510,6 +1750,9 @@ function Professions:Init()
     C_Timer.After(5, function()
         self:DetectProfessions()
         self:UpdateData()
+        for profKey in pairs(profState) do
+            self:SyncLureKills(profKey)
+        end
     end)
 end
 
@@ -1540,6 +1783,13 @@ function Professions:OnEvent(event, ...)
         -- A quest was completed — could be a KP source
         C_Timer.After(0.5, function()
             self:UpdateData()
+            -- Refresh visible tooltips so kill status is reflected
+            for pk in pairs(profState) do
+                local tf = tooltipFrames[pk]
+                if tf and tf:IsShown() then
+                    self:PopulateTooltip(pk)
+                end
+            end
         end)
     elseif event == "BAG_UPDATE_DELAYED" then
         self:UpdateData()
@@ -1675,6 +1925,17 @@ function Professions:BuildSettingsPanel(panel)
                 function(v) pdb().clickActions[ck.key] = v end, r)
         end
         W.EndSection(panel, cy)
+
+        -- Row click actions (for beast/activity rows)
+        local rowBody = W.AddSection(panel, entry.name .. " Row Click Actions", true)
+        local ry = 0
+        ry = W.AddDescription(rowBody, ry, "Configure what happens when you click a beast or activity row in the tooltip.")
+        for _, ck in ipairs(clickKeys) do
+            ry = W.AddDropdown(rowBody, ry, ck.label, ns.PROF_ROW_CLICK_ACTIONS,
+                function() return pdb().rowClickActions[ck.key] end,
+                function(v) pdb().rowClickActions[ck.key] = v end, r)
+        end
+        W.EndSection(panel, ry)
     end
 end
 
