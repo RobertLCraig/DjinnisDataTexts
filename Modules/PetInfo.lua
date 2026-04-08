@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Pet Info
+-- Djinni's Data Texts - Pet Info
 -- Pet journal unlock status, battle capability, collection stats.
 local addonName, ns = ...
 local DDT = ns.addon

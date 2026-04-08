@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Movement Speed
+-- Djinni's Data Texts - Movement Speed
 -- Current/base movement speed as percentage, swim/fly/glide detection,
 -- speed-affecting buffs and consumables.
 local addonName, ns = ...

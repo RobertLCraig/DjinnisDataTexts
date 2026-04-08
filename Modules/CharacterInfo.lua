@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Character Info
+-- Djinni's Data Texts - Character Info
 -- Character name, realm, class, race, level, item level, shard ID (best-effort).
 local addonName, ns = ...
 local DDT = ns.addon

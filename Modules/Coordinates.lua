@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Coordinates
+-- Djinni's Data Texts - Coordinates
 -- Shows player map coordinates and zone information.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -65,7 +65,7 @@ local CLICK_ACTIONS = {
 ---------------------------------------------------------------------------
 
 local function FormatCoords(x, y, decimals)
-    if not x or not y then return "—, —" end
+    if not x or not y then return "-, -" end
     local fmt = "%." .. (decimals or 2) .. "f"
     return string.format(fmt .. ", " .. fmt, x * 100, y * 100)
 end

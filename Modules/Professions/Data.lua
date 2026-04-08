@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Professions Framework: Shared Data
+-- Djinni's Data Texts - Professions Framework: Shared Data
 -- Profession definitions, expansion constants, buff tables.
 local _, ns = ...
 

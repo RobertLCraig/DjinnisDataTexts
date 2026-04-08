@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Guild
+-- Djinni's Data Texts - Guild
 -- Guild roster with online members, MOTD, rank, zone, and note display.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -161,7 +161,7 @@ function GuildBroker:UpdateData()
     end
 
     -- Get all member IDs
-    -- C_Club.GetClubMembers returns a Blizzard "secret table" — using # on it
+    -- C_Club.GetClubMembers returns a Blizzard "secret table" - using # on it
     -- causes taint. Use clubInfo.memberCount for totalCount and iterate with
     -- ipairs (which handles secret tables without taint).
     local memberIds = C_Club.GetClubMembers(guildClubId)

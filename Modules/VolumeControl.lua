@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Volume Control
+-- Djinni's Data Texts - Volume Control
 -- Interactive tooltip with per-stream volume sliders and mute toggles.
 local addonName, ns = ...
 local DDT = ns.addon

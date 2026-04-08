@@ -14,7 +14,7 @@ ns.addonName = addonName
 -- Saved variables reference (populated in ADDON_LOADED)
 ns.db = nil
 
--- Module registry — modules call ns:RegisterModule() during load
+-- Module registry - modules call ns:RegisterModule() during load
 ns.modules = {}
 
 -- Default settings (flat structure, no profiles)
@@ -37,7 +37,7 @@ ns.defaults = {
     },
 }
 
--- Available click actions (shared by social modules — used for tooltip row clicks)
+-- Available click actions (shared by social modules - used for tooltip row clicks)
 ns.ACTION_VALUES = {
     whisper          = "Whisper",
     invite           = "Invite to Group",
@@ -818,7 +818,7 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     f.clipFrame = CreateFrame("Frame", nil, f)
     f.clipFrame:SetClipsChildren(true)
 
-    -- Scroll content (child of clipFrame — all module content goes here)
+    -- Scroll content (child of clipFrame - all module content goes here)
     f.content = CreateFrame("Frame", nil, f.clipFrame)
     f.scrollContent = f.content  -- alias for DDT:UpdateScrollbar compat
 
@@ -875,7 +875,7 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
         DDT:UpdateHScrollbar(self)
     end)
 
-    -- OnEnter / OnLeave — probe for both naming conventions
+    -- OnEnter / OnLeave - probe for both naming conventions
     f:SetScript("OnEnter", function()
         if moduleRef.CancelTooltipHideTimer then
             moduleRef:CancelTooltipHideTimer()
@@ -1237,7 +1237,7 @@ function DDT:CopyToClipboard(text, label)
 
             local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
             title:SetPoint("TOP", 0, -10)
-            title:SetText("DDT — Copy Text")
+            title:SetText("DDT - Copy Text")
             f.titleText = title
 
             local scroll = CreateFrame("ScrollFrame", "DDTCopyScroll", f, "UIPanelScrollFrameTemplate")
@@ -1261,7 +1261,7 @@ function DDT:CopyToClipboard(text, label)
             hint:SetText("Ctrl+A to select all, Ctrl+C to copy, Escape to close")
         end
 
-        DDTCopyFrame.titleText:SetText("DDT — " .. (label or "Copy Text"))
+        DDTCopyFrame.titleText:SetText("DDT - " .. (label or "Copy Text"))
         DDTCopyFrame.editBox:SetText(text)
         DDTCopyFrame:Show()
         DDTCopyFrame.editBox:HighlightText()

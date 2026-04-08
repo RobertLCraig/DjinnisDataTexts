@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Professions: Skinning (Midnight)
+-- Djinni's Data Texts - Professions: Skinning (Midnight)
 -- Includes Majestic Beast activity data (migrated from MajesticBeast.lua).
 local _, ns = ...
 ns.ProfessionData = ns.ProfessionData or {}

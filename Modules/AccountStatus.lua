@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Account Status
+-- Djinni's Data Texts - Account Status
 -- Warband bank and pet journal access indicators for multibox setups.
 -- Shows at a glance which account/character has access to shared resources.
 local addonName, ns = ...

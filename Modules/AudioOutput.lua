@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Audio Output Device
+-- Djinni's Data Texts - Audio Output Device
 -- Switch between available audio output devices from a tooltip list.
 local addonName, ns = ...
 local DDT = ns.addon

@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Bag Value
+-- Djinni's Data Texts - Bag Value
 -- Estimated total value of bag contents using TSM, with vendor price fallback.
 local addonName, ns = ...
 local DDT = ns.addon

@@ -63,7 +63,7 @@ Modules\PreyTracker.lua
 Modules\VolumeControl.lua
 Modules\AudioOutput.lua
 
-# Modules - Phase 11 (MajesticBeast retired — migrated to Professions Framework)
+# Modules - Phase 11 (MajesticBeast retired - migrated to Professions Framework)
 # Modules\MajesticBeast.lua
 
 # Modules - Professions Framework

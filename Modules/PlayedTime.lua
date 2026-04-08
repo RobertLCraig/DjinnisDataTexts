@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Played Time
+-- Djinni's Data Texts - Played Time
 -- Session time, total /played, and level time tracking.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -164,7 +164,7 @@ function PlayedTime:Init()
             totalPlayed = total or 0
             levelPlayed = level or 0
             playedReceived = true
-            -- Reset session offset — totalPlayed now includes time up to this moment
+            -- Reset session offset - totalPlayed now includes time up to this moment
             sessionStart = GetTime()
             PlayedTime:UpdateDisplay()
         end

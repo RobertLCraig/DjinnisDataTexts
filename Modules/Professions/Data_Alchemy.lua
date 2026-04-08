@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Professions: Alchemy (Midnight)
+-- Djinni's Data Texts - Professions: Alchemy (Midnight)
 local _, ns = ...
 ns.ProfessionData = ns.ProfessionData or {}
 

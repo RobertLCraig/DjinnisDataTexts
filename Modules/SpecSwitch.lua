@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Spec Switch
+-- Djinni's Data Texts - Spec Switch
 -- Talent specialization, loadout switching, and loot spec selection.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -11,7 +11,7 @@ local LDB = LibStub("LibDataBroker-1.1")
 local SpecSwitch = {}
 ns.SpecSwitch = SpecSwitch
 
--- State (module fields — accessible by DemoMode)
+-- State (module fields - accessible by DemoMode)
 SpecSwitch.specCache      = {}   -- { [index] = { id, name, icon, role } }
 SpecSwitch.loadoutCache   = {}   -- { [specID] = { { configID, name } } }
 SpecSwitch.currentSpecIndex = 0
@@ -93,7 +93,7 @@ end
 ---------------------------------------------------------------------------
 -- Spec switching helper
 -- Uses C_SpecializationInfo.SetSpecialization (the working API in
--- Midnight) — matches ElvUI / EnhanceQoL implementations.
+-- Midnight) - matches ElvUI / EnhanceQoL implementations.
 ---------------------------------------------------------------------------
 
 local function SwitchToSpec(specIndex)

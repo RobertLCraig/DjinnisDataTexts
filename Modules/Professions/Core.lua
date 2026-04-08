@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Professions Framework: Core
+-- Djinni's Data Texts - Professions Framework: Core
 -- Dynamic LDB broker creation, tooltip rendering, settings, KP engine.
 -- Loads AFTER Data.lua and all Data_*.lua files.
 local addonName, ns = ...
@@ -185,7 +185,7 @@ end
 --- Register a profession: create LDB broker and runtime state
 function Professions:RegisterProfession(profKey, profDef, profIndex, texture, hasExpansion)
     if brokers[profKey] then
-        -- Already registered — just update state
+        -- Already registered - just update state
         local state = profState[profKey]
         state.profIndex = profIndex
         state.hasExpansion = hasExpansion
@@ -1076,7 +1076,7 @@ function Professions:RenderActivities(sc, yOffset, rowIdx, hdrIdx, profKey, inne
 
     local activities = profData.activities
 
-    -- Buff Alerts (Enchanting Shatter Essence, etc.) — render first, most prominent
+    -- Buff Alerts (Enchanting Shatter Essence, etc.) - render first, most prominent
     if activities.buffAlerts then
         yOffset, rowIdx, hdrIdx = self:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.buffAlerts)
     end
@@ -1530,7 +1530,7 @@ function Professions:RenderMajesticBeasts(sc, yOffset, rowIdx, hdrIdx, profKey, 
                 lureBtn:ClearAllPoints()
                 lureBtn:SetAllPoints(row)
                 lureBtn:SetFrameLevel(row:GetFrameLevel() + 1)
-                -- Hide overlay visuals — only the highlight and click behavior remain
+                -- Hide overlay visuals - only the highlight and click behavior remain
                 lureBtn.icon:Hide()
                 lureBtn.text:SetText("")
                 lureBtn.status:SetText("")
@@ -1924,7 +1924,7 @@ function Professions:SyncLureKills(profKey)
         if C_QuestLog.IsQuestFlaggedCompleted(lure.questID) then
             local existing = charData.activities.lureKills[lure.name]
             if not existing or existing < GetLastDailyReset() then
-                -- Quest flagged but no kill recorded today — record now
+                -- Quest flagged but no kill recorded today - record now
                 charData.activities.lureKills[lure.name] = GetServerTime()
             end
         end
@@ -1978,7 +1978,7 @@ function Professions:MigrateMajesticBeastData()
     local pdb = self:GetProfDB("skinning")
     if mbDB.tooltipScale then pdb.tooltipScale = mbDB.tooltipScale end
     if mbDB.tooltipWidth then pdb.tooltipWidth = mbDB.tooltipWidth end
-    -- Don't migrate tooltipMaxHeight — let it inherit from module-level setting
+    -- Don't migrate tooltipMaxHeight - let it inherit from module-level setting
     -- Use profession-centric default rather than copying old beast-only template
     pdb.labelTemplate = "<name>: <kp_earned>/<kp_total> KP  <mb_kills>/<mb_total> Beasts"
     if mbDB.clickActions then
@@ -2095,7 +2095,7 @@ function Professions:OnEvent(event, ...)
                 charData.activities.lureKills[lureInfo.lureName] = GetServerTime()
             end
         end
-        -- A quest was completed — could be a KP source
+        -- A quest was completed - could be a KP source
         C_Timer.After(0.5, function()
             self:UpdateData()
             -- Refresh visible tooltips so kill status is reflected
@@ -2163,7 +2163,7 @@ function Professions:BuildSettingsPanel(panel)
         function(v) db().tooltipMaxHeight = v end, r)
     W.EndSection(panel, y)
 
-    -- Per-profession sections — built from PROF_DEFS (always available)
+    -- Per-profession sections - built from PROF_DEFS (always available)
     -- Sort alphabetically by profession name
     local sortedProfs = {}
     for profKey, profDef in pairs(ns.PROF_DEFS) do

@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Mail
+-- Djinni's Data Texts - Mail
 -- Unread mail count, mailbox status, and recent mail items.
 local addonName, ns = ...
 local DDT = ns.addon

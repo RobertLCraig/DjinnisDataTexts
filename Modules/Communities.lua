@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Communities
+-- Djinni's Data Texts - Communities
 -- WoW Communities roster with online members and stream notifications.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -177,8 +177,8 @@ function CommunitiesBroker:UpdateData()
     local clubsData = {}
 
     for _, clubInfo in ipairs(clubs) do
-        -- Only character and BNet communities (skip guild — handled by GuildBroker)
-        -- Skip clubs whose data hasn't loaded yet — unloaded fields return a
+        -- Only character and BNet communities (skip guild - handled by GuildBroker)
+        -- Skip clubs whose data hasn't loaded yet - unloaded fields return a
         -- WoW "secret" protected value, which is truthy but not a string.
         if type(clubInfo.name) == "string"
            and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet)

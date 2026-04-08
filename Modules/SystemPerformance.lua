@@ -1,4 +1,4 @@
--- Djinni's Data Texts — System Performance
+-- Djinni's Data Texts - System Performance
 -- FPS, latency (home/world), memory usage, and top addon memory/CPU consumers.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -139,7 +139,7 @@ local function CPUColor(pct)
 end
 
 local function FormatCPU(pct)
-    if pct <= 0 then return "—" end
+    if pct <= 0 then return "-" end
     return string.format("%.2f%%", pct)
 end
 
@@ -557,7 +557,7 @@ function SysPerf:BuildTooltipContent()
             encLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING + 6, y)
             encLine.label:SetText("|cffffffffEncounter|r")
             encLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", -PADDING, y)
-            local encText = overallCPU.encounter > 0 and FormatCPU(overallCPU.encounter) or "—"
+            local encText = overallCPU.encounter > 0 and FormatCPU(overallCPU.encounter) or "-"
             encLine.value:SetText(encText)
             if overallCPU.encounter > 0 then
                 encLine.value:SetTextColor(CPUColor(overallCPU.encounter))

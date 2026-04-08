@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Experience
+-- Djinni's Data Texts - Experience
 -- XP progress, rested XP, and reputation tracking.
 local addonName, ns = ...
 local DDT = ns.addon

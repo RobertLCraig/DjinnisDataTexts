@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Item Level & Durability
+-- Djinni's Data Texts - Item Level & Durability
 -- Equipped item level, durability, missing enchants/gems, SimC export, shopping lists.
 local addonName, ns = ...
 local DDT = ns.addon

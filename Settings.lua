@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Settings
+-- Djinni's Data Texts - Settings
 -- Blizzard Settings API integration, widget helpers, and per-module subcategories.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -460,7 +460,7 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
     editbox:SetText(getter())
     editbox:SetTextColor(0, 0, 0, 0)
 
-    -- FontString overlay — EditBox text doesn't render in scroll children;
+    -- FontString overlay - EditBox text doesn't render in scroll children;
     -- the overlay provides reliable display when unfocused.
     local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("LEFT", editbox, "LEFT", 6, 0)
@@ -825,7 +825,7 @@ local function EndSection(panel, y)
 end
 
 ---------------------------------------------------------------------------
--- "Copy Tooltip From" dropdown — copies tooltipScale/Width/MaxHeight
+-- "Copy Tooltip From" dropdown - copies tooltipScale/Width/MaxHeight
 -- from another module's saved settings into the current module.
 ---------------------------------------------------------------------------
 

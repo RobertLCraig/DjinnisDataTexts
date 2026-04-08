@@ -1,4 +1,4 @@
--- Djinni's Data Texts — LFG Status
+-- Djinni's Data Texts - LFG Status
 -- Tracks LFG queue status, premade group applications, and selected roles.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -111,7 +111,7 @@ local APP_STATUS_COLOR = {
 ---------------------------------------------------------------------------
 
 local function FormatTime(seconds)
-    if not seconds or seconds <= 0 then return "—" end
+    if not seconds or seconds <= 0 then return "-" end
     seconds = math.floor(seconds)
     local h = math.floor(seconds / 3600)
     local m = math.floor((seconds % 3600) / 60)
@@ -131,7 +131,7 @@ local function GetRoleString()
     if tank then table.insert(parts, "Tank") end
     if healer then table.insert(parts, "Healer") end
     if damage then table.insert(parts, "DPS") end
-    if #parts == 0 then return "—" end
+    if #parts == 0 then return "-" end
     return table.concat(parts, "/")
 end
 
@@ -142,7 +142,7 @@ local function GetRoleIcon(role)
 end
 
 local function GetRoleLabel(role)
-    if not role then return "—" end
+    if not role then return "-" end
     local key = role:upper()
     return ROLE_LABELS[key] or role
 end
@@ -567,7 +567,7 @@ function LFGStatus:BuildTooltipContent()
 
             local statusLabel = APP_STATUS_TEXT[app.status] or app.status
             local statusColor = APP_STATUS_COLOR[app.status] or { 0.7, 0.7, 0.7 }
-            local rightText = roleLabel .. " — " .. statusLabel
+            local rightText = roleLabel .. " - " .. statusLabel
             line.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
             line.value:SetText(rightText)
             line.value:SetTextColor(unpack(statusColor))

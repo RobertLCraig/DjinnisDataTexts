@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Time / Date
+-- Djinni's Data Texts - Time / Date
 -- Server time, local time, daily and weekly reset countdowns.
 local addonName, ns = ...
 local DDT = ns.addon

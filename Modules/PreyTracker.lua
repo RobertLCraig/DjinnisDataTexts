@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Prey Tracker
+-- Djinni's Data Texts - Prey Tracker
 -- Tracks active prey hunt, zone, progress, weekly completions, and currency.
 -- Zone mapping sourced from Wowhead NPC spawn data (configurable in settings).
 local addonName, ns = ...
@@ -28,7 +28,7 @@ local hideTimer    = nil
 local rowPool      = {}
 
 ---------------------------------------------------------------------------
--- Prey data — quest IDs, target names, and zone mapping
+-- Prey data - quest IDs, target names, and zone mapping
 -- Zones sourced from Wowhead NPC spawn data (March 2026).
 -- Users can override zones in settings if data changes.
 ---------------------------------------------------------------------------
@@ -69,7 +69,7 @@ local PREY_DATA = {
     ["Dengzag, the Darkened Blaze"] = { zone = "Eversong Woods",  normal = 91124, hard = 91255, nightmare = 91269 },
 }
 
--- Special quests (achievements, intro, etc.) — tracked for weekly but no zone mapping
+-- Special quests (achievements, intro, etc.) - tracked for weekly but no zone mapping
 local SPECIAL_QUEST_IDS = {
     91207,  -- Apex Predator
     91458,  -- Endurance Hunter
@@ -152,6 +152,41 @@ local PROGRESS_COLORS = {
     [2] = { 1.0, 0.5, 0.1 },
     [3] = { 0.2, 1.0, 0.4 },
 }
+
+-- Hex equivalents for progress bar fill colors
+local PROGRESS_HEX = {
+    [0] = "ff999999",
+    [1] = "ffffcc33",
+    [2] = "ffff8019",
+    [3] = "ff33ff66",
+}
+
+local BAR_SEGMENTS   = 20
+local BAR_FILL_CHAR  = "||"  -- || renders as single | in WoW
+local BAR_EMPTY_CHAR = "\194\183"  -- middle dot (·)
+local BAR_EMPTY_HEX  = "ff444444"
+
+-- Progress state → how many segments to fill (out of BAR_SEGMENTS)
+local PROGRESS_FILL = {
+    [0] = 5,    -- Cold:  25%
+    [1] = 10,   -- Warm:  50%
+    [2] = 15,   -- Hot:   75%
+    [3] = 20,   -- Final: 100%
+}
+
+--- Build an ASCII progress bar string for the given state
+local function BuildProgressBar(state)
+    if not state then return "" end
+    local filled = PROGRESS_FILL[state] or 0
+    local empty  = BAR_SEGMENTS - filled
+    local hex    = PROGRESS_HEX[state] or PROGRESS_HEX[0]
+    local label  = PROGRESS_LABELS[state] or ""
+
+    return "|c" .. BAR_EMPTY_HEX .. "[|r"
+        .. "|c" .. hex .. string.rep(BAR_FILL_CHAR, filled) .. "|r"
+        .. "|c" .. BAR_EMPTY_HEX .. string.rep(BAR_EMPTY_CHAR, empty) .. "]|r"
+        .. "  " .. "|c" .. hex .. label .. "|r"
+end
 
 local DIFFICULTY_COLORS = {
     Normal    = { 0.7, 0.7, 0.7 },
@@ -311,19 +346,19 @@ function PreyTracker:UpdateLabel()
     if activeQuestID then
         local prog = progressState and PROGRESS_LABELS[progressState] or "Active"
         statusStr = activePreyName or "Prey Hunt"
-        if activeZoneName then statusStr = statusStr .. " — " .. activeZoneName end
+        if activeZoneName then statusStr = statusStr .. " - " .. activeZoneName end
         if activeDifficulty then statusStr = statusStr .. " (" .. prog .. ")" end
     else
         statusStr = weeklyDoneCount > 0 and (weeklyDoneCount .. " prey done") or "No Prey"
     end
 
-    local zoneStr  = activeZoneName or (activeQuestID and "Tracking..." or "—")
-    local progStr  = (progressState and PROGRESS_LABELS[progressState]) or (activeQuestID and "Active" or "—")
-    local diffStr  = activeDifficulty or "—"
-    local preyStr  = activePreyName or "—"
+    local zoneStr  = activeZoneName or (activeQuestID and "Tracking..." or "-")
+    local progStr  = (progressState and BuildProgressBar(progressState)) or (activeQuestID and "Active" or "-")
+    local diffStr  = activeDifficulty or "-"
+    local preyStr  = activePreyName or "-"
     local doneStr  = tostring(weeklyDoneCount)
 
-    local currStr = "—"
+    local currStr = "-"
     local currInfo = C_CurrencyInfo.GetCurrencyInfo(REMNANT_OF_ANGUISH)
     if currInfo then currStr = tostring(currInfo.quantity) end
 
@@ -497,14 +532,23 @@ function PreyTracker:PopulateTooltip()
 
     -- Active hunt
     if activeQuestID then
-        local progLabel = progressState and PROGRESS_LABELS[progressState] or "Active"
-        local progColor = progressState and PROGRESS_COLORS[progressState] or { 0.2, 1.0, 0.4 }
         local diffColor = activeDifficulty and DIFFICULTY_COLORS[activeDifficulty] or { 0.7, 0.7, 0.7 }
 
         AddRow(activePreyName or "Prey Hunt", activeZoneName or "Unknown", activeDifficulty or "",
             { 1, 0.82, 0 }, { 0.63, 0.82, 1 }, diffColor)
-        AddRow("Progress", progLabel, nil,
-            { 0.6, 0.6, 0.6 }, progColor)
+
+        -- Progress bar row (spans full width)
+        rowIdx = rowIdx + 1
+        local barRow = GetOrCreateRow(sc, rowIdx)
+        barRow:ClearAllPoints()
+        barRow:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+        barRow.left:SetWidth(innerWidth)
+        barRow.left:SetText(BuildProgressBar(progressState))
+        barRow.left:SetTextColor(1, 1, 1)
+        barRow.mid:SetText("")
+        barRow.right:SetText("")
+        barRow:SetSize(innerWidth, ns.ROW_HEIGHT)
+        yOffset = yOffset - ns.ROW_HEIGHT - 2
     else
         AddRow("No active prey hunt", nil, nil, { 0.5, 0.5, 0.5 })
     end
@@ -638,7 +682,7 @@ function PreyTracker:BuildSettingsPanel(panel)
         { "Default",       "Prey: <zone> (<progress>)" },
         { "Status",        "<status>" },
         { "Target",        "<prey> (<diff>)" },
-        { "Zone + Diff",   "<zone> — <diff>" },
+        { "Zone + Diff",   "<zone> - <diff>" },
         { "Weekly",        "<weekly> prey done" },
         { "Currency",      "Anguish: <currency>" },
         { "Full",          "<prey> <zone> <progress> | <weekly>" },

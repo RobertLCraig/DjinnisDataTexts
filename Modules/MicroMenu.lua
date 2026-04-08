@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Micro Menu
+-- Djinni's Data Texts - Micro Menu
 -- Quick-access buttons for game panels (character, spellbook, talents, etc.).
 local addonName, ns = ...
 local DDT = ns.addon
@@ -289,7 +289,7 @@ function MicroMenu:BuildSettingsPanel(panel)
 
     local body = W.AddSection(panel, "Label Template")
     local y = 0
-    y = W.AddDescription(body, y, "Static label — no dynamic tags for this module.")
+    y = W.AddDescription(body, y, "Static label - no dynamic tags for this module.")
     y = W.AddEditBox(body, y, "Template",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateDisplay() end, r)

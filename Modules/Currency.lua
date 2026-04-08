@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Currency / Gold
+-- Djinni's Data Texts - Currency / Gold
 -- Character gold, alt gold totals, session tracking, tracked currencies,
 -- expansion-grouped currency list, and WoW Token price.
 local addonName, ns = ...

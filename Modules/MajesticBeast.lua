@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Majestic Beast Tracker
+-- Djinni's Data Texts - Majestic Beast Tracker
 -- Skinning lure cooldowns, loot tracking, reagent management, weekly KP,
 -- and AH integration for Midnight Majestic Beasts.
 local addonName, ns = ...
@@ -1404,7 +1404,7 @@ function MajesticBeast:BuildTooltipContent()
             else
                 local statusText
                 if not charData or not charData.hasSkinning then
-                    statusText = "|cff555555—|r"
+                    statusText = "|cff555555-|r"
                 elseif not CanSeeLure(charData, i) then
                     statusText = "|cff555555Locked|r"
                 elseif currentKilled then

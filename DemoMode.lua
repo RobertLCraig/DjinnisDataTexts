@@ -16,7 +16,7 @@ local DDT = ns.addon
 ---------------------------------------------------------------------------
 
 local DEMO_FRIENDS = {
-    -- WoW character friends — #Raid group
+    -- WoW character friends - #Raid group
     { name="Arathos",     level=90, classFile="WARRIOR",     area="Silvermoon City",           connected=true,  afk=true,  dnd=false, notes="#Raid #Tank",       isBNet=false, fullName="Arathos" },
     { name="Sylvara",     level=90, classFile="PRIEST",      area="Eversong Woods",         connected=true,  afk=false, dnd=false, notes="#Raid #Healer",     isBNet=false, fullName="Sylvara" },
     { name="Korvash",     level=90, classFile="DEATHKNIGHT", area="Ghostlands",  connected=true,  afk=false, dnd=true,  notes="#Raid #Tank",       isBNet=false, fullName="Korvash" },
@@ -27,18 +27,18 @@ local DEMO_FRIENDS = {
     { name="Lunaspire",   level=90, classFile="DRUID",       area="The Sunwell",    connected=true,  afk=false, dnd=true,  notes="#Raid #Healer",     isBNet=false, fullName="Lunaspire" },
     { name="Ashveil",     level=90, classFile="HUNTER",      area="Silvermoon City",           connected=true,  afk=false, dnd=false, notes="#Raid",             isBNet=false, fullName="Ashveil" },
     { name="Stormcrest",  level=90, classFile="EVOKER",      area="Silvermoon City",           connected=true,  afk=false, dnd=false, notes="#Raid #Healer",     isBNet=false, fullName="Stormcrest" },
-    -- WoW character friends — #Mythic+ group
+    -- WoW character friends - #Mythic+ group
     { name="Pelindra",    level=90, classFile="DRUID",       area="Ghostlands",  connected=true,  afk=false, dnd=false, notes="#Mythic+",          isBNet=false, fullName="Pelindra" },
     { name="Kaelthorn",   level=90, classFile="PALADIN",     area="Sunstrider Isle",       connected=true,  afk=false, dnd=false, notes="#Mythic+ #Tank",    isBNet=false, fullName="Kaelthorn" },
     { name="Swiftclaw",   level=90, classFile="MONK",        area="Eversong Woods",         connected=true,  afk=false, dnd=false, notes="#Mythic+",          isBNet=false, fullName="Swiftclaw" },
     { name="Frostbloom",  level=90, classFile="MAGE",        area="The Dead Scar",          connected=true,  afk=false, dnd=false, notes="#Mythic+",          isBNet=false, fullName="Frostbloom" },
     { name="Hexara",      level=90, classFile="DEMONHUNTER", area="Silvermoon City",           connected=true,  afk=false, dnd=false, notes="#Mythic+ #Tank",    isBNet=false, fullName="Hexara" },
-    -- WoW character friends — #PvP group
+    -- WoW character friends - #PvP group
     { name="Bladesurge",  level=90, classFile="WARRIOR",     area="Silvermoon City",           connected=true,  afk=false, dnd=false, notes="#PvP",              isBNet=false, fullName="Bladesurge" },
     { name="Curseweave",  level=90, classFile="WARLOCK",     area="Sunstrider Isle",       connected=true,  afk=false, dnd=false, notes="#PvP",              isBNet=false, fullName="Curseweave" },
     { name="Spectral",    level=90, classFile="ROGUE",       area="Silvermoon City",           connected=true,  afk=false, dnd=false, notes="#PvP #Arena",       isBNet=false, fullName="Spectral" },
     { name="Ironcleave",  level=90, classFile="DEATHKNIGHT", area="Ghostlands",  connected=true,  afk=false, dnd=false, notes="#PvP",              isBNet=false, fullName="Ironcleave" },
-    -- WoW character friends — #Casual / no tag
+    -- WoW character friends - #Casual / no tag
     { name="Maplewood",   level=90, classFile="DRUID",       area="Eversong Woods",         connected=true,  afk=false, dnd=false, notes="#Casual",           isBNet=false, fullName="Maplewood" },
     { name="Greymantle",  level=90, classFile="HUNTER",      area="Sunstrider Isle",       connected=true,  afk=true,  dnd=false, notes="#Casual",           isBNet=false, fullName="Greymantle" },
     { name="Cinderveil",  level=90, classFile="PRIEST",      area="The Dead Scar",          connected=true,  afk=false, dnd=false, notes="#Casual",           isBNet=false, fullName="Cinderveil" },
@@ -187,7 +187,7 @@ local DEMO_CLUBS = {
 }
 
 ---------------------------------------------------------------------------
--- SpecSwitch demo data (Druid — 4 specs, multiple loadouts)
+-- SpecSwitch demo data (Druid - 4 specs, multiple loadouts)
 ---------------------------------------------------------------------------
 
 local DEMO_SPEC_CACHE = {
@@ -298,7 +298,7 @@ local function EnableDemo()
     InjectDemoData()
     ns.SpecSwitch.demoMode = true
     demoActive = true
-    DDT:Print("|cff00ff00Demo mode ON|r — fake data injected. /reload or /ddt demo to toggle.")
+    DDT:Print("|cff00ff00Demo mode ON|r - fake data injected. /reload or /ddt demo to toggle.")
 end
 
 local function DisableDemo()
@@ -314,7 +314,7 @@ local function DisableDemo()
     ns.CommunitiesBroker:UpdateData()
     ns.SpecSwitch:UpdateData()
     demoActive = false
-    DDT:Print("|cffff4444Demo mode OFF|r — live data restored.")
+    DDT:Print("|cffff4444Demo mode OFF|r - live data restored.")
 end
 
 ---------------------------------------------------------------------------

@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Friends
+-- Djinni's Data Texts - Friends
 -- Friends list with online/BNet status, game info, and broadcast messages.
 local addonName, ns = ...
 local DDT = ns.addon

@@ -1,4 +1,4 @@
--- Djinni's Data Texts — Saved Instances
+-- Djinni's Data Texts - Saved Instances
 -- Raid and dungeon lockout summary with boss kill status and reset timers.
 local addonName, ns = ...
 local DDT = ns.addon
@@ -97,7 +97,7 @@ local DEFAULTS = {
     altHoverSpec    = true,
     altHoverRole    = true,
     altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
-    altManualList   = {},           -- { ["Name - Realm"] = true } — used when altFilter == "manual"
+    altManualList   = {},           -- { ["Name - Realm"] = true } - used when altFilter == "manual"
     clickActions    = {
         leftClick       = "refresh",
         rightClick      = "greatvault",
@@ -269,7 +269,7 @@ local function LoadDelveHistory()
     local charData = ns.db.delveHistory[playerKey]
     if not charData then return end
 
-    -- Check weekly reset — clear stale data
+    -- Check weekly reset - clear stale data
     local weekStart = GetCurrentWeekStart()
     if (charData.weekStart or 0) < weekStart then
         charData.runs = {}
@@ -499,7 +499,7 @@ function SavedInst:SaveCurrentCharData()
     local now         = time()
     local existing    = ns.db.altLockouts[key] or {}
 
-    -- Lightweight lockout summary (no boss data — kept small for SavedVariables)
+    -- Lightweight lockout summary (no boss data - kept small for SavedVariables)
     local lockouts = {}
     for _, entry in ipairs(lockoutCache) do
         table.insert(lockouts, {
@@ -773,7 +773,7 @@ local function GetRow(parent, index)
     row.nameText:SetJustifyH("LEFT")
     row.nameText:SetWordWrap(false)
 
-    -- Reset timer (far right, fixed width) — created first so others can anchor to it
+    -- Reset timer (far right, fixed width) - created first so others can anchor to it
     row.resetText = ns.FontString(row, "DDTFontNormal")
     row.resetText:SetPoint("RIGHT", row, "RIGHT", -6, 0)
     row.resetText:SetJustifyH("RIGHT")
@@ -785,7 +785,7 @@ local function GetRow(parent, index)
     row.diffText:SetJustifyH("CENTER")
     row.diffText:SetWidth(36)
 
-    -- Progress (e.g. "4/8" or condensed "N 4/8  H 2/8") — fills space between diff and reset
+    -- Progress (e.g. "4/8" or condensed "N 4/8  H 2/8") - fills space between diff and reset
     row.progressText = ns.FontString(row, "DDTFontNormal")
     row.progressText:SetPoint("LEFT", row.diffText, "RIGHT", 4, 0)
     row.progressText:SetPoint("RIGHT", row.resetText, "LEFT", -4, 0)
@@ -896,7 +896,7 @@ end
 ---------------------------------------------------------------------------
 
 local ALT_COL_WIDTH = 44
-local activeAltCols = {}  -- { { key, name, class }, ... } — rebuilt each tooltip render
+local activeAltCols = {}  -- { { key, name, class }, ... } - rebuilt each tooltip render
 local altLockoutMap = {}  -- altLockoutMap[altKey]["InstanceName|DiffTag"] = { progress, total }
 local altMPlusMap   = {}  -- altMPlusMap[altKey]["DungeonName"] = highestLevel
 local altDelveMap   = {}  -- altDelveMap[altKey] = { delveCount, bestTier }
@@ -985,7 +985,7 @@ end
 local function EnsureAltColumns(row, count)
     if not row.altTexts then row.altTexts = {} end
 
-    -- "You" (current character) column — same style as alt columns
+    -- "You" (current character) column - same style as alt columns
     if not row.youText then
         local yt = ns.FontString(row, "DDTFontSmall")
         yt:SetJustifyH("CENTER")
@@ -1940,7 +1940,7 @@ function SavedInst:BuildTooltipContent()
         end
     end
 
-    -- Alt lockouts section (expandable per-alt detail — hidden when column view is active)
+    -- Alt lockouts section (expandable per-alt detail - hidden when column view is active)
     if not db.altColumns then
         local altSection = self:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
         if altSection then
