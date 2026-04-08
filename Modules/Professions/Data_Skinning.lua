@@ -84,6 +84,10 @@ ns.ProfessionData.skinning = {
             skillLine = 2917,
             spellID   = 471014,
         },
+        trackingToggle = {
+            spellID = 1250491, name = "Find High-Value Beasts",
+            description = "Highlights high-value skinnable mobs on minimap",
+        },
     },
 
     buffCategory = "gathering",

@@ -42,5 +42,14 @@ ns.ProfessionData.enchanting = {
         },
         catchup = { currencyID = 3198 },
     },
+
+    activities = {
+        buffAlerts = {
+            { spellID = 1235733, buffName = "Shattered Essence", castSpellID = 1235731,
+              alertText = "NO SHATTER BUFF", activeText = "Shattered Essence Active",
+              description = "+5 Resourcefulness, +5 Ingenuity, +5 Multicraft" },
+        },
+    },
+
     buffCategory = "crafting",
 }

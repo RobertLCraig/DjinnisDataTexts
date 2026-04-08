@@ -38,5 +38,16 @@ ns.ProfessionData.alchemy = {
                        waypoint = { map = 2393, x = 0.4503, y = 0.5515 } },
         catchup = { currencyID = 3189 },
     },
+
+    activities = {
+        cooldowns = {
+            { spellID = 1230856, name = "Wondrous Synergist",             baseCooldown = 64800, shared = true },
+            { spellID = 1230887, name = "Transmute: Mote of Wild Magic",  baseCooldown = 64800, shared = true },
+            { spellID = 1230890, name = "Transmute: Mote of Light",       baseCooldown = 64800, shared = true },
+            { spellID = 1230889, name = "Transmute: Mote of Primal Energy", baseCooldown = 64800, shared = true },
+            { spellID = 1230888, name = "Transmute: Mote of Pure Void",   baseCooldown = 64800, shared = true },
+        },
+    },
+
     buffCategory = "crafting",
 }

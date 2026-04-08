@@ -40,5 +40,14 @@ ns.ProfessionData.mining = {
         },
         catchup = { currencyID = 3192 },
     },
+
+    activities = {
+        buffTrackers = {
+            { spellID = 1225704, buffName = "Wild Perception",
+              description = "+150 Midnight Mining Perception (5 min)",
+              source = "Avatar of Nalorakk (Wild Overload)" },
+        },
+    },
+
     buffCategory = "gathering",
 }

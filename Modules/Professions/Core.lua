@@ -1076,10 +1076,300 @@ function Professions:RenderActivities(sc, yOffset, rowIdx, hdrIdx, profKey, inne
 
     local activities = profData.activities
 
+    -- Buff Alerts (Enchanting Shatter Essence, etc.) — render first, most prominent
+    if activities.buffAlerts then
+        yOffset, rowIdx, hdrIdx = self:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.buffAlerts)
+    end
+
+    -- Cooldowns (Alchemy transmutes, Tailoring bolts, etc.)
+    if activities.cooldowns then
+        yOffset, rowIdx, hdrIdx = self:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.cooldowns)
+    end
+
+    -- Buff Trackers (Mining Wild Perception, etc.)
+    if activities.buffTrackers then
+        yOffset, rowIdx, hdrIdx = self:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.buffTrackers)
+    end
+
+    -- Tracking Toggle (Skinning Find High-Value Beasts)
+    if activities.trackingToggle then
+        yOffset, rowIdx, hdrIdx = self:RenderTrackingToggle(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.trackingToggle)
+    end
+
     -- Majestic Beasts (Skinning)
     if activities.majesticBeasts then
         yOffset, rowIdx, hdrIdx = self:RenderMajesticBeasts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, activities.majesticBeasts)
     end
+
+    return yOffset, rowIdx, hdrIdx
+end
+
+---------------------------------------------------------------------------
+-- Tooltip: Buff Alerts (e.g. Enchanting Shattered Essence)
+---------------------------------------------------------------------------
+
+function Professions:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, alerts)
+    for _, alert in ipairs(alerts) do
+        local isActive = alert.buffName and AuraUtil.FindAuraByName(alert.buffName, "player")
+
+        rowIdx = rowIdx + 1
+        local row = GetOrCreateRow(profKey, sc, rowIdx)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+        row:SetWidth(innerWidth)
+
+        -- Icon from spell
+        local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(alert.spellID)
+            or GetSpellTexture(alert.spellID)
+        if iconID then
+            row.icon:SetTexture(iconID)
+            row.icon:SetDesaturated(not isActive)
+            row.icon:Show()
+            row.text:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 4, 0)
+        else
+            row.icon:Hide()
+            row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        end
+
+        row.text:SetWidth(innerWidth - 80)
+
+        if isActive then
+            row.text:SetText("|cff00ff00" .. alert.activeText .. "|r")
+            row.status:SetText("|cff00ff00Active|r")
+        else
+            row.text:SetText("|cffff3333" .. alert.alertText .. "|r")
+            row.status:SetText("|cffff3333MISSING|r")
+        end
+        row.status:SetWidth(60)
+        row:SetHeight(ns.ROW_HEIGHT)
+        row:SetScript("OnClick", nil)
+
+        yOffset = yOffset - ns.ROW_HEIGHT - 2
+
+        -- Description sub-row
+        if alert.description then
+            rowIdx = rowIdx + 1
+            local descRow = GetOrCreateRow(profKey, sc, rowIdx)
+            descRow:ClearAllPoints()
+            descRow:SetPoint("TOPLEFT", sc, "TOPLEFT", ICON_SIZE + 4, yOffset)
+            descRow:SetWidth(innerWidth - ICON_SIZE - 4)
+            descRow.icon:Hide()
+            descRow.text:SetPoint("TOPLEFT", descRow, "TOPLEFT", 0, 0)
+            descRow.text:SetWidth(innerWidth - ICON_SIZE - 4)
+            descRow.text:SetText("|cff888888" .. alert.description .. "|r")
+            descRow.status:SetText("")
+            descRow:SetHeight(ns.ROW_HEIGHT)
+            descRow:SetScript("OnClick", nil)
+            yOffset = yOffset - ns.ROW_HEIGHT - 2
+        end
+    end
+
+    return yOffset, rowIdx, hdrIdx
+end
+
+---------------------------------------------------------------------------
+-- Tooltip: Cooldowns (e.g. Alchemy Transmutes, Tailoring Bolts)
+---------------------------------------------------------------------------
+
+function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, cooldowns)
+    -- Section header
+    hdrIdx = hdrIdx + 1
+    local hdr = GetOrCreateHeader(profKey, sc, hdrIdx)
+    hdr:ClearAllPoints()
+    hdr:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+    hdr:SetWidth(innerWidth)
+    hdr:SetText(DDT:ColorText("Cooldowns", 1, 0.82, 0))
+    yOffset = yOffset - HEADER_HEIGHT
+
+    local function FormatCooldown(sec)
+        if not sec or sec <= 0 then return "|cff00ff00Ready|r" end
+        local h = math.floor(sec / 3600)
+        local m = math.floor((sec % 3600) / 60)
+        if h > 0 then return h .. "h " .. m .. "m"
+        else return m .. "m" end
+    end
+
+    for _, cd in ipairs(cooldowns) do
+        -- Check if the player knows this spell
+        local isKnown = C_SpellBook and C_SpellBook.IsSpellKnown(cd.spellID)
+        if isKnown == nil then isKnown = IsSpellKnown and IsSpellKnown(cd.spellID) end
+        if isKnown then
+            rowIdx = rowIdx + 1
+            local row = GetOrCreateRow(profKey, sc, rowIdx)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", sc, "TOPLEFT", 4, yOffset)
+            row:SetWidth(innerWidth - 4)
+
+            -- Spell icon
+            local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(cd.spellID)
+                or GetSpellTexture(cd.spellID)
+            if iconID then
+                row.icon:SetTexture(iconID)
+                row.icon:Show()
+                row.text:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 4, 0)
+            else
+                row.icon:Hide()
+                row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+            end
+
+            row.text:SetWidth(innerWidth - 140)
+            row.text:SetText(cd.name)
+
+            -- Cooldown info via C_TradeSkillUI (primary) with C_Spell fallback
+            local currentCooldown, isDayCooldown, currentCharges, maxCharges
+            if C_TradeSkillUI and C_TradeSkillUI.GetRecipeCooldown then
+                currentCooldown, isDayCooldown, currentCharges, maxCharges = C_TradeSkillUI.GetRecipeCooldown(cd.spellID)
+            end
+            currentCooldown = currentCooldown or 0
+
+            local statusText
+            if maxCharges and maxCharges > 0 then
+                -- Charge-based cooldown (Tailoring bolts)
+                local charges = tonumber(currentCharges) or 0
+                if charges >= maxCharges then
+                    statusText = "|cff00ff00" .. charges .. "/" .. maxCharges .. " Ready|r"
+                    row.text:SetTextColor(0.9, 0.9, 0.9)
+                else
+                    statusText = "|cffffcc00" .. charges .. "/" .. maxCharges .. "|r " .. FormatCooldown(currentCooldown)
+                    row.text:SetTextColor(0.7, 0.7, 0.7)
+                end
+            elseif currentCooldown > 0 then
+                -- Standard day cooldown (Alchemy transmutes)
+                statusText = "|cffff6600" .. FormatCooldown(currentCooldown) .. "|r"
+                row.text:SetTextColor(0.7, 0.7, 0.7)
+            else
+                statusText = "|cff00ff00Ready|r"
+                row.text:SetTextColor(0.9, 0.9, 0.9)
+            end
+
+            row.status:SetText(statusText)
+            row.status:SetWidth(120)
+            row:SetHeight(ns.ROW_HEIGHT)
+            row:SetScript("OnClick", nil)
+
+            yOffset = yOffset - ns.ROW_HEIGHT - 2
+        end
+    end
+
+    return yOffset, rowIdx, hdrIdx
+end
+
+---------------------------------------------------------------------------
+-- Tooltip: Buff Trackers (e.g. Mining Wild Perception)
+---------------------------------------------------------------------------
+
+function Professions:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, trackers)
+    for _, tracker in ipairs(trackers) do
+        local auraData
+        if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+            auraData = C_UnitAuras.GetPlayerAuraBySpellID(tracker.spellID)
+        end
+        local isActive = auraData ~= nil
+
+        -- Use AuraUtil as fallback
+        if not auraData and tracker.buffName then
+            isActive = AuraUtil.FindAuraByName(tracker.buffName, "player") ~= nil
+        end
+
+        rowIdx = rowIdx + 1
+        local row = GetOrCreateRow(profKey, sc, rowIdx)
+        row:ClearAllPoints()
+        row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+        row:SetWidth(innerWidth)
+
+        local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(tracker.spellID)
+            or GetSpellTexture(tracker.spellID)
+        if iconID then
+            row.icon:SetTexture(iconID)
+            row.icon:SetDesaturated(not isActive)
+            row.icon:Show()
+            row.text:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 4, 0)
+        else
+            row.icon:Hide()
+            row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+        end
+
+        row.text:SetWidth(innerWidth - 80)
+        row.text:SetText(tracker.name)
+
+        if isActive then
+            -- Show remaining duration if available
+            local remaining
+            if auraData and auraData.expirationTime then
+                remaining = auraData.expirationTime - GetTime()
+            end
+            if remaining and remaining > 0 then
+                local m = math.floor(remaining / 60)
+                local s = math.floor(remaining % 60)
+                row.status:SetText("|cff00ff00" .. m .. "m " .. s .. "s|r")
+            else
+                row.status:SetText("|cff00ff00Active|r")
+            end
+            row.text:SetTextColor(0.2, 1, 0.4)
+        else
+            row.status:SetText("|cff666666Inactive|r")
+            row.text:SetTextColor(0.5, 0.5, 0.5)
+        end
+
+        row.status:SetWidth(60)
+        row:SetHeight(ns.ROW_HEIGHT)
+        row:SetScript("OnClick", nil)
+
+        yOffset = yOffset - ns.ROW_HEIGHT - 2
+    end
+
+    return yOffset, rowIdx, hdrIdx
+end
+
+---------------------------------------------------------------------------
+-- Tooltip: Tracking Toggle (e.g. Skinning Find High-Value Beasts)
+---------------------------------------------------------------------------
+
+function Professions:RenderTrackingToggle(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, toggle)
+    -- Check if the tracking spell is active via minimap tracking
+    local isTracking = false
+    for i = 1, C_Minimap.GetNumTrackingTypes() do
+        local info = C_Minimap.GetTrackingInfo(i)
+        if info and info.spellID == toggle.spellID then
+            isTracking = info.active or false
+            break
+        end
+    end
+
+    rowIdx = rowIdx + 1
+    local row = GetOrCreateRow(profKey, sc, rowIdx)
+    row:ClearAllPoints()
+    row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
+    row:SetWidth(innerWidth)
+
+    local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(toggle.spellID)
+        or GetSpellTexture(toggle.spellID)
+    if iconID then
+        row.icon:SetTexture(iconID)
+        row.icon:SetDesaturated(not isTracking)
+        row.icon:Show()
+        row.text:SetPoint("TOPLEFT", row.icon, "TOPRIGHT", 4, 0)
+    else
+        row.icon:Hide()
+        row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+    end
+
+    row.text:SetWidth(innerWidth - 80)
+    row.text:SetText(toggle.name)
+
+    if isTracking then
+        row.status:SetText("|cff00ff00ON|r")
+        row.text:SetTextColor(0.2, 1, 0.4)
+    else
+        row.status:SetText("|cffff6600OFF|r")
+        row.text:SetTextColor(0.7, 0.5, 0.2)
+    end
+
+    row.status:SetWidth(60)
+    row:SetHeight(ns.ROW_HEIGHT)
+    row:SetScript("OnClick", nil)
+
+    yOffset = yOffset - ns.ROW_HEIGHT - 2
 
     return yOffset, rowIdx, hdrIdx
 end

@@ -38,5 +38,13 @@ ns.ProfessionData.tailoring = {
                        waypoint = { map = 2393, x = 0.4503, y = 0.5515 } },
         catchup = { currencyID = 3190 },
     },
+
+    activities = {
+        cooldowns = {
+            { spellID = 1227926, name = "Arcanoweave Bolt", baseCooldown = 60480, maxCharges = 10 },
+            { spellID = 1228060, name = "Sunfire Silk Bolt", baseCooldown = 60480, maxCharges = 10 },
+        },
+    },
+
     buffCategory = "crafting",
 }
