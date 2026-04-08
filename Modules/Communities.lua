@@ -185,9 +185,10 @@ function CommunitiesBroker:UpdateData()
            and self:IsClubEnabled(clubInfo.clubId) then
 
             local memberIds = C_Club.GetClubMembers(clubInfo.clubId)
+            if type(memberIds) ~= "table" then memberIds = {} end
             local onlineMembers = {}
 
-            for _, memberId in ipairs(memberIds or {}) do
+            for _, memberId in ipairs(memberIds) do
                 local mInfo = C_Club.GetMemberInfo(clubInfo.clubId, memberId)
                 if type(mInfo) == "table" and IsPresenceOnline(mInfo.presence) then
                     local classFile = ClassFileFromID(mInfo.classID)

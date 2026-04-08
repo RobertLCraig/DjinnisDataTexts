@@ -169,7 +169,8 @@ function GuildBroker:UpdateData()
     self.totalCount = (type(clubInfo) == "table" and clubInfo.memberCount) or 0
 
     local onlineCount = 0
-    for _, memberId in ipairs(memberIds or {}) do
+    if type(memberIds) ~= "table" then memberIds = {} end
+    for _, memberId in ipairs(memberIds) do
         local mInfo = C_Club.GetMemberInfo(guildClubId, memberId)
         if type(mInfo) == "table" and type(mInfo.name) == "string" then
             local presence = mInfo.presence or Enum.ClubMemberPresence.Offline

@@ -176,6 +176,7 @@ ns.PROF_CLICK_ACTIONS = {
     openmap         = "Open Map to Beast",
     shoppinglist    = "Reagent Shopping List",
     bufflist        = "Buff Shopping List",
+    buybuffs        = "Buy Missing Buffs from AH",
     opensettings    = "Open DDT Settings",
     none            = "None",
 }

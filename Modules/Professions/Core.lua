@@ -1572,6 +1572,31 @@ function Professions:ExecuteClickAction(profKey, action)
         else
             DDT:Print("Auctionator not installed.")
         end
+    elseif action == "buybuffs" then
+        -- Create Auctionator shopping list for buffs the player is out of
+        if Auctionator and Auctionator.API and Auctionator.API.v1 then
+            local category = ns.PROF_GATHERING[profKey] and "gathering" or "crafting"
+            local buffs = ns.PROF_BUFFS[category] or {}
+            local items = {}
+            for _, buff in ipairs(buffs) do
+                local count = C_Item.GetItemCount(buff.itemID, true) or 0
+                if count == 0 and not (buff.buffName and AuraUtil.FindAuraByName(buff.buffName, "player")) then
+                    local name = C_Item.GetItemNameByID(buff.itemID)
+                    if name then
+                        local searchStr = Auctionator.API.v1.ConvertToSearchString("DDT", { searchString = name })
+                        items[#items + 1] = searchStr
+                    end
+                end
+            end
+            if #items > 0 then
+                pcall(Auctionator.API.v1.CreateShoppingList, "DDT", "DDT Restock Buffs", items)
+                DDT:Print("Shopping list created: DDT Restock Buffs (" .. #items .. " missing)")
+            else
+                DDT:Print("All consumable buffs in stock!")
+            end
+        else
+            DDT:Print("Auctionator not installed.")
+        end
     elseif action == "opensettings" then
         if DDT.settingsCategoryID then
             Settings.OpenToCategory(DDT.settingsCategoryID)
