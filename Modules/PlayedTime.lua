@@ -130,6 +130,8 @@ local dataobj = LDB:NewDataObject("DDT-PlayedTime", {
             Stopwatch_Toggle()
         elseif action == "copytime" then
             ChatFrameUtil.OpenChat("Session: " .. FormatDuration(GetSessionTime()))
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(PlayedTime, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

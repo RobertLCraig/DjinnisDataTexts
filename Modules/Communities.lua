@@ -81,6 +81,8 @@ local dataobj = LDB:NewDataObject("DDT-Communities", {
             ToggleFriendsFrame()
         elseif action == "openguild" then
             ToggleGuildFrame()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(CommunitiesBroker, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then Settings.OpenToCategory(DDT.settingsCategoryID) end
         end
@@ -133,7 +135,10 @@ local function ClassFileFromID(classID)
     return info and info.classFile or nil
 end
 
---- Check if a club member is considered online
+--- Check if a club member is considered online.
+--- Includes Away/Busy because WoW's guild roster shows them as online
+--- and users expect consistent behavior. OnlineMobile covers Blizzard
+--- app users who may not be in-game.
 local function IsPresenceOnline(presence)
     return presence == Enum.ClubMemberPresence.Online
         or presence == Enum.ClubMemberPresence.OnlineMobile
@@ -146,7 +151,10 @@ local ROLE_OWNER     = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Owner
 local ROLE_LEADER    = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Leader or 2
 local ROLE_MODERATOR = Enum.ClubRoleIdentifier and Enum.ClubRoleIdentifier.Moderator or 3
 
---- Color M+ scores by rating tier
+--- Color M+ scores by rating tier.
+--- Prefer Blizzard's GetDungeonScoreRarityColor when available (respects
+--- any changes Blizzard makes to tier thresholds). Fallback hardcoded
+--- thresholds match the live values as of Midnight S1.
 local function GetScoreColor(score)
     if C_ChallengeMode and C_ChallengeMode.GetDungeonScoreRarityColor then
         local color = C_ChallengeMode.GetDungeonScoreRarityColor(score)
@@ -177,15 +185,17 @@ function CommunitiesBroker:UpdateData()
     local clubsData = {}
 
     for _, clubInfo in ipairs(clubs) do
-        -- Only character and BNet communities (skip guild - handled by GuildBroker)
-        -- Skip clubs whose data hasn't loaded yet - unloaded fields return a
-        -- WoW "secret" protected value, which is truthy but not a string.
+        -- Filter: character and BNet communities only (guild has its own broker).
+        -- type(name)=="string" guard: unloaded club data returns a Blizzard
+        -- "secret" protected value that is truthy but fails string operations.
         if type(clubInfo.name) == "string"
            and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet)
            and self:IsClubEnabled(clubInfo.clubId) then
 
-            local memberIds = C_Club.GetClubMembers(clubInfo.clubId)
-            if type(memberIds) ~= "table" then memberIds = {} end
+            -- pcall guard: C_Club.GetClubMembers can return a Blizzard "secret"
+            -- protected value that passes type()=="table" but crashes ipairs().
+            local ok, memberIds = pcall(C_Club.GetClubMembers, clubInfo.clubId)
+            if not ok or not pcall(ipairs, memberIds) then memberIds = {} end
             local onlineMembers = {}
 
             for _, memberId in ipairs(memberIds) do

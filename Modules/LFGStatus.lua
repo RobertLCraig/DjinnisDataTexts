@@ -344,6 +344,8 @@ local dataobj = LDB:NewDataObject("DDT-LFGStatus", {
                 LeaveLFG(q.category)
             end
             LFGStatus:UpdateData()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(LFGStatus, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

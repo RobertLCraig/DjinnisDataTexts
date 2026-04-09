@@ -172,17 +172,16 @@ local dataobj = LDB:NewDataObject("DDT-Coordinates", {
             local waypointStr = string.format("/way %.1f %.1f", x, y)
             ChatFrameUtil.OpenChat(waypointStr)
         elseif action == "waypoint" then
-            if C_Map and C_Map.SetUserWaypoint and currentMapID and playerX and playerY then
+            if currentMapID and playerX and playerY then
                 if C_Map.HasUserWaypoint and C_Map.HasUserWaypoint() then
                     C_Map.ClearUserWaypoint()
                     DDT:Print("Map pin cleared.")
                 else
-                    local point = UiMapPoint.CreateFromCoordinates(currentMapID, playerX, playerY)
-                    C_Map.SetUserWaypoint(point)
-                    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-                    DDT:Print("Map pin set at current location.")
+                    ns.SetWaypoint(currentMapID, playerX, playerY, "Map pin set at current location.")
                 end
             end
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(Coordinates, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

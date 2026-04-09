@@ -177,6 +177,8 @@ local function ExecuteSpecAction(action)
             C_ClassTalents.LoadConfig(loadouts[nextIdx].configID, true)
         end
 
+    elseif action == "pintooltip" then
+        ns:TogglePinTooltip(SpecSwitch, tooltipFrame)
     elseif action == "opensettings" then
         if DDT.settingsCategoryID then
             Settings.OpenToCategory(DDT.settingsCategoryID)

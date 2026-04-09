@@ -30,7 +30,8 @@ local totalSlots = 0
 local scanPending = false
 local lastScanTime = 0
 
--- Bag constants
+-- Bag constants: hardcoded instead of Enum.BagIndex because the enum
+-- values are stable since Classic and avoids nil-checking the enum table.
 local NUM_BAG_SLOTS = 4    -- bags 0-4 (0 = backpack)
 local REAGENT_BAG = 5      -- Enum.BagIndex.ReagentBag
 
@@ -197,6 +198,8 @@ local dataobj = LDB:NewDataObject("DDT-BagValue", {
             end
         elseif action == "rescan" then
             BagVal:ScanBags()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(BagVal, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

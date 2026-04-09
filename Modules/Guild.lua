@@ -90,6 +90,8 @@ local dataobj = LDB:NewDataObject("DDT-Guild", {
             ToggleFriendsFrame()
         elseif action == "opencommunities" then
             ToggleCommunitiesFrame()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(GuildBroker, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then Settings.OpenToCategory(DDT.settingsCategoryID) end
         end
@@ -164,12 +166,15 @@ function GuildBroker:UpdateData()
     -- C_Club.GetClubMembers returns a Blizzard "secret table" - using # on it
     -- causes taint. Use clubInfo.memberCount for totalCount and iterate with
     -- ipairs (which handles secret tables without taint).
-    local memberIds = C_Club.GetClubMembers(guildClubId)
+    -- pcall guard: C_Club.GetClubMembers can return a Blizzard "secret"
+    -- protected value that passes type()=="table" but crashes ipairs().
+    local ok, memberIds = pcall(C_Club.GetClubMembers, guildClubId)
+    if not ok then memberIds = {} end
 
     self.totalCount = (type(clubInfo) == "table" and clubInfo.memberCount) or 0
 
     local onlineCount = 0
-    if type(memberIds) ~= "table" then memberIds = {} end
+    if not pcall(ipairs, memberIds) then memberIds = {} end
     for _, memberId in ipairs(memberIds) do
         local mInfo = C_Club.GetMemberInfo(guildClubId, memberId)
         if type(mInfo) == "table" and type(mInfo.name) == "string" then

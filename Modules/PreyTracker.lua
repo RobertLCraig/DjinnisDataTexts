@@ -162,8 +162,8 @@ local PROGRESS_HEX = {
 }
 
 local BAR_SEGMENTS   = 20
-local BAR_FILL_CHAR  = "||"  -- || renders as single | in WoW
-local BAR_EMPTY_CHAR = "\194\183"  -- middle dot (·)
+local BAR_FILL_CHAR  = "||"  -- || renders as literal "|" in WoW (single | is escape prefix)
+local BAR_EMPTY_CHAR = "\194\183"  -- UTF-8 middle dot (U+00B7); thin glyph to keep bar compact
 local BAR_EMPTY_HEX  = "ff444444"
 
 -- Progress state → how many segments to fill (out of BAR_SEGMENTS)
@@ -399,16 +399,15 @@ local function ExecuteAction(action)
                 x, y = C_TaskQuest.GetQuestLocation(activeQuestID, mapID)
             end
             if x and y and mapID then
-                local point = UiMapPoint.CreateFromCoordinates(mapID, x, y)
-                C_Map.SetUserWaypoint(point)
-                C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-                DDT:DjinniMsg("Waypoint set for " .. (activePreyName or "prey target"))
+                ns.SetWaypoint(mapID, x, y, "Waypoint set for " .. (activePreyName or "prey target"))
             else
                 DDT:DjinniMsg("No waypoint data available for active prey")
             end
         else
             DDT:DjinniMsg("No active prey hunt")
         end
+    elseif action == "pintooltip" then
+        ns:TogglePinTooltip(PreyTracker, tooltipFrame)
     elseif action == "opensettings" then
         Settings.OpenToCategory(DDT.settingsCategoryID)
     end
@@ -432,9 +431,10 @@ local dataobj = LDB:NewDataObject("DDT-PreyTracker", {
     end,
     OnClick = function(self, button)
         PreyTracker:CancelHideTimer()
-        if tooltipFrame then tooltipFrame:Hide() end
         local db = PreyTracker:GetDB()
         local action = DDT:ResolveClickAction(button, db.clickActions)
+        -- Pinning needs to keep the tooltip visible; only auto-hide for non-pin actions.
+        if action ~= "pintooltip" and tooltipFrame then tooltipFrame:Hide() end
         if action and action ~= "none" then
             ExecuteAction(action)
         end

@@ -153,6 +153,8 @@ local dataobj = LDB:NewDataObject("DDT-CharacterInfo", {
             if charFullName ~= "" then
                 ChatFrameUtil.OpenChat(charFullName)
             end
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(CharInfo, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

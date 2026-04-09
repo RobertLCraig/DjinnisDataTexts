@@ -301,6 +301,8 @@ dataobj = LDB:NewDataObject("DDT-AudioOutput", {
             AudioOutput:CycleDevice(1)
         elseif action == "cycleprev" then
             AudioOutput:CycleDevice(-1)
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(AudioOutput, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

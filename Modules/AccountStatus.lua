@@ -111,6 +111,8 @@ local dataobj = LDB:NewDataObject("DDT-AccountStatus", {
             end
         elseif action == "openjournal" then
             ToggleCollectionsJournal(2)
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(AcctStatus, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

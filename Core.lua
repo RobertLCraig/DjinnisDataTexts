@@ -52,6 +52,7 @@ ns.ACTION_VALUES = {
     openguild        = "Open Guild Roster",
     opencommunities  = "Open Communities",
     opensettings     = "Open DDT Settings",
+    pintooltip       = "Pin Tooltip Open",
     none             = "None",
 }
 
@@ -61,6 +62,7 @@ ns.SOCIAL_LABEL_ACTION_VALUES = {
     openguild       = "Open Guild Roster",
     opencommunities = "Open Communities",
     opensettings    = "Open DDT Settings",
+    pintooltip      = "Pin Tooltip Open",
     none            = "None",
 }
 
@@ -107,7 +109,9 @@ local DDT_FONT_OBJECTS = {
     DDTFontSmall  = DDTFontSmall,
 }
 
--- Registry of all DDT FontStrings for live font updates (weak values so GC works)
+-- Registry of all DDT FontStrings for live font updates.
+-- Weak values (__mode = "v") so hidden/destroyed FontStrings get GC'd
+-- instead of leaking. Integer keys + count avoids table.insert overhead.
 local fontStringRegistry = setmetatable({}, { __mode = "v" })
 local fontStringCount = 0
 
@@ -119,7 +123,8 @@ local fontStringCount = 0
 function ns.FontString(parent, fontTemplate)
     local fs = parent:CreateFontString(nil, "OVERLAY")
     -- Apply font directly rather than via SetFontObject so live updates work.
-    -- SetFontObject blocks subsequent SetFont calls, preventing size changes.
+    -- SetFontObject() makes the FS inherit from the object; subsequent SetFont()
+    -- calls are silently ignored. Direct SetFont() avoids this WoW engine quirk.
     local fontObj = DDT_FONT_OBJECTS[fontTemplate]
     if fontObj then
         local path, sz, flags = fontObj:GetFont()
@@ -145,11 +150,13 @@ function ns:UpdateFonts()
     DDTFontNormal:SetFont(fontPath, fontSize, "")
     DDTFontSmall:SetFont(fontPath, fontSize - 2, "")
 
-    -- Update dynamic row height for tooltip layouts
+    -- Dynamic row height scales with font size; floor of 16px prevents
+    -- micro-rows at very small font sizes from breaking click targets.
     ns.ROW_HEIGHT = math.max(16, fontSize + 8)
 
-    -- Update all registered FontStrings directly (font object propagation
-    -- is unreliable for addon-bundled fonts and size-only changes).
+    -- Walk registry instead of relying on font object propagation: Blizzard's
+    -- SetFontObject inheritance doesn't reliably propagate to already-rendered
+    -- FontStrings, especially for addon-bundled fonts and size-only changes.
     local sizeMap = {
         DDTFontHeader = fontSize + 4,
         DDTFontNormal = fontSize,
@@ -174,7 +181,7 @@ ns.TOOLTIP_PADDING = 10
 ns.HEADER_HEIGHT   = 24
 ns.FIXED_TOP       = ns.TOOLTIP_PADDING + ns.HEADER_HEIGHT + 20   -- header + column headers row
 ns.FIXED_BOTTOM    = ns.TOOLTIP_PADDING * 2 + 18                  -- hint bar + padding
-ns.HIDE_DELAY      = 0.15
+ns.HIDE_DELAY      = 0.15  -- short delay prevents flicker when mouse crosses row gaps
 
 ---------------------------------------------------------------------------
 -- Module registration
@@ -239,7 +246,9 @@ end
 -- Saved variables helpers
 ---------------------------------------------------------------------------
 
---- Deep-merge defaults into saved vars (only fills missing keys)
+--- Deep-merge defaults into saved vars (only fills missing keys).
+--- One-pass recursive merge chosen over CopyTable+rawset because it
+--- preserves user-modified values without requiring a diff step.
 local function MergeDefaults(target, defaults)
     for k, v in pairs(defaults) do
         if type(v) == "table" then
@@ -347,7 +356,9 @@ local function GetFormatSettings()
     return FORMAT_PRESETS[preset] or FORMAT_PRESETS.us_short
 end
 
---- Insert thousands separators into an integer string
+--- Insert thousands separators into an integer string.
+--- Manual char-by-char loop instead of gsub pattern because Lua's
+--- gsub cannot reliably insert separators right-to-left.
 local function InsertSeparators(intStr, sep)
     if sep == "" or #intStr <= 3 then return intStr end
     local result = ""
@@ -594,6 +605,8 @@ function DDT:ParseNoteGroups(note)
 end
 
 --- Safely replace a <tag> placeholder without interpreting % in value.
+--- Uses a function replacement to avoid gsub interpreting % sequences
+--- in the value string (e.g. player names containing "%").
 --- @param str string   The template string
 --- @param tag string   The tag name (without angle brackets)
 --- @param value any     The replacement value (tostring'd automatically)
@@ -748,7 +761,8 @@ function ns.AnchorTooltip(tooltip, anchor, direction)
     elseif direction == "up" then
         growDown = false
     else
-        -- auto: detect from screen position
+        -- Auto-detect: grow away from nearest screen edge.
+        -- Top-half anchors grow down, bottom-half grow up.
         local _, anchorY = anchor:GetCenter()
         local screenH = UIParent:GetHeight()
         growDown = anchorY and screenH and anchorY > screenH / 2
@@ -854,7 +868,9 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
     -- Extra top offset for modules with column headers (set before FinalizeLayout)
     f.headerExtra = 0
 
-    -- Mouse wheel: vertical default, Shift+wheel = horizontal
+    -- Vertical scroll default, Shift+wheel = horizontal.
+    -- Step sizes (20px vert, 30px horiz) chosen to feel responsive without
+    -- overshooting on high-DPI mice that send +-1 delta per notch.
     f:EnableMouseWheel(true)
     f:SetScript("OnMouseWheel", function(self, delta)
         if IsShiftKeyDown() then
@@ -875,7 +891,9 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
         DDT:UpdateHScrollbar(self)
     end)
 
-    -- OnEnter / OnLeave - probe for both naming conventions
+    -- OnEnter / OnLeave: probe for both naming conventions because older
+    -- modules use CancelHideTimer/StartHideTimer while newer ones
+    -- (Professions) use CancelTooltipHideTimer/StartTooltipHideTimer.
     f:SetScript("OnEnter", function()
         if moduleRef.CancelTooltipHideTimer then
             moduleRef:CancelTooltipHideTimer()
@@ -910,10 +928,12 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
         local hasHint  = hintText and hintText ~= ""
         local hintH
         if hasHint then
-            -- Measure actual wrapped height by pre-sizing the hint to the tooltip's inner width
+            -- Pre-size hint to measure wrapped height, then clear width so anchors
+        -- control it. This two-pass measure avoids clipping multi-line hint text
+        -- while still letting the hint stretch when the frame is wider.
             self.hint:SetWidth(innerWidth)
             hintH = math.max(FACTORY_HINT_H, math.ceil(self.hint:GetStringHeight()) + 14)
-            self.hint:SetWidth(0)  -- clear; anchors will control it once frame is sized
+            self.hint:SetWidth(0)
         else
             hintH = FACTORY_HINT_H_NONE
         end
@@ -982,7 +1002,53 @@ function DDT:GetOrCreateGroupHeader(parent, name)
     return hdr
 end
 
---- Resolve a click action from a button+modifier combo
+--- Toggle "pinned" state for a module's tooltip. Pinning suppresses the
+--- module's auto-hide timer until clicked again. Works by monkey-patching
+--- StartHideTimer / StartTooltipHideTimer to a no-op while pinned, so it
+--- requires no changes inside each module's hide-timer implementation.
+---
+--- The optional `tooltipFrame` arg is re-shown after pinning so the user
+--- can click-to-pin even from a state where the OnClick handler had hidden it.
+--- Returns the new pinned state (true = now pinned).
+function ns:TogglePinTooltip(moduleRef, tooltipFrame)
+    if moduleRef._tooltipPinned then
+        -- Unpin: restore original timer functions
+        if moduleRef._origStartHideTimer then
+            moduleRef.StartHideTimer = moduleRef._origStartHideTimer
+            moduleRef._origStartHideTimer = nil
+        end
+        if moduleRef._origStartTooltipHideTimer then
+            moduleRef.StartTooltipHideTimer = moduleRef._origStartTooltipHideTimer
+            moduleRef._origStartTooltipHideTimer = nil
+        end
+        moduleRef._tooltipPinned = false
+        -- Kick the timer so the tooltip closes shortly after unpinning
+        if moduleRef.StartHideTimer then moduleRef:StartHideTimer() end
+        if moduleRef.StartTooltipHideTimer then moduleRef:StartTooltipHideTimer() end
+        return false
+    else
+        -- Pin: cancel any pending hide, then stub out the start fns
+        if moduleRef.CancelHideTimer then moduleRef:CancelHideTimer() end
+        if moduleRef.CancelTooltipHideTimer then moduleRef:CancelTooltipHideTimer() end
+        if moduleRef.StartHideTimer then
+            moduleRef._origStartHideTimer = moduleRef.StartHideTimer
+            moduleRef.StartHideTimer = function() end
+        end
+        if moduleRef.StartTooltipHideTimer then
+            moduleRef._origStartTooltipHideTimer = moduleRef.StartTooltipHideTimer
+            moduleRef.StartTooltipHideTimer = function() end
+        end
+        moduleRef._tooltipPinned = true
+        if tooltipFrame and not tooltipFrame:IsShown() then
+            tooltipFrame:Show()
+        end
+        return true
+    end
+end
+
+--- Resolve a click action from a button+modifier combo.
+--- Priority order: Alt > Ctrl > Shift > unmodified. This matches
+--- WoW's standard modifier precedence (Alt is least common, checked first).
 function DDT:ResolveClickAction(button, clickActions)
     if IsAltKeyDown() then
         if button == "LeftButton" then return clickActions.altLeftClick end
@@ -1210,13 +1276,35 @@ function ns.CopyURL(url)
     end
 end
 
+--- Safely set a user waypoint. Checks CanSetUserWaypointOnMap first
+--- (Blizzard's own code does this - see WaypointLocationDataProvider.lua).
+--- @param mapID number  Map ID
+--- @param x number  Normalized X coordinate (0-1)
+--- @param y number  Normalized Y coordinate (0-1)
+--- @param announce string|nil  Optional chat announcement
+--- @return boolean  True if waypoint was set
+function ns.SetWaypoint(mapID, x, y, announce)
+    if not mapID or not x or not y then return false end
+    if C_Map.CanSetUserWaypointOnMap and not C_Map.CanSetUserWaypointOnMap(mapID) then
+        return false
+    end
+    local mapPoint = UiMapPoint.CreateFromCoordinates(mapID, x, y)
+    C_Map.SetUserWaypoint(mapPoint)
+    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+    if announce then
+        DDT:Print(announce)
+    end
+    return true
+end
+
 --- Copy text to clipboard with an optional popup for multi-line text.
 --- @param text string  Text to copy
 --- @param label string|nil  Label shown in print message
 function DDT:CopyToClipboard(text, label)
     do
-        -- CopyToClipboard() is hardware-protected; addons cannot call it.
-        -- Show a popup with selectable text instead.
+        -- CopyToClipboard() requires hardware event context (key/click);
+        -- addons cannot invoke it programmatically. EditBox + HighlightText()
+        -- is the standard workaround used by most addons.
         if not DDTCopyFrame then
             local f = CreateFrame("Frame", "DDTCopyFrame", UIParent, "BackdropTemplate")
             f:SetSize(500, 300)
@@ -1332,9 +1420,13 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
         end
     end
 
-    -- Initial refresh shortly after login/reload (data APIs need a frame)
+    -- Delay initial refresh 1s: many WoW data APIs (GetProfessions,
+    -- C_CurrencyInfo, C_QuestLog) return nil during ADDON_LOADED.
+    -- One frame isn't enough; 1s covers PLAYER_ENTERING_WORLD.
     C_Timer.After(1, RefreshAllModules)
 
-    -- Periodic refresh every 180 seconds
+    -- Periodic refresh (180s) keeps labels current for data that changes
+    -- without firing events (e.g. gold, bag value, played time).
+    -- Shorter intervals waste CPU; longer ones make labels feel stale.
     C_Timer.NewTicker(180, RefreshAllModules)
 end)

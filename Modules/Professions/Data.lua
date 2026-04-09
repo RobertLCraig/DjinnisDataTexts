@@ -128,7 +128,9 @@ ns.PROF_DEFS = {
     },
 }
 
--- Reverse lookup: baseSkillLine → profKey
+-- Reverse lookup: baseSkillLine -> profKey.
+-- Built at load time for O(1) detection in DetectProfessions(),
+-- which is called on every SKILL_LINES_CHANGED event.
 ns.PROF_SKILL_TO_KEY = {}
 for key, def in pairs(ns.PROF_DEFS) do
     ns.PROF_SKILL_TO_KEY[def.baseSkillLine] = key

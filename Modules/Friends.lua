@@ -66,7 +66,10 @@ local STATUS_STRINGS = {
 
 local BNET_CLIENT_WOW = "WoW"
 
--- Build localized class name -> token lookup table
+-- Build localized class name -> token lookup table at load time.
+-- BNet friend info returns localized class names (e.g. "Guerrier" in frFR)
+-- instead of tokens, so we need a reverse lookup. Male names take priority
+-- since they're more commonly returned by the API.
 local localizedClassMap = {}
 if LOCALIZED_CLASS_NAMES_MALE then
     for token, name in pairs(LOCALIZED_CLASS_NAMES_MALE) do
@@ -127,6 +130,8 @@ local dataobj = LDB:NewDataObject("DDT-Friends", {
             ToggleGuildFrame()
         elseif action == "opencommunities" then
             ToggleCommunitiesFrame()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(FriendsBroker, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then Settings.OpenToCategory(DDT.settingsCategoryID) end
         end

@@ -131,6 +131,8 @@ local dataobj = LDB:NewDataObject("DDT-MicroMenu", {
                     AddonList:Show()
                 end
             end
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(MicroMenu, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

@@ -180,6 +180,8 @@ local dataobj = LDB:NewDataObject("DDT-TimeDate", {
             local msg = "Server: " .. FormatTime(sHour, sMin, nil, use24h, false)
                 .. " | Local: " .. FormatTime(lTime.hour, lTime.min, lTime.sec, use24h, true)
             ChatFrameUtil.OpenChat(msg)
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(TimeDate, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

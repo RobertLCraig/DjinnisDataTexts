@@ -26,7 +26,9 @@ local function GetLastDailyReset()
     return GetServerTime() + C_DateAndTime.GetSecondsUntilDailyReset() - 86400
 end
 
--- DMF up check (first Sunday of month for ~7 days)
+-- DMF up check (first Sunday of month for ~7 days).
+-- Calculated locally instead of querying calendar API because
+-- C_Calendar requires the frame to be open and fires async events.
 local function IsDarkmoonFaireUp()
     local dayOfWeek = tonumber(date("%w"))
     local dayOfMonth = tonumber(date("%e"))
@@ -110,14 +112,16 @@ function Professions:GetDB()
     return ns.db and ns.db.professions or DEFAULTS
 end
 
---- Get per-profession settings, lazily populating defaults
+--- Get per-profession settings, lazily populating defaults.
+--- Lazy init instead of pre-creating all 11 professions because most
+--- characters only have 2 professions - no need to pollute saved vars.
 function Professions:GetProfDB(profKey)
     local db = self:GetDB()
     if not db.perProf then db.perProf = {} end
     if not db.perProf[profKey] then
         db.perProf[profKey] = {}
     end
-    -- Ensure defaults are present
+    -- Shallow-copy table defaults so each profession gets its own copy
     local pdb = db.perProf[profKey]
     for k, v in pairs(PROF_DEFAULTS) do
         if pdb[k] == nil then
@@ -175,7 +179,8 @@ function Professions:DetectProfessions()
         if profKey then
             local profDef = ns.PROF_DEFS[profKey]
             local expData = profDef.expansions[expansion]
-            -- Check if character has the expansion-specific spell
+            -- Detection via expansion-specific spell rather than skill line
+            -- because skill line exists even if the player hasn't trained yet.
             local hasExpansion = expData and C_SpellBook and C_SpellBook.IsSpellKnown(expData.spellID)
             self:RegisterProfession(profKey, profDef, profIndex, texture, hasExpansion)
         end
@@ -433,12 +438,31 @@ function Professions:ShowTooltip(profKey, anchor)
     tooltipFrames[profKey]:Show()
 end
 
+-- Per-profession pin state. When pinned[profKey] is true, the auto-hide
+-- timer is suppressed so users can leave the tooltip open while running
+-- a delve / craft session and click rows freely.
+local pinned = {}
+
 function Professions:StartHideTimer(profKey)
     self:CancelHideTimer(profKey)
+    if pinned[profKey] then return end
     hideTimers[profKey] = C_Timer.NewTimer(ns.HIDE_DELAY, function()
         if tooltipFrames[profKey] then tooltipFrames[profKey]:Hide() end
         hideTimers[profKey] = nil
     end)
+end
+
+function Professions:TogglePin(profKey)
+    if pinned[profKey] then
+        pinned[profKey] = nil
+        self:StartHideTimer(profKey)
+    else
+        pinned[profKey] = true
+        self:CancelHideTimer(profKey)
+        if tooltipFrames[profKey] and not tooltipFrames[profKey]:IsShown() then
+            tooltipFrames[profKey]:Show()
+        end
+    end
 end
 
 function Professions:CancelHideTimer(profKey)
@@ -556,7 +580,9 @@ local function GetOrCreateLureButton(profKey, parent, index, lure)
         Professions:StartHideTimer(profKey)
     end)
 
-    -- Secure item attribute: set item for lure usage
+    -- Secure item attribute: set item for lure usage.
+    -- Start with "item:<id>" (works immediately) then upgrade to the item
+    -- name once loaded, because some WoW builds resolve "item:" slowly.
     row:SetAttribute("type", "item")
     row:SetAttribute("item", "item:" .. lure.itemID)
     C_Item.RequestLoadItemDataByID(lure.itemID)
@@ -569,7 +595,9 @@ local function GetOrCreateLureButton(profKey, parent, index, lure)
         end
     end, 10)
 
-    -- PreClick: only allow secure item use when the resolved action is "placelure"
+    -- PreClick: gate secure item use to only the "placelure" action.
+    -- Without this, every click on the row would try to use the lure item.
+    -- Setting type=nil in PreClick suppresses the secure action for that click.
     row:SetScript("PreClick", function(self, button)
         if InCombatLockdown() then return end
         local pdb = Professions:GetProfDB(profKey)
@@ -586,7 +614,8 @@ local function GetOrCreateLureButton(profKey, parent, index, lure)
         if not InCombatLockdown() then
             self:SetAttribute("type", "item")
         end
-        -- Throttle AnyUp/AnyDown double-fire
+        -- RegisterForClicks("AnyUp","AnyDown") causes PostClick to fire twice
+        -- per physical click. Throttle within 100ms to deduplicate.
         local now = GetTime()
         if (now - (self._lastPostClick or 0)) < 0.1 then return end
         self._lastPostClick = now
@@ -612,11 +641,8 @@ function Professions:ExecuteRowClickAction(profKey, action, lureIndex)
 
     if action == "waypoint" then
         if lure.waypoint then
-            local wp = lure.waypoint
-            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-            C_Map.SetUserWaypoint(mapPoint)
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-            DDT:Print("Waypoint: " .. lure.color .. lure.name .. "|r")
+            ns.SetWaypoint(lure.waypoint.map, lure.waypoint.x, lure.waypoint.y,
+                "Waypoint: " .. lure.color .. lure.name .. "|r")
         end
 
     elseif action == "craftlure" then
@@ -855,10 +881,7 @@ function Professions:RenderKPSection(sc, yOffset, rowIdx, hdrIdx, profKey, expan
         if wi.waypoint and not done then
             row:SetScript("OnMouseUp", function(_, button)
                 if button == "LeftButton" then
-                    local wp = wi.waypoint
-                    local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-                    C_Map.SetUserWaypoint(mapPoint)
-                    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+                    ns.SetWaypoint(wi.waypoint.map, wi.waypoint.x, wi.waypoint.y)
                 end
             end)
         else
@@ -926,10 +949,7 @@ function Professions:RenderKPGroup(sc, yOffset, rowIdx, hdrIdx, profKey, title, 
         if src.waypoint and not done then
             row:SetScript("OnMouseUp", function(_, button)
                 if button == "LeftButton" then
-                    local wp = src.waypoint
-                    local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-                    C_Map.SetUserWaypoint(mapPoint)
-                    C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+                    ns.SetWaypoint(src.waypoint.map, src.waypoint.x, src.waypoint.y)
                 end
             end)
         else
@@ -1037,7 +1057,9 @@ end
 -- Tooltip: Activities Section
 ---------------------------------------------------------------------------
 
---- Detect invested talent points in the "Tracker" spec tree for Skinning
+--- Detect invested talent points in the "Tracker" spec tree for Skinning.
+--- pcall wraps each C_ProfSpecs call because the API throws if the
+--- profession window hasn't been opened yet in the current session.
 local function DetectTrackerTalentPoints(skillLine)
     if not C_ProfSpecs then return 0 end
     local ok, configID = pcall(C_ProfSpecs.GetConfigIDForSkillLine, skillLine)
@@ -1047,7 +1069,8 @@ local function DetectTrackerTalentPoints(skillLine)
     for _, tabID in ipairs(tabIDs) do
         local ok3, tabInfo = pcall(C_ProfSpecs.GetTabInfo, tabID)
         if ok3 and tabInfo and tabInfo.name and tabInfo.name:lower():find("tracker") then
-            -- Walk tree and sum active ranks
+            -- BFS traversal of the talent tree; C_ProfSpecs only exposes
+            -- parent->child relationships, not a flat list of nodes.
             local todo = { tabInfo.rootNodeID }
             local total = 0
             while #todo > 0 do
@@ -1110,7 +1133,15 @@ end
 
 function Professions:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, alerts)
     for _, alert in ipairs(alerts) do
-        local isActive = alert.buffName and AuraUtil.FindAuraByName(alert.buffName, "player")
+        -- Prefer spellID-based lookup (locale-independent, unique).
+        -- AuraUtil.FindAuraByName is a fallback since aura names are
+        -- localized and non-unique (see AuraUtil.lua:75-79 warnings).
+        local isActive
+        if alert.spellID and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+            isActive = C_UnitAuras.GetPlayerAuraBySpellID(alert.spellID) ~= nil
+        else
+            isActive = alert.buffName and AuraUtil.FindAuraByName(alert.buffName, "player")
+        end
 
         rowIdx = rowIdx + 1
         local row = GetOrCreateRow(profKey, sc, rowIdx)
@@ -1215,7 +1246,9 @@ function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, inner
             row.text:SetWidth(innerWidth - 140)
             row.text:SetText(cd.name)
 
-            -- Cooldown info via C_TradeSkillUI (primary) with C_Spell fallback
+            -- C_TradeSkillUI.GetRecipeCooldown is the primary API for profession
+            -- cooldowns (returns charges natively). CraftSim uses the same approach.
+            -- C_Spell.GetSpellCooldown is less reliable for recipe-based cooldowns.
             local currentCooldown, isDayCooldown, currentCharges, maxCharges
             if C_TradeSkillUI and C_TradeSkillUI.GetRecipeCooldown then
                 currentCooldown, isDayCooldown, currentCharges, maxCharges = C_TradeSkillUI.GetRecipeCooldown(cd.spellID)
@@ -1326,7 +1359,8 @@ end
 ---------------------------------------------------------------------------
 
 function Professions:RenderTrackingToggle(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, toggle)
-    -- Check if the tracking spell is active via minimap tracking
+    -- No direct API to check if a specific tracking spell is active;
+    -- must iterate all minimap tracking entries and match by spellID.
     local isTracking = false
     for i = 1, C_Minimap.GetNumTrackingTypes() do
         local info = C_Minimap.GetTrackingInfo(i)
@@ -1759,9 +1793,7 @@ function Professions:ExecuteClickAction(profKey, action)
         local expData = state.profDef.expansions[self:GetDB().activeExpansion or "midnight"]
         if expData and expData.trainer then
             local t = expData.trainer
-            local mapPoint = UiMapPoint.CreateFromCoordinates(t.map, t.x, t.y)
-            C_Map.SetUserWaypoint(mapPoint)
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
+            ns.SetWaypoint(t.map, t.x, t.y)
         end
     elseif action == "waypointbeast" then
         -- Waypoint the next un-killed beast
@@ -1776,11 +1808,8 @@ function Professions:ExecuteClickAction(profKey, action)
                     local killTS = lureKills[lure.name]
                     if not killTS or killTS < lastReset then
                         if lure.waypoint then
-                            local wp = lure.waypoint
-                            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-                            C_Map.SetUserWaypoint(mapPoint)
-                            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-                            DDT:Print("Waypoint set: " .. lure.name)
+                            ns.SetWaypoint(lure.waypoint.map, lure.waypoint.x, lure.waypoint.y,
+                                "Waypoint set: " .. lure.name)
                         end
                         return
                     end
@@ -1801,11 +1830,8 @@ function Professions:ExecuteClickAction(profKey, action)
                     local killTS = lureKills[lure.name]
                     if not killTS or killTS < lastReset then
                         if lure.waypoint then
-                            local wp = lure.waypoint
-                            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-                            C_Map.SetUserWaypoint(mapPoint)
-                            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-                            OpenWorldMap(wp.map)
+                            ns.SetWaypoint(lure.waypoint.map, lure.waypoint.x, lure.waypoint.y)
+                            OpenWorldMap(lure.waypoint.map)
                         end
                         return
                     end
@@ -1887,6 +1913,8 @@ function Professions:ExecuteClickAction(profKey, action)
         else
             DDT:Print("Auctionator not installed.")
         end
+    elseif action == "pintooltip" then
+        self:TogglePin(profKey)
     elseif action == "opensettings" then
         if DDT.settingsCategoryID then
             Settings.OpenToCategory(DDT.settingsCategoryID)
@@ -1978,8 +2006,8 @@ function Professions:MigrateMajesticBeastData()
     local pdb = self:GetProfDB("skinning")
     if mbDB.tooltipScale then pdb.tooltipScale = mbDB.tooltipScale end
     if mbDB.tooltipWidth then pdb.tooltipWidth = mbDB.tooltipWidth end
-    -- Don't migrate tooltipMaxHeight - let it inherit from module-level setting
-    -- Use profession-centric default rather than copying old beast-only template
+    -- Set a profession-centric template instead of copying the old beast-only
+    -- template, which lacked <name> and <kp_*> tags.
     pdb.labelTemplate = "<name>: <kp_earned>/<kp_total> KP  <mb_kills>/<mb_total> Beasts"
     if mbDB.clickActions then
         -- Map old MajesticBeast actions to new Professions equivalents
@@ -2052,7 +2080,9 @@ function Professions:Init()
     eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
     eventFrame:RegisterEvent("UNIT_AURA")
 
-    -- Detect professions with a delay (APIs not reliable during ADDON_LOADED)
+    -- Two-pass detection: GetProfessions() and C_SpellBook.IsSpellKnown()
+    -- return incomplete data at login. 2s covers most cases; 5s catches
+    -- late-loading spell data (observed on slow connections).
     C_Timer.After(2, function()
         self:DetectProfessions()
         self:UpdateData()
@@ -2061,7 +2091,6 @@ function Professions:Init()
         end
     end)
 
-    -- Re-check after 5 seconds (some profession data loads late)
     C_Timer.After(5, function()
         self:DetectProfessions()
         self:UpdateData()

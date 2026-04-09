@@ -110,7 +110,8 @@ local function AddSlider(content, y, label, min, max, step, getter, setter, refr
     input:SetBackdropColor(0, 0, 0, 0.5)
     input:SetBackdropBorderColor(0.3, 0.3, 0.3, 0.8)
 
-    -- FontString overlay -- always shows the current value
+    -- FontString overlay: same EditBox-in-scroll-child rendering bug as AddEditBox.
+    -- Overlay always shows the current value; hidden when user focuses the input.
     local valText = input:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("CENTER", input, "CENTER", 0, 0)
     valText:SetJustifyH("CENTER")
@@ -323,9 +324,9 @@ local function AddDropdown(content, y, label, values, getter, setter, refreshLis
     return y - 54
 end
 
--- Font preview dropdown: shows each font name rendered in its own typeface.
--- Blizzard's menu system blocks SetFont inside initializers, so we build
--- a custom popup list instead of using WowStyle1DropdownTemplate.
+-- Custom font preview dropdown: renders each font name in its own typeface.
+-- Cannot use WowStyle1DropdownTemplate because Blizzard's menu initializer
+-- runs in a restricted context that blocks SetFont() calls on child frames.
 local function AddFontDropdown(content, y, label, values, getter, setter, refreshList)
     local text = content:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
     text:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
@@ -460,8 +461,9 @@ local function AddEditBox(content, y, label, getter, setter, refreshList)
     editbox:SetText(getter())
     editbox:SetTextColor(0, 0, 0, 0)
 
-    -- FontString overlay - EditBox text doesn't render in scroll children;
-    -- the overlay provides reliable display when unfocused.
+    -- FontString overlay pattern: WoW's EditBox doesn't render its own text
+    -- reliably inside scroll children (Blizzard bug). Overlay FontString shows
+    -- the value when unfocused; hidden during editing so the cursor works.
     local valText = editbox:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
     valText:SetPoint("LEFT", editbox, "LEFT", 6, 0)
     valText:SetPoint("RIGHT", editbox, "RIGHT", -6, 0)
@@ -549,8 +551,9 @@ local function AddLabelEditBox(panel, tags, getter, setter, refreshList, suggest
     editbox:SetAutoFocus(false)
     editbox:SetText(getter())
 
-    -- Track cursor position so tag buttons can insert at the right spot
-    -- (clicking a tag button causes focus loss before OnClick fires)
+    -- Track cursor position: clicking a tag button causes OnEditFocusLost
+    -- *before* OnClick fires, losing the cursor position. We cache it here
+    -- so tag insertion lands at the user's last cursor location.
     local lastCursorPos = nil
     local lastText = nil
 
@@ -907,7 +910,9 @@ ns.SettingsWidgets = {
 
 local function CreateScrollPanel()
     local panel = CreateFrame("Frame")
-    panel:Hide()  -- start hidden so OnShow fires when Blizzard Settings displays it
+    -- Start hidden: Blizzard Settings calls Show() when navigating to this panel,
+    -- which fires OnShow and triggers our refresh callbacks for live data.
+    panel:Hide()
 
     local scroll = CreateFrame("ScrollFrame", nil, panel, "ScrollFrameTemplate")
     scroll:SetPoint("TOPLEFT", 0, -5)
@@ -994,8 +999,13 @@ local function AddModuleClickActionsSection(panel, r, dbKey, actionValues, extra
     local body = AddSection(panel, "Click Actions", true)
     local y = 0
     y = AddDescription(body, y, "Configure what happens when you click the DataText.")
+    -- Auto-inject the universal "Pin Tooltip Open" action into every module's dropdown
+    -- without mutating the caller's table (so we don't pollute module-local tables).
+    local mergedValues = {}
+    for k, v in pairs(actionValues) do mergedValues[k] = v end
+    mergedValues.pintooltip = mergedValues.pintooltip or "Pin Tooltip Open"
     for _, entry in ipairs(CLICK_ACTION_KEYS) do
-        y = AddDropdown(body, y, entry.label, actionValues,
+        y = AddDropdown(body, y, entry.label, mergedValues,
             function() return ns.db[dbKey].clickActions[entry.key] end,
             function(v) ns.db[dbKey].clickActions[entry.key] = v end, r)
     end
@@ -1218,6 +1228,8 @@ local function BuildGeneralPanel(panel)
     y = AddFontDropdown(body, y, "Font Face", FONT_OPTIONS,
         function() return ns.db.global.tooltipFont end,
         function(v) ns.db.global.tooltipFont = v; ns:UpdateFonts() end, r)
+    -- Debounce font updates during slider drag: UpdateFonts() walks every
+    -- registered FontString, which is expensive if done on every notch.
     local fontSizeTimer
     y = AddSlider(body, y, "Font Size", 8, 50, 1,
         function() return ns.db.global.tooltipFontSize end,

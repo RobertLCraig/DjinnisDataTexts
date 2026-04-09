@@ -334,6 +334,8 @@ local ldbCallbacks = {
             ItemLevel:CreateTSMShoppingList()
         elseif action == "ahsearch" then
             ItemLevel:SearchAHForUpgrades()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(ItemLevel, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

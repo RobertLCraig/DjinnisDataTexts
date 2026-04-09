@@ -353,6 +353,8 @@ dataobj = LDB:NewDataObject("DDT-VolumeControl", {
             SetCVar("Sound_EnableAllSound", IsEnabled("Sound_EnableAllSound") and "0" or "1")
             VolumeControl:RefreshTooltip()
             VolumeControl:UpdateLabel()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(VolumeControl, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

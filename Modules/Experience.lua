@@ -246,6 +246,8 @@ local dataobj = LDB:NewDataObject("DDT-Experience", {
             ToggleCharacter("PaperDollFrame")
         elseif action == "achievements" then
             ToggleAchievementFrame()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(Experience, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

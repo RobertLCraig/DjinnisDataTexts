@@ -236,6 +236,8 @@ local dataobj = LDB:NewDataObject("DDT-MovementSpeed", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "character" then
             ToggleCharacter("PaperDollFrame")
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(MoveSpeed, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

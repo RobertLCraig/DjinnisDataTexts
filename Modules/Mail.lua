@@ -135,6 +135,8 @@ local dataobj = LDB:NewDataObject("DDT-Mail", {
         elseif action == "copysummary" then
             local msg = mailCount > 0 and (mailCount .. " mail") or "No mail"
             ChatFrameUtil.OpenChat(msg)
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(Mail, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

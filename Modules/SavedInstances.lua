@@ -411,6 +411,8 @@ local dataobj = LDB:NewDataObject("DDT-SavedInstances", {
             ToggleRaidFrame()
         elseif action == "groupfinder" then
             ToggleLFDParentFrame()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(SavedInst, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

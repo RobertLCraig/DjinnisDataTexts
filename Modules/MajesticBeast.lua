@@ -38,13 +38,14 @@ local BEAST_LOOT = {
     ["Grand Beast"] = { 238513, 238514, 238520, 238521, 238528, 238529, 238530, 238522 },
 }
 
--- All tracked loot item IDs (set)
+-- All tracked loot item IDs (set) - built at load time for O(1) lookups
+-- in BAG_UPDATE_DELAYED (fires frequently, must be fast).
 local TRACKED_LOOT = {}
 for _, items in pairs(BEAST_LOOT) do
     for _, id in ipairs(items) do TRACKED_LOOT[id] = true end
 end
 
--- Lure reagent items (set)
+-- Lure reagent items (set) - for reagent count tracking in bag scans
 local LURE_REAGENTS = {}
 for _, lure in ipairs(LURES) do
     if lure.reagents then
@@ -52,7 +53,9 @@ for _, lure in ipairs(LURES) do
     end
 end
 
--- Quest ID → lure index for kill detection
+-- Quest ID -> lure index for QUEST_TURNED_IN kill detection.
+-- Beast kills complete a hidden quest; matching questID to lure index
+-- lets us detect which beast was killed without scanning combat log.
 local questToIndex = {}
 for i, lure in ipairs(LURES) do
     if lure.questID then questToIndex[lure.questID] = i end
@@ -134,7 +137,7 @@ local DEFAULTS = {
     showLoot         = true,
     showWeeklyKP     = true,
     ahAutofillQuantity = true,
-    chars            = {},   -- fallback storage when MBT addon is not installed
+    chars            = {},   -- local per-char storage; MBT addon's DB used if installed
     -- TODO: consumableStock targets per item
     -- TODO: routeOrder customization
     -- TODO: routeSkip per-beast toggles
@@ -690,11 +693,8 @@ local function ExecuteRowAction(action, lureIndex)
 
     if action == "waypoint" then
         if lure.waypoint then
-            local wp = lure.waypoint
-            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-            C_Map.SetUserWaypoint(mapPoint)
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-            DjinniMsg("Waypoint: " .. lure.color .. lure.name .. "|r")
+            ns.SetWaypoint(lure.waypoint.map, lure.waypoint.x, lure.waypoint.y,
+                "Waypoint: " .. lure.color .. lure.name .. "|r")
         end
 
     elseif action == "shopzone" then
@@ -807,11 +807,8 @@ function MajesticBeast:ExecuteAction(action)
         end
         local lure = LURES[self.nextBeastIndex]
         if lure and lure.waypoint then
-            local wp = lure.waypoint
-            local mapPoint = UiMapPoint.CreateFromCoordinates(wp.map, wp.x, wp.y)
-            C_Map.SetUserWaypoint(mapPoint)
-            C_SuperTrack.SetSuperTrackedUserWaypoint(true)
-            DjinniMsg("Waypoint: " .. lure.color .. lure.name .. "|r")
+            ns.SetWaypoint(lure.waypoint.map, lure.waypoint.x, lure.waypoint.y,
+                "Waypoint: " .. lure.color .. lure.name .. "|r")
         end
 
     elseif action == "openmap" then

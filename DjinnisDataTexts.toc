@@ -58,6 +58,7 @@ Modules\ItemLevel.lua
 
 # Modules - Phase 10
 Modules\PreyTracker.lua
+Modules\Delve.lua
 
 # Modules - Phase 12
 Modules\VolumeControl.lua

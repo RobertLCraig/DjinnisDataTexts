@@ -292,6 +292,8 @@ local dataobj = LDB:NewDataObject("DDT-SystemPerformance", {
             local msg = string.format("FPS: %.0f | Home: %dms | World: %dms | Memory: %s",
                 fps, latencyHome, latencyWorld, FormatMemory(memoryTotal))
             ChatFrameUtil.OpenChat(msg)
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(SysPerf, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

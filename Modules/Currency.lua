@@ -173,6 +173,8 @@ local dataobj = LDB:NewDataObject("DDT-Currency", {
             ChatFrameUtil.OpenChat(FormatGoldShort(currentGold))
         elseif action == "refresh" then
             Currency:UpdateData()
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(Currency, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)

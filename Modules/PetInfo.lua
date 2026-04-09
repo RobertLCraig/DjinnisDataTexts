@@ -163,6 +163,8 @@ local dataobj = LDB:NewDataObject("DDT-PetInfo", {
                     DDT:Print("Loaded pet team " .. team .. ".")
                 end
             end
+        elseif action == "pintooltip" then
+            ns:TogglePinTooltip(PetInfo, tooltipFrame)
         elseif action == "opensettings" then
             if DDT.settingsCategoryID then
                 Settings.OpenToCategory(DDT.settingsCategoryID)
