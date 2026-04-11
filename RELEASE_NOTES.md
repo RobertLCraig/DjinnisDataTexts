@@ -1,6 +1,6 @@
 # Release Notes
 
-## Version: 0.9.3
+## Version: 0.9.4
 
 ### Major Update: ActiveActivity Aggregator, Combat and Secret Safety Pass, Delve Tier 11+ Support
 
