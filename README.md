@@ -71,6 +71,8 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, delve tracking with instance names and tiers. Difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. Column hover highlighting for improved alt data readability. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 | **Prey Tracker** | Tracks active Midnight prey hunts — current target, zone, difficulty, kill progress. Weekly completion history with prey names and earned currency. |
+| **Delve** | Live delve progress — tier, step criteria, companion level and XP, Sanctified Banner state, active modifiers. Diagnostic dump via `/ddtdelve`. |
+| **Active Activity** | Unified aggregator that routes hover, clicks, and label updates to whichever sub-tracker (Delve, Prey Tracker, ...) is currently engaged. One broker instead of several empty ones when idle. |
 
 ![Saved Instances](Docs/SavedInstances.png) ![Saved Instances (extended)](Docs/SavedInstances2.png) ![Saved Instances (condensed)](Docs/SavedInstances3.png)
 

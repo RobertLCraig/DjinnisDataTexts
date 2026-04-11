@@ -1,5 +1,56 @@
 # Release Notes
 
+## Version: 0.9.2-beta — 2026-04-11
+
+### Fixed
+
+- **ActiveActivity** — Registration key normalized from `activeactivity` to `ActiveActivity` to match the canonical module name.
+
+---
+
+## Version: 0.9.1-beta — 2026-04-11
+
+### Hot-Fixes
+
+- **Guild / Communities** — `C_Club.GetClubMembers` can return a secret value on tooltip-hover paths even when the `ShouldUnitIdentityBeSecret` predicate is false. Added `pcall` backstop around the member iteration in both modules. Previous cached state is preserved when a secret is encountered.
+- **Delve** — Sanctified Banner detection now works on Tier 11+ delves (Atal'Aman and later). Newer delve variants grant no player aura on banner click, so detection now matches the on-screen "Sanctified Spoils Will Manifest Upon Delve Completion" notification across `UI_INFO_MESSAGE` and several chat emote events.
+- **Delve** — New `/ddtdelve watch` diagnostic command — live aura-diff monitor that prints gained/lost player auras on every `UNIT_AURA`, used for identifying aura signals on future delve variants.
+
+---
+
+## Version: 0.9.0-beta — 2026-04-11
+
+### Major Update: ActiveActivity Aggregator, Combat and Secret Safety Pass
+
+#### ActiveActivity (New)
+
+Unified LDB broker that routes hover, click, and label updates to whichever sub-tracker is currently engaged. Sub-trackers register via `RegisterActivityTracker` API rather than owning their own brokers.
+
+- **Delve** and **Prey Tracker** now register as sub-trackers and notify on label change
+- Idle-state click actions configurable independently of active-tracker click actions
+- Single data broker replaces multiple empty brokers when no activity is active
+
+#### Secret API Safety (Midnight hardening)
+
+Every module that reads identity, aura, or cooldown data is now guarded against Midnight-era secret return values.
+
+- **Guild / Communities** — `C_Club.GetClubMembers` secret-table crashes fixed. `C_Secrets.ShouldUnitIdentityBeSecret("player")` predicate fast-path plus fallback to `GetGuildInfo("player")` for guild name.
+- **Movement Speed / Delve / Professions** — Aura reads guarded with `C_Secrets.ShouldAurasBeSecret()`.
+- **Pet Info / Professions** — Cooldown reads guarded with `C_Secrets.ShouldCooldownsBeSecret()`.
+- **Core.ExpandTag** — `pcall` around `tostring`/`gsub` so secret label values degrade gracefully to `?` instead of erroring the entire label.
+
+#### Combat Safety
+
+Audit pass on protected frame operations. Protected calls (`SetAttribute`, `RegisterForClicks`) now gated behind `InCombatLockdown()` checks with `PLAYER_REGEN_ENABLED` deferral.
+
+#### Other Fixes
+
+- **VolumeControl** — `OnMouseWheel` now hooked on the display frame in `OnEnter` (display addons like ElvUI do not wire up `dataobj.OnMouseWheel`).
+- **SavedInstances / AudioOutput** — Non-ASCII glyphs replaced with ASCII equivalents.
+- **Professions** — Catch-up currency row rendered in KP section; Wild Perception buff tracker gains `name` field.
+
+---
+
 ## Version: 0.8.2 — 2026-04-06
 
 ### Major Update: Professions Framework, Volume Control, Audio Output
