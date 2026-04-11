@@ -1,5 +1,13 @@
 # Release Notes
 
+## Version: 0.9.5
+
+### Fixed
+
+- **Scrollable tooltips** (Guild, Communities, and all modules using the shared tooltip factory) - scroll position no longer resets to the top when the underlying data refreshes while the tooltip is open. `FinalizeLayout` now preserves the current scroll offset (clamped to the new content bounds) on re-populate, and only resets on a fresh show.
+
+---
+
 ## Version: 0.9.4
 
 ### Major Update: ActiveActivity Aggregator, Combat and Secret Safety Pass, Delve Tier 11+ Support

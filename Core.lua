@@ -960,11 +960,23 @@ function ns.CreateTooltipFrame(globalName, moduleRef)
         -- Set content size
         self.content:SetSize(contentWidth, contentHeight)
 
-        -- Reset scroll position
-        self.scrollOffset  = 0
-        self.hScrollOffset = 0
+        -- Preserve scroll position across re-populates so that live data
+        -- refreshes (e.g. GUILD_ROSTER_UPDATE while the tooltip is open) do
+        -- not snap the view back to the top while the user is reading. On a
+        -- fresh show (frame currently hidden) reset to the top; otherwise
+        -- clamp the existing offset to the new content bounds.
+        if self:IsShown() then
+            local maxScrollV = math.max(0, contentHeight - scrollAreaH)
+            local maxScrollH = math.max(0, contentWidth - innerWidth)
+            self.scrollOffset  = math.max(0, math.min(maxScrollV, self.scrollOffset  or 0))
+            self.hScrollOffset = math.max(0, math.min(maxScrollH, self.hScrollOffset or 0))
+        else
+            self.scrollOffset  = 0
+            self.hScrollOffset = 0
+        end
         self.content:ClearAllPoints()
-        self.content:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT", 0, 0)
+        self.content:SetPoint("TOPLEFT", self.clipFrame, "TOPLEFT",
+            -self.hScrollOffset, self.scrollOffset)
 
         -- Set outer frame size
         self:SetSize(width, fixedTop + scrollAreaH + hintH)
