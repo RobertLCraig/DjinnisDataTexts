@@ -192,13 +192,22 @@ function CommunitiesBroker:UpdateData()
            and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet)
            and self:IsClubEnabled(clubInfo.clubId) then
 
-            -- In instances C_Club.GetClubMembers returns a secret; type() returns
-            -- "secret" (not "table") so this safely falls back to {}.
-            local rawMemberIds = C_Club.GetClubMembers(clubInfo.clubId)
-            local memberIds = (type(rawMemberIds) == "table") and rawMemberIds or {}
+            -- C_Club.GetClubMembers is SecretInChatMessagingLockdown. The
+            -- ShouldUnitIdentityBeSecret("player") predicate is a fast-path
+            -- but does not pair perfectly with this API -- the member list
+            -- can still come back as a secret on tooltip-hover paths that
+            -- aren't in obvious lockdown. The iteration is wrapped in pcall
+            -- as a backstop. pcall taint concerns don't apply here because
+            -- this is a pure tooltip-render path with no downstream secure
+            -- frame ops.
+            local lockdown = C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
+                             and C_Secrets.ShouldUnitIdentityBeSecret("player")
+            local rawMemberIds = not lockdown and C_Club.GetClubMembers(clubInfo.clubId) or nil
             local onlineMembers = {}
 
-            for _, memberId in ipairs(memberIds) do
+            if type(rawMemberIds) == "table" then
+            pcall(function()
+            for _, memberId in ipairs(rawMemberIds) do
                 local mInfo = C_Club.GetMemberInfo(clubInfo.clubId, memberId)
                 if type(mInfo) == "table" and type(mInfo.name) == "string" and IsPresenceOnline(mInfo.presence) then
                     local classFile = ClassFileFromID(mInfo.classID)
@@ -230,6 +239,8 @@ function CommunitiesBroker:UpdateData()
                         dungeonScore = mInfo.overallDungeonScore or 0,
                     })
                 end
+            end
+            end)
             end
 
             -- Sort members within each club

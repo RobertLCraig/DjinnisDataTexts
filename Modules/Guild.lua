@@ -107,9 +107,16 @@ GuildBroker.dataobj = dataobj
 local eventFrame = CreateFrame("Frame")
 
 function GuildBroker:Init()
-    eventFrame:SetScript("OnEvent", function(_, event)
+    eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then
             GuildBroker:OnPlayerEnteringWorld()
+        elseif event == "GUILD_MOTD" then
+            -- Secondary live-update path. The primary MOTD source is
+            -- clubInfo.broadcast read in UpdateData(); this event just
+            -- triggers a refresh when the MOTD is changed mid-session.
+            -- The event payload itself is ignored because it arrives as a
+            -- secret during chat messaging lockdown (e.g. combat reloads).
+            GuildBroker:OnGuildUpdate()
         else
             GuildBroker:OnGuildUpdate()
         end
@@ -167,17 +174,41 @@ function GuildBroker:UpdateData()
         self.guildName = clubInfo.name
     end
 
-    -- Get all member IDs.
-    -- In instances C_Club.GetClubMembers returns a secret value whose
-    -- type() is "secret" (not "table"), so the type-check safely falls back
-    -- to {} without any pcall gymnastics.
-    local rawMemberIds = C_Club.GetClubMembers(guildClubId)
-    local memberIds = (type(rawMemberIds) == "table") and rawMemberIds or {}
+    -- MOTD: prefer clubInfo.broadcast (unrestricted field on the ClubInfo
+    -- struct) over the protected C_GuildInfo.GetMOTD() API. The GUILD_MOTD
+    -- event payload becomes secret during chat messaging lockdown (e.g. a
+    -- reload mid-combat) and does not re-fire automatically, so the event
+    -- path alone is unreliable. broadcast is populated as soon as club data
+    -- loads and updates via the same path the Blizzard Communities UI uses.
+    if type(clubInfo) == "table" and type(clubInfo.broadcast) == "string" then
+        self.motdCache = clubInfo.broadcast
+    end
 
     self.totalCount = (type(clubInfo) == "table" and clubInfo.memberCount) or 0
 
+    -- C_Club.GetClubMembers is SecretInChatMessagingLockdown. During
+    -- lockdown the returned value is a secret that type() misreports as
+    -- "table" but ipairs() rejects with "table expected, got secret".
+    -- The ShouldUnitIdentityBeSecret("player") predicate is a useful
+    -- fast-path but does NOT pair perfectly with this API's secrecy
+    -- state: the member list can be secret even when identity isn't
+    -- (seen on tooltip-hover paths outside obvious lockdown). We wrap
+    -- the iteration in pcall as a backstop. pcall has taint concerns
+    -- in secure code paths, but this tooltip-render path never calls
+    -- SetAttribute or other secure frame ops downstream, so there is
+    -- nothing for taint to break. On error, preserve cached state; the
+    -- next GUILD_ROSTER_UPDATE out of lockdown will repopulate.
+    if C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret
+       and C_Secrets.ShouldUnitIdentityBeSecret("player") then
+        return
+    end
+
+    local rawMemberIds = C_Club.GetClubMembers(guildClubId)
+    if type(rawMemberIds) ~= "table" then return end
+
     local onlineCount = 0
-    for _, memberId in ipairs(memberIds) do
+    local ok = pcall(function()
+    for _, memberId in ipairs(rawMemberIds) do
         local mInfo = C_Club.GetMemberInfo(guildClubId, memberId)
         if type(mInfo) == "table" and type(mInfo.name) == "string" then
             local presence = mInfo.presence or Enum.ClubMemberPresence.Offline
@@ -224,6 +255,11 @@ function GuildBroker:UpdateData()
                 })
             end
         end
+    end
+    end)
+    if not ok then
+        -- Secret member list; keep previous cached state, retry next refresh
+        return
     end
 
     self.onlineCount = onlineCount
@@ -420,7 +456,9 @@ function GuildBroker:PopulateTooltip()
         DDT:ColorText(" / " .. tostring(self.totalCount), 0.63, 0.63, 0.63)
     )
 
-    local motd = C_GuildInfo.GetMOTD() or ""
+    -- Use cached MOTD captured from the GUILD_MOTD event. Calling
+    -- C_GuildInfo.GetMOTD() directly is now protected and taints the tooltip.
+    local motd = self.motdCache or ""
     if motd ~= "" then
         tooltipFrame.motd:SetText("|cff888888MOTD: " .. motd .. "|r")
         tooltipFrame.motd:Show()

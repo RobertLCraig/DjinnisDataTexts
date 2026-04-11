@@ -1131,8 +1131,20 @@ function Delve:Init()
     -- Companion XP is modeled as a friendship faction, so reputation updates
     -- are how we learn about Brann gaining experience.
     eventFrame:RegisterEvent("UPDATE_FACTION")
-    -- Sanctified Banner state lives in a player aura, so watch aura changes.
+    -- Sanctified Banner state lives in a player aura on older delve variants, so
+    -- watch aura changes for the legacy detection path.
     eventFrame:RegisterUnitEvent("UNIT_AURA", "player")
+    -- Newer delve variants (Tier 11+) grant no player aura on banner click; the
+    -- only signal is an on-screen notification ("Sanctified Spoils Will Manifest
+    -- Upon Delve Completion"). We match on that text across several chat/info
+    -- channels because Blizzard has shipped this kind of notification via at
+    -- least UI_INFO_MESSAGE, CHAT_MSG_RAID_BOSS_EMOTE, and CHAT_MSG_MONSTER_EMOTE
+    -- in different patches.
+    eventFrame:RegisterEvent("UI_INFO_MESSAGE")
+    eventFrame:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE")
+    eventFrame:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
+    eventFrame:RegisterEvent("CHAT_MSG_MONSTER_YELL")
+    eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UPDATE_UI_WIDGET" then
             local widgetInfo = ...
@@ -1140,6 +1152,22 @@ function Delve:Init()
             -- thrashing UpdateData on every nameplate / objective tracker tick.
             if widgetInfo and widgetInfo.widgetType == Enum.UIWidgetVisualizationType.ScenarioHeaderDelves then
                 cachedWidgetID = widgetInfo.widgetID
+                self:UpdateData()
+            end
+        elseif event == "UI_INFO_MESSAGE" then
+            -- arg1 is messageType (number), arg2 is the text
+            local _, text = ...
+            if inDelve and type(text) == "string" and text:find("Sanctified Spoils", 1, true) then
+                hasBanner = true
+                self:UpdateData()
+            end
+        elseif event == "CHAT_MSG_RAID_BOSS_EMOTE"
+            or event == "CHAT_MSG_MONSTER_EMOTE"
+            or event == "CHAT_MSG_MONSTER_YELL"
+            or event == "CHAT_MSG_SYSTEM" then
+            local text = ...
+            if inDelve and type(text) == "string" and text:find("Sanctified Spoils", 1, true) then
+                hasBanner = true
                 self:UpdateData()
             end
         elseif event == "PLAYER_ENTERING_WORLD" then
@@ -1157,10 +1185,65 @@ function Delve:Init()
 
     -- Diagnostic dump: /ddtdelve prints widget + scenario data to chat so we can
     -- see exactly what the server is reporting (helps diagnose missing sub-objectives).
+    -- /ddtdelve watch toggles a live aura-diff monitor useful for identifying which
+    -- aura (if any) a Sanctified Banner click grants in a new delve variant.
     SLASH_DDTDELVE1 = "/ddtdelve"
-    SlashCmdList["DDTDELVE"] = function()
-        Delve:DiagnosticDump()
+    SlashCmdList["DDTDELVE"] = function(msg)
+        msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
+        if msg == "watch" then
+            Delve:ToggleAuraWatch()
+        else
+            Delve:DiagnosticDump()
+        end
     end
+end
+
+-- Live aura-diff monitor. Snapshots current player auras across HELPFUL and HARMFUL
+-- filters, then prints any added/removed aura on each UNIT_AURA until toggled off.
+local auraWatchFrame  = nil
+local auraWatchSnap   = nil  -- [filter.."|"..spellID] = name
+local function SnapshotAuras()
+    local snap = {}
+    if not (C_UnitAuras and C_UnitAuras.GetAuraDataByIndex) then return snap end
+    for _, filter in ipairs({ "HELPFUL", "HARMFUL" }) do
+        for i = 1, 80 do
+            local a = C_UnitAuras.GetAuraDataByIndex("player", i, filter)
+            if not a then break end
+            snap[filter .. "|" .. tostring(a.spellId)] =
+                string.format("%s (src=%s)", tostring(a.name), tostring(a.sourceUnit))
+        end
+    end
+    return snap
+end
+
+function Delve:ToggleAuraWatch()
+    local function p(...) print("|cff55bbff[DDT-Delve]|r", ...) end
+    if auraWatchFrame then
+        auraWatchFrame:UnregisterAllEvents()
+        auraWatchFrame:SetScript("OnEvent", nil)
+        auraWatchFrame = nil
+        auraWatchSnap  = nil
+        p("Aura watch: OFF")
+        return
+    end
+    auraWatchSnap  = SnapshotAuras()
+    auraWatchFrame = CreateFrame("Frame")
+    auraWatchFrame:RegisterUnitEvent("UNIT_AURA", "player")
+    auraWatchFrame:SetScript("OnEvent", function()
+        local now = SnapshotAuras()
+        for k, v in pairs(now) do
+            if not auraWatchSnap[k] then
+                p("|cff66ff66+ GAINED|r " .. k .. "  " .. v)
+            end
+        end
+        for k, v in pairs(auraWatchSnap) do
+            if not now[k] then
+                p("|cffff6666- LOST|r   " .. k .. "  " .. v)
+            end
+        end
+        auraWatchSnap = now
+    end)
+    p("Aura watch: ON  (run /ddtdelve watch again to stop)")
 end
 
 function Delve:DiagnosticDump()
