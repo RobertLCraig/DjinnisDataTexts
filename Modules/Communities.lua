@@ -192,17 +192,17 @@ function CommunitiesBroker:UpdateData()
            and (clubInfo.clubType == Enum.ClubType.Character or clubInfo.clubType == Enum.ClubType.BattleNet)
            and self:IsClubEnabled(clubInfo.clubId) then
 
-            -- pcall guard: C_Club.GetClubMembers can return a Blizzard "secret"
-            -- protected value that passes type()=="table" but crashes ipairs().
-            local ok, memberIds = pcall(C_Club.GetClubMembers, clubInfo.clubId)
-            if not ok or not pcall(ipairs, memberIds) then memberIds = {} end
+            -- In instances C_Club.GetClubMembers returns a secret; type() returns
+            -- "secret" (not "table") so this safely falls back to {}.
+            local rawMemberIds = C_Club.GetClubMembers(clubInfo.clubId)
+            local memberIds = (type(rawMemberIds) == "table") and rawMemberIds or {}
             local onlineMembers = {}
 
             for _, memberId in ipairs(memberIds) do
                 local mInfo = C_Club.GetMemberInfo(clubInfo.clubId, memberId)
-                if type(mInfo) == "table" and IsPresenceOnline(mInfo.presence) then
+                if type(mInfo) == "table" and type(mInfo.name) == "string" and IsPresenceOnline(mInfo.presence) then
                     local classFile = ClassFileFromID(mInfo.classID)
-                    local memberName = mInfo.name or "Unknown"
+                    local memberName = mInfo.name
 
                     -- Strip realm suffix for display
                     local displayName = memberName

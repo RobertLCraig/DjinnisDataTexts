@@ -370,7 +370,8 @@ function Delve:UpdateData()
     -- auras (see BANNER_BUFF_SPELL_IDS). These buffs have a finite duration, so
     -- we latch hasBanner = true for the rest of the delve once any is seen. The
     -- latch is reset on delve transitions in UpdateData.
-    if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+    local aurasSecret = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
+    if not aurasSecret and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
         for _, sid in ipairs(BANNER_BUFF_SPELL_IDS) do
             if C_UnitAuras.GetPlayerAuraBySpellID(sid) then
                 hasBanner = true
@@ -579,6 +580,10 @@ function Delve:UpdateLabel()
     end
 
     self.dataobj.text = result
+
+    -- Push the new label up to the ActiveActivity aggregator (no-op if the
+    -- aggregator hasn't initialized yet).
+    if ns.NotifyActivityChange then ns:NotifyActivityChange() end
 end
 
 function Delve:GetDB()
@@ -598,36 +603,62 @@ local function ExecuteAction(action)
 end
 
 ---------------------------------------------------------------------------
--- LDB data object
+-- ActiveActivity tracker registration
+--
+-- This module no longer creates its own LDB DataBroker. Instead it registers
+-- as a sub-tracker with the unified ActiveActivity datatext, which routes
+-- hover/click/label calls to whichever activity is currently engaged.
+--
+-- A stub `dataobj` is kept so legacy code paths inside this file (notably
+-- UpdateLabel which writes self.dataobj.text) continue to work without
+-- error. The aggregator pulls the status text via GetStatusText() instead.
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Delve", {
-    type  = "data source",
-    text  = "Delve",
-    icon  = "Interface\\Icons\\achievement_delves_01",
-    label = "DDT - Delve",
-    OnEnter = function(self)
-        Delve:CancelHideTimer()
-        Delve:ShowTooltip(self)
-    end,
-    OnLeave = function()
-        Delve:StartHideTimer()
-    end,
-    OnClick = function(self, button)
-        Delve:CancelHideTimer()
-        local db = Delve:GetDB()
-        local action = DDT:ResolveClickAction(button, db.clickActions)
-        -- Only auto-hide the tooltip for non-pin actions; pinning needs to keep it visible.
-        if action ~= "pintooltip" and tooltipFrame then tooltipFrame:Hide() end
-        if action and action ~= "none" then
-            ExecuteAction(action)
-        end
-    end,
-})
-if not dataobj then
-    dataobj = LDB:GetDataObjectByName("DDT-Delve")
-end
+local dataobj = { text = "Delve", icon = "Interface\\Icons\\achievement_delves_01" }
 Delve.dataobj = dataobj
+
+-- Public accessor used by ActiveActivity to determine if this tracker owns
+-- the current label / hover.
+function Delve:IsActive()
+    return inDelve
+end
+
+-- Returns the fully-formatted label text (the tracker's own labelTemplate
+-- already applied). The aggregator displays this verbatim. Reads from the
+-- cached dataobj.text rather than re-running UpdateLabel to avoid recursion
+-- (UpdateLabel itself notifies the aggregator).
+function Delve:GetLabelText()
+    return self.dataobj.text or ""
+end
+
+local function HandleClick(button)
+    Delve:CancelHideTimer()
+    local db = Delve:GetDB()
+    local action = DDT:ResolveClickAction(button, db.clickActions)
+    -- Only auto-hide the tooltip for non-pin actions; pinning needs to keep it visible.
+    if action ~= "pintooltip" and tooltipFrame then tooltipFrame:Hide() end
+    if action and action ~= "none" then
+        ExecuteAction(action)
+    end
+end
+
+if ns.RegisterActivityTracker then
+    ns:RegisterActivityTracker("delve", {
+        displayName = "Delve",
+        icon        = "Interface\\Icons\\achievement_delves_01",
+        priority    = 10,
+        IsActive    = function() return Delve:IsActive() end,
+        GetLabelText = function() return Delve:GetLabelText() end,
+        ShowTooltip = function(anchor)
+            Delve:CancelHideTimer()
+            Delve:ShowTooltip(anchor)
+        end,
+        HideTooltip = function()
+            Delve:StartHideTimer()
+        end,
+        HandleClick = HandleClick,
+    })
+end
 
 ---------------------------------------------------------------------------
 -- Tooltip
@@ -1255,7 +1286,8 @@ function Delve:DiagnosticDump()
     end
 
     -- Probe known/likely Sanctified Banner spell IDs explicitly
-    if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+    if not (C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret())
+       and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
         local probes = { 1271918, 462940, 1278223, 1270179, 1277243 }
         for _, sid in ipairs(probes) do
             local a = C_UnitAuras.GetPlayerAuraBySpellID(sid)

@@ -336,17 +336,24 @@ dataobj = LDB:NewDataObject("DDT-VolumeControl", {
     icon  = "Interface\\Icons\\inv_misc_bell_01",
     label = "DDT - Volume",
     OnEnter = function(self)
+        -- OnMouseWheel is not a standard LDB callback so display addons (e.g.
+        -- ElvUI) never wire it up. Hook the actual display frame directly on
+        -- first hover so scroll works regardless of which display is in use.
+        if not self._ddt_vol_scroll then
+            self:EnableMouseWheel(true)
+            self:HookScript("OnMouseWheel", function(_, delta)
+                SetVolPct("Sound_MasterVolume", math.max(0, math.min(100, GetVolPct("Sound_MasterVolume") + ScrollDelta(delta))))
+                VolumeControl:RefreshTooltip()
+                VolumeControl:UpdateLabel()
+            end)
+            self._ddt_vol_scroll = true
+        end
         VolumeControl:ShowTooltip(self)
     end,
     OnLeave = function(self)
         VolumeControl:StartHideTimer()
     end,
-    OnMouseWheel = function(self, delta)
-        SetVolPct("Sound_MasterVolume", math.max(0, math.min(100, GetVolPct("Sound_MasterVolume") + ScrollDelta(delta))))
-        VolumeControl:RefreshTooltip()
-        VolumeControl:UpdateLabel()
-    end,
-    OnClick = function(self, button)
+    OnClick = function(self, button)  -- scroll is hooked in OnEnter above
         local db = VolumeControl:GetDB()
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "togglemute" then

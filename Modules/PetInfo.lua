@@ -121,8 +121,9 @@ local dataobj = LDB:NewDataObject("DDT-PetInfo", {
                 C_PetJournal.SummonRandomPet(false) -- false = not favorite-only
             end
         elseif action == "revive" then
-            local start, dur, enabled = C_Spell.GetSpellCooldown(REVIVE_BATTLE_PETS_SPELL)
-            if start and start == 0 then
+            local cdSecret = C_Secrets and C_Secrets.ShouldCooldownsBeSecret and C_Secrets.ShouldCooldownsBeSecret()
+            local start = not cdSecret and C_Spell.GetSpellCooldown(REVIVE_BATTLE_PETS_SPELL)
+            if not start or start == 0 then
                 C_Spell.CastSpellByID(REVIVE_BATTLE_PETS_SPELL)
             else
                 DDT:Print("Revive Battle Pets is on cooldown.")

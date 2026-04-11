@@ -77,7 +77,7 @@ end
 
 local function TruncateName(name, maxLen)
     if #name <= maxLen then return name end
-    return name:sub(1, maxLen - 1) .. "…"
+    return name:sub(1, maxLen - 1) .. ".."
 end
 
 ---------------------------------------------------------------------------

@@ -43,9 +43,8 @@ ns.ProfessionData.mining = {
 
     activities = {
         buffTrackers = {
-            { spellID = 1225704, buffName = "Wild Perception",
-              description = "+150 Midnight Mining Perception (5 min)",
-              source = "Avatar of Nalorakk (Wild Overload)" },
+            { spellID = 1225704, name = "Wild Perception", buffName = "Wild Perception",
+              description = "+150 Perception (5 min) -- Avatar of Nalorakk (Wild Overload)" },
         },
     },
 

@@ -156,25 +156,27 @@ function GuildBroker:UpdateData()
         return
     end
 
-    -- Guild name from club info
+    -- Guild name: C_Club.GetClubInfo().name can be a secret value when
+    -- C_Secrets.ShouldUnitIdentityBeSecret("player") is true.
+    -- Fall back to GetGuildInfo("player") which always returns a plain string.
     local clubInfo = C_Club.GetClubInfo(guildClubId)
-    if type(clubInfo) == "table" and type(clubInfo.name) == "string" then
+    if C_Secrets and C_Secrets.ShouldUnitIdentityBeSecret and C_Secrets.ShouldUnitIdentityBeSecret("player") then
+        local gn = GetGuildInfo("player")
+        if gn then self.guildName = gn end
+    elseif type(clubInfo) == "table" and type(clubInfo.name) == "string" then
         self.guildName = clubInfo.name
     end
 
-    -- Get all member IDs
-    -- C_Club.GetClubMembers returns a Blizzard "secret table" - using # on it
-    -- causes taint. Use clubInfo.memberCount for totalCount and iterate with
-    -- ipairs (which handles secret tables without taint).
-    -- pcall guard: C_Club.GetClubMembers can return a Blizzard "secret"
-    -- protected value that passes type()=="table" but crashes ipairs().
-    local ok, memberIds = pcall(C_Club.GetClubMembers, guildClubId)
-    if not ok then memberIds = {} end
+    -- Get all member IDs.
+    -- In instances C_Club.GetClubMembers returns a secret value whose
+    -- type() is "secret" (not "table"), so the type-check safely falls back
+    -- to {} without any pcall gymnastics.
+    local rawMemberIds = C_Club.GetClubMembers(guildClubId)
+    local memberIds = (type(rawMemberIds) == "table") and rawMemberIds or {}
 
     self.totalCount = (type(clubInfo) == "table" and clubInfo.memberCount) or 0
 
     local onlineCount = 0
-    if not pcall(ipairs, memberIds) then memberIds = {} end
     for _, memberId in ipairs(memberIds) do
         local mInfo = C_Club.GetMemberInfo(guildClubId, memberId)
         if type(mInfo) == "table" and type(mInfo.name) == "string" then

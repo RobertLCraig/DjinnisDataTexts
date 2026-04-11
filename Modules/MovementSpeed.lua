@@ -183,6 +183,7 @@ end
 
 local function ScanSpeedBuffs()
     wipe(activeBuffs)
+    if C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret() then return end
     for _, entry in ipairs(SPEED_BUFF_SPELLS) do
         local aura = C_UnitAuras.GetPlayerAuraBySpellID(entry.id)
         if aura then

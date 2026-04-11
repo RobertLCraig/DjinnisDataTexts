@@ -1010,7 +1010,7 @@ local function EnsureAltColumns(row, count)
     end
 
     if count > 0 then
-        -- Chain right-to-left: altTexts[n] → resetText, ..., altTexts[1], youText
+        -- Chain right-to-left: altTexts[n] -> resetText, ..., altTexts[1], youText
         row.altTexts[count]:SetPoint("RIGHT", row.resetText, "LEFT", -2, 0)
         for i = count - 1, 1, -1 do
             row.altTexts[i]:SetPoint("RIGHT", row.altTexts[i + 1], "LEFT", -2, 0)
@@ -2050,7 +2050,7 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
         local summary = #summaryParts > 0 and table.concat(summaryParts, " ") or "No lockouts"
 
         local isExpanded = expandedAlts[alt.key]
-        local arrow = isExpanded and "|cffaaaaaa▼|r " or "|cffaaaaaa▶|r "
+        local arrow = isExpanded and "|cffaaaaaa-|r " or "|cffaaaaaa+|r "
 
         -- Alt summary row (click to expand)
         rowIndex = rowIndex + 1

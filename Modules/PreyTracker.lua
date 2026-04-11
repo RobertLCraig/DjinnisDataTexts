@@ -373,6 +373,10 @@ function PreyTracker:UpdateLabel()
     result = E(result, "currency",   currStr)
 
     self.dataobj.text = result
+
+    -- Push the new label up to the ActiveActivity aggregator (no-op if it
+    -- hasn't initialized yet).
+    if ns.NotifyActivityChange then ns:NotifyActivityChange() end
 end
 
 function PreyTracker:GetDB()
@@ -414,36 +418,54 @@ local function ExecuteAction(action)
 end
 
 ---------------------------------------------------------------------------
--- LDB data object
+-- ActiveActivity tracker registration
+--
+-- This module no longer creates its own LDB DataBroker. Instead it registers
+-- with the unified ActiveActivity datatext, which routes hover/click/label
+-- to whichever activity is currently engaged. A stub `dataobj` is kept so
+-- legacy code paths in this file (UpdateLabel writes self.dataobj.text)
+-- continue to work without crashing.
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-PreyTracker", {
-    type  = "data source",
-    text  = "Prey",
-    icon  = "Interface\\Icons\\worldquest-prey-crystal",
-    label = "DDT - Prey Tracker",
-    OnEnter = function(self)
-        PreyTracker:CancelHideTimer()
-        PreyTracker:ShowTooltip(self)
-    end,
-    OnLeave = function()
-        PreyTracker:StartHideTimer()
-    end,
-    OnClick = function(self, button)
-        PreyTracker:CancelHideTimer()
-        local db = PreyTracker:GetDB()
-        local action = DDT:ResolveClickAction(button, db.clickActions)
-        -- Pinning needs to keep the tooltip visible; only auto-hide for non-pin actions.
-        if action ~= "pintooltip" and tooltipFrame then tooltipFrame:Hide() end
-        if action and action ~= "none" then
-            ExecuteAction(action)
-        end
-    end,
-})
-if not dataobj then
-    dataobj = LDB:GetDataObjectByName("DDT-PreyTracker")
-end
+local dataobj = { text = "Prey", icon = "Interface\\Icons\\worldquest-prey-crystal" }
 PreyTracker.dataobj = dataobj
+
+function PreyTracker:IsActive()
+    return activeQuestID ~= nil
+end
+
+function PreyTracker:GetLabelText()
+    return self.dataobj.text or ""
+end
+
+local function HandleClick(button)
+    PreyTracker:CancelHideTimer()
+    local db = PreyTracker:GetDB()
+    local action = DDT:ResolveClickAction(button, db.clickActions)
+    -- Pinning needs to keep the tooltip visible; only auto-hide for non-pin actions.
+    if action ~= "pintooltip" and tooltipFrame then tooltipFrame:Hide() end
+    if action and action ~= "none" then
+        ExecuteAction(action)
+    end
+end
+
+if ns.RegisterActivityTracker then
+    ns:RegisterActivityTracker("prey", {
+        displayName = "Prey Hunt",
+        icon        = "Interface\\Icons\\worldquest-prey-crystal",
+        priority    = 20,
+        IsActive    = function() return PreyTracker:IsActive() end,
+        GetLabelText = function() return PreyTracker:GetLabelText() end,
+        ShowTooltip = function(anchor)
+            PreyTracker:CancelHideTimer()
+            PreyTracker:ShowTooltip(anchor)
+        end,
+        HideTooltip = function()
+            PreyTracker:StartHideTimer()
+        end,
+        HandleClick = HandleClick,
+    })
+end
 
 ---------------------------------------------------------------------------
 -- Tooltip

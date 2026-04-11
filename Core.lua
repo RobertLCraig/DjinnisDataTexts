@@ -612,8 +612,16 @@ end
 --- @param value any     The replacement value (tostring'd automatically)
 --- @return string
 function ns.ExpandTag(str, tag, value)
-    local s = tostring(value)
-    return (str:gsub("<" .. tag .. ">", function() return s end))
+    -- tostring on a "secret" (WoW protected value) succeeds, but gsub still
+    -- refuses to use it as a replacement. Guard with pcall and fall back to
+    -- "?" so the label degrades gracefully instead of spamming errors.
+    local ok, s = pcall(tostring, value)
+    if not ok then s = "?" end
+    local ok2, result = pcall(function()
+        return (str:gsub("<" .. tag .. ">", function() return s end))
+    end)
+    if ok2 then return result end
+    return (str:gsub("<" .. tag .. ">", "?"))
 end
 
 --- Replace <token> placeholders in a format string

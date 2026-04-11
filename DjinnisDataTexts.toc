@@ -1,7 +1,7 @@
 ## Interface: 120001
 ## Title: Djinni's Data Texts
 ## Author: Djinni
-## Version: 0.8.2
+## Version: 0.9.0-beta
 ## Notes: LDB data brokers for a unified suite of DataTexts with rich tooltips. Works with any LDB display.
 ## Category: Data Brokers
 ## X-Category: Data Broker
@@ -56,7 +56,8 @@ Modules\LFGStatus.lua
 # Modules - Phase 9
 Modules\ItemLevel.lua
 
-# Modules - Phase 10
+# Modules - Phase 10 (Active Activity tracker - aggregator must load first)
+Modules\ActiveActivity.lua
 Modules\PreyTracker.lua
 Modules\Delve.lua
 

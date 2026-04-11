@@ -893,6 +893,28 @@ function Professions:RenderKPSection(sc, yOffset, rowIdx, hdrIdx, profKey, expan
         end -- hideKnown else
     end
 
+    -- Catch-up currency (e.g. Thalassian Artisan's Acuity)
+    if kp.catchup and kp.catchup.currencyID then
+        local cInfo = C_CurrencyInfo.GetCurrencyInfo(kp.catchup.currencyID)
+        if cInfo then
+            rowIdx = rowIdx + 1
+            local row = GetOrCreateRow(profKey, sc, rowIdx)
+            row:ClearAllPoints()
+            row:SetPoint("TOPLEFT", sc, "TOPLEFT", 8, yOffset)
+            row:SetWidth(innerWidth - 8)
+            row.icon:Hide()
+            row.text:SetPoint("TOPLEFT", row, "TOPLEFT", 0, 0)
+            row.text:SetWidth(innerWidth - 80)
+            row.text:SetText("Catch-up Currency")
+            row.text:SetTextColor(0.7, 0.7, 0.7)
+            row.status:SetText("|cffffcc00" .. (cInfo.quantity or 0) .. "|r")
+            row.status:SetWidth(60)
+            row:SetHeight(ns.ROW_HEIGHT)
+            row:SetScript("OnMouseUp", nil)
+            yOffset = yOffset - ns.ROW_HEIGHT - 2
+        end
+    end
+
     return yOffset, rowIdx, hdrIdx
 end
 
@@ -1134,10 +1156,11 @@ end
 function Professions:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, alerts)
     for _, alert in ipairs(alerts) do
         -- Prefer spellID-based lookup (locale-independent, unique).
-        -- AuraUtil.FindAuraByName is a fallback since aura names are
-        -- localized and non-unique (see AuraUtil.lua:75-79 warnings).
+        -- Guard with C_Secrets: if auras are secret, GetPlayerAuraBySpellID returns
+        -- a secret value; fall back to AuraUtil (name-based, always returns plain bool).
         local isActive
-        if alert.spellID and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+        local aurasSecret = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
+        if not aurasSecret and alert.spellID and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
             isActive = C_UnitAuras.GetPlayerAuraBySpellID(alert.spellID) ~= nil
         else
             isActive = alert.buffName and AuraUtil.FindAuraByName(alert.buffName, "player")
@@ -1248,9 +1271,11 @@ function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, inner
 
             -- C_TradeSkillUI.GetRecipeCooldown is the primary API for profession
             -- cooldowns (returns charges natively). CraftSim uses the same approach.
-            -- C_Spell.GetSpellCooldown is less reliable for recipe-based cooldowns.
+            -- Guard with C_Secrets: if cooldowns are secret the return values are
+            -- secret-typed and cannot be used in arithmetic/format calls.
             local currentCooldown, isDayCooldown, currentCharges, maxCharges
-            if C_TradeSkillUI and C_TradeSkillUI.GetRecipeCooldown then
+            local cdSecret = C_Secrets and C_Secrets.ShouldCooldownsBeSecret and C_Secrets.ShouldCooldownsBeSecret()
+            if not cdSecret and C_TradeSkillUI and C_TradeSkillUI.GetRecipeCooldown then
                 currentCooldown, isDayCooldown, currentCharges, maxCharges = C_TradeSkillUI.GetRecipeCooldown(cd.spellID)
             end
             currentCooldown = currentCooldown or 0
@@ -1292,15 +1317,16 @@ end
 ---------------------------------------------------------------------------
 
 function Professions:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, innerWidth, trackers)
+    local aurasSecret = C_Secrets and C_Secrets.ShouldAurasBeSecret and C_Secrets.ShouldAurasBeSecret()
     for _, tracker in ipairs(trackers) do
         local auraData
-        if C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
+        if not aurasSecret and C_UnitAuras and C_UnitAuras.GetPlayerAuraBySpellID then
             auraData = C_UnitAuras.GetPlayerAuraBySpellID(tracker.spellID)
         end
         local isActive = auraData ~= nil
 
-        -- Use AuraUtil as fallback
-        if not auraData and tracker.buffName then
+        -- Use AuraUtil as fallback (returns plain bool, not secret)
+        if not isActive and tracker.buffName then
             isActive = AuraUtil.FindAuraByName(tracker.buffName, "player") ~= nil
         end
 
@@ -1349,6 +1375,23 @@ function Professions:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, in
         row:SetScript("OnClick", nil)
 
         yOffset = yOffset - ns.ROW_HEIGHT - 2
+
+        -- Description sub-row (e.g. "Avatar of Nalorakk (Wild Overload)")
+        if tracker.description then
+            rowIdx = rowIdx + 1
+            local descRow = GetOrCreateRow(profKey, sc, rowIdx)
+            descRow:ClearAllPoints()
+            descRow:SetPoint("TOPLEFT", sc, "TOPLEFT", ICON_SIZE + 4, yOffset)
+            descRow:SetWidth(innerWidth - ICON_SIZE - 4)
+            descRow.icon:Hide()
+            descRow.text:SetPoint("TOPLEFT", descRow, "TOPLEFT", 0, 0)
+            descRow.text:SetWidth(innerWidth - ICON_SIZE - 4)
+            descRow.text:SetText("|cff888888" .. tracker.description .. "|r")
+            descRow.status:SetText("")
+            descRow:SetHeight(ns.ROW_HEIGHT)
+            descRow:SetScript("OnClick", nil)
+            yOffset = yOffset - ns.ROW_HEIGHT - 2
+        end
     end
 
     return yOffset, rowIdx, hdrIdx
