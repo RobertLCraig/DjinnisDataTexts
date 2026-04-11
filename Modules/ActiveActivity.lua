@@ -219,10 +219,10 @@ function ActiveActivity:BuildSettingsPanel(panel)
     W.EndSection(panel, y)
 
     -- Click actions (idle fallback only - active tracker handles its own clicks)
-    ns.AddModuleClickActionsSection(panel, r, "activeactivity", CLICK_ACTIONS,
+    ns.AddModuleClickActionsSection(panel, r, "ActiveActivity", CLICK_ACTIONS,
         "These click actions only fire when no tracked activity is currently " ..
         "active. While an activity is engaged, the active tracker's own click " ..
         "actions take over (configure them in their respective settings panels).")
 end
 
-ns:RegisterModule("activeactivity", ActiveActivity, DEFAULTS)
+ns:RegisterModule("ActiveActivity", ActiveActivity, DEFAULTS)
