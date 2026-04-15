@@ -1134,17 +1134,6 @@ function Delve:Init()
     -- Sanctified Banner state lives in a player aura on older delve variants, so
     -- watch aura changes for the legacy detection path.
     eventFrame:RegisterUnitEvent("UNIT_AURA", "player")
-    -- Newer delve variants (Tier 11+) grant no player aura on banner click; the
-    -- only signal is an on-screen notification ("Sanctified Spoils Will Manifest
-    -- Upon Delve Completion"). We match on that text across several chat/info
-    -- channels because Blizzard has shipped this kind of notification via at
-    -- least UI_INFO_MESSAGE, CHAT_MSG_RAID_BOSS_EMOTE, and CHAT_MSG_MONSTER_EMOTE
-    -- in different patches.
-    eventFrame:RegisterEvent("UI_INFO_MESSAGE")
-    eventFrame:RegisterEvent("CHAT_MSG_RAID_BOSS_EMOTE")
-    eventFrame:RegisterEvent("CHAT_MSG_MONSTER_EMOTE")
-    eventFrame:RegisterEvent("CHAT_MSG_MONSTER_YELL")
-    eventFrame:RegisterEvent("CHAT_MSG_SYSTEM")
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UPDATE_UI_WIDGET" then
             local widgetInfo = ...
@@ -1152,22 +1141,6 @@ function Delve:Init()
             -- thrashing UpdateData on every nameplate / objective tracker tick.
             if widgetInfo and widgetInfo.widgetType == Enum.UIWidgetVisualizationType.ScenarioHeaderDelves then
                 cachedWidgetID = widgetInfo.widgetID
-                self:UpdateData()
-            end
-        elseif event == "UI_INFO_MESSAGE" then
-            -- arg1 is messageType (number), arg2 is the text
-            local _, text = ...
-            if inDelve and type(text) == "string" and text:find("Sanctified Spoils", 1, true) then
-                hasBanner = true
-                self:UpdateData()
-            end
-        elseif event == "CHAT_MSG_RAID_BOSS_EMOTE"
-            or event == "CHAT_MSG_MONSTER_EMOTE"
-            or event == "CHAT_MSG_MONSTER_YELL"
-            or event == "CHAT_MSG_SYSTEM" then
-            local text = ...
-            if inDelve and type(text) == "string" and text:find("Sanctified Spoils", 1, true) then
-                hasBanner = true
                 self:UpdateData()
             end
         elseif event == "PLAYER_ENTERING_WORLD" then
@@ -1183,19 +1156,195 @@ function Delve:Init()
         end
     end)
 
+    -- Sanctified Banner click detection (modern delve variants).
+    -- Blizzard removed the player-aura signal in Tier 11+ delves; the only
+    -- indication of a successful banner click is an EventToastManager toast
+    -- with displayType=13 and title "Sanctified Spoils Will Manifest Upon
+    -- Delve Completion". Post-hook DisplayToast and read the resolved toast
+    -- from self.currentDisplayingToast.toastInfo (firstToast arg is a boolean,
+    -- not the toast data).
+    if EventToastManagerFrame and EventToastManagerFrame.DisplayToast then
+        hooksecurefunc(EventToastManagerFrame, "DisplayToast", function(frame)
+            if not inDelve or hasBanner then return end
+            local toast = frame and frame.currentDisplayingToast
+            local info  = toast and toast.toastInfo
+            local title = info and info.title
+            if type(title) == "string" and title:find("Sanctified Spoils", 1, true) then
+                hasBanner = true
+                Delve:UpdateData()
+            end
+        end)
+    end
+
     -- Diagnostic dump: /ddtdelve prints widget + scenario data to chat so we can
     -- see exactly what the server is reporting (helps diagnose missing sub-objectives).
     -- /ddtdelve watch toggles a live aura-diff monitor useful for identifying which
     -- aura (if any) a Sanctified Banner click grants in a new delve variant.
+    -- /ddtdelve listen toggles a wide-net text/widget event listener that prints
+    -- any incoming text containing "Sanctified" so we can identify which channel
+    -- carries the banner-click notification.
     SLASH_DDTDELVE1 = "/ddtdelve"
     SlashCmdList["DDTDELVE"] = function(msg)
         msg = (msg or ""):lower():gsub("^%s+", ""):gsub("%s+$", "")
         if msg == "watch" then
             Delve:ToggleAuraWatch()
+        elseif msg == "listen" then
+            Delve:ToggleEventListen()
         else
             Delve:DiagnosticDump()
         end
     end
+end
+
+-- Wide-net listener that hooks every plausible text/widget event and logs any
+-- payload that mentions "Sanctified" (case-insensitive). Used to identify which
+-- channel carries the Sanctified Banner click notification on modern delve
+-- variants where neither player auras nor scenario widgets reflect the click.
+local listenFrame       = nil
+local listenToastHooked = false
+local LISTEN_EVENTS = {
+    "UI_INFO_MESSAGE",
+    "UI_ERROR_MESSAGE",
+    "CHAT_MSG_RAID_BOSS_EMOTE",
+    "CHAT_MSG_RAID_BOSS_WHISPER",
+    "CHAT_MSG_MONSTER_EMOTE",
+    "CHAT_MSG_MONSTER_YELL",
+    "CHAT_MSG_MONSTER_SAY",
+    "CHAT_MSG_MONSTER_WHISPER",
+    "CHAT_MSG_SYSTEM",
+    "CHAT_MSG_BG_SYSTEM_NEUTRAL",
+    "ZONE_TEXT_UPDATE",
+    "RAID_BOSS_EMOTE",
+    "PLAYER_ALERT",
+    "SCENARIO_UPDATE",
+    "SCENARIO_CRITERIA_UPDATE",
+    "SCENARIO_BONUS_OBJECTIVE_COMPLETE",
+    "SCENARIO_POI_UPDATE",
+    "ACTIVE_DELVE_DATA_UPDATE",
+    "DELVE_ASSIST_ACTION",
+    "UPDATE_UI_WIDGET",
+    "DISPLAY_EVENT_TOASTS",
+}
+
+local function DumpTable(t)
+    if type(t) ~= "table" then return tostring(t) end
+    local parts = {}
+    for k, v in pairs(t) do
+        local sv
+        if type(v) == "string" then
+            sv = string.format("%q", v)
+        elseif type(v) == "table" then
+            sv = "<table>"
+        else
+            sv = tostring(v)
+        end
+        parts[#parts + 1] = tostring(k) .. "=" .. sv
+    end
+    return "{" .. table.concat(parts, ", ") .. "}"
+end
+
+local function ScanStringsForSanctified(v, seen)
+    if type(v) == "string" then
+        return v:lower():find("sanctified") ~= nil
+    end
+    if type(v) == "table" then
+        seen = seen or {}
+        if seen[v] then return false end
+        seen[v] = true
+        for _, sub in pairs(v) do
+            if ScanStringsForSanctified(sub, seen) then return true end
+        end
+    end
+    return false
+end
+
+function Delve:ToggleEventListen()
+    local function p(...) print("|cffffaa55[DDT-Listen]|r", ...) end
+    if listenFrame then
+        listenFrame:UnregisterAllEvents()
+        listenFrame:SetScript("OnEvent", nil)
+        listenFrame.stopped = true
+        listenFrame = nil
+        p("Event listen: OFF")
+        return
+    end
+    listenFrame = CreateFrame("Frame")
+    listenFrame.stopped = false
+    for _, ev in ipairs(LISTEN_EVENTS) do
+        pcall(listenFrame.RegisterEvent, listenFrame, ev)
+    end
+    listenFrame:SetScript("OnEvent", function(_, event, ...)
+        local matched = false
+        local pieces = {}
+        for i = 1, select("#", ...) do
+            local v = select(i, ...)
+            local s
+            if type(v) == "table" then
+                s = DumpTable(v)
+            elseif type(v) == "string" then
+                s = string.format("%q", v)
+            else
+                s = tostring(v)
+            end
+            pieces[#pieces + 1] = string.format("[%d]=%s", i, s)
+            if ScanStringsForSanctified(v) then
+                matched = true
+            end
+        end
+        -- Filter UPDATE_UI_WIDGET noise: only log delve/scenario widget types.
+        local keep = matched
+        if not keep and event == "UPDATE_UI_WIDGET" then
+            local w = ...
+            if type(w) == "table" then
+                local wt = w.widgetType
+                if wt == Enum.UIWidgetVisualizationType.ScenarioHeaderDelves
+                   or wt == Enum.UIWidgetVisualizationType.TopCenterLargeText
+                   or wt == Enum.UIWidgetVisualizationType.ObjectiveTracker
+                   or wt == Enum.UIWidgetVisualizationType.CaptureBar
+                   or wt == Enum.UIWidgetVisualizationType.TextWithState then
+                    keep = true
+                end
+            end
+        elseif not keep then
+            keep = event == "SCENARIO_UPDATE"
+                or event == "SCENARIO_CRITERIA_UPDATE"
+                or event == "SCENARIO_BONUS_OBJECTIVE_COMPLETE"
+                or event == "SCENARIO_POI_UPDATE"
+                or event == "ACTIVE_DELVE_DATA_UPDATE"
+                or event == "DELVE_ASSIST_ACTION"
+                or event == "DISPLAY_EVENT_TOASTS"
+        end
+        if keep then
+            local tag = matched and "|cff66ff66MATCH|r " or ""
+            p(tag .. event .. "  " .. table.concat(pieces, "  "))
+        end
+    end)
+
+    -- Post-hook Blizzard's EventToastManager so we see every on-screen alert
+    -- toast with its full payload. Many "Sanctified Spoils"-style notifications
+    -- ride this path instead of any chat/info event.
+    -- DisplayToast's signature is (self, firstToast:boolean) -- the actual toast
+    -- data comes from C_EventToastManager.GetNextToastToDisplay() inside, and
+    -- the resolved toast lives at self.currentDisplayingToast.toastInfo after
+    -- the method runs. Since hooksecurefunc runs post-call, we can read it.
+    if not listenToastHooked and EventToastManagerFrame and EventToastManagerFrame.DisplayToast then
+        hooksecurefunc(EventToastManagerFrame, "DisplayToast", function(self)
+            if not listenFrame or listenFrame.stopped then return end
+            local toast = self and self.currentDisplayingToast
+            local info  = toast and toast.toastInfo
+            if not info then
+                p("EventToast:DisplayToast  <no toastInfo>")
+                return
+            end
+            local matched = ScanStringsForSanctified(info)
+            local tag = matched and "|cff66ff66MATCH|r " or ""
+            p(tag .. string.format("EventToast  displayType=%s  title=%q  subtitle=%q",
+                tostring(info.displayType), tostring(info.title), tostring(info.subtitle)))
+        end)
+        listenToastHooked = true
+    end
+
+    p("Event listen: ON  (run /ddtdelve listen again to stop)")
 end
 
 -- Live aura-diff monitor. Snapshots current player auras across HELPFUL and HARMFUL

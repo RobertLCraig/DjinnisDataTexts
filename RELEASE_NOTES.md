@@ -1,5 +1,18 @@
 # Release Notes
 
+## Version: 0.9.6
+
+### Fixed
+
+- **Delve Sanctified Banner detection (Tier 11+)** - banner click was stuck showing "Available" even after clicking. The previous chat-event matching shipped in 0.9.4 did not work because the "Sanctified Spoils Will Manifest Upon Delve Completion" notification does not ride any `CHAT_MSG_*` or `UI_INFO_MESSAGE` channel. Detection now post-hooks `EventToastManagerFrame:DisplayToast` and reads the resolved toast from `frame.currentDisplayingToast.toastInfo.title` (matching on "Sanctified Spoils"). The legacy `BANNER_BUFF_SPELL_IDS` aura scan is retained as a fallback for older delve variants.
+
+### Added
+
+- **`/ddtdelve listen`** - wide-net event + EventToast diagnostic listener for future detection regressions. Logs scenario/widget/delve events and every EventToast with `displayType`, `title`, and `subtitle` so the source channel of any new notification can be identified in a single run.
+- **`/ddtdelve watch`** - live player-aura diff monitor (gained/lost auras) for identifying transient buff IDs.
+
+---
+
 ## Version: 0.9.5
 
 ### Fixed
