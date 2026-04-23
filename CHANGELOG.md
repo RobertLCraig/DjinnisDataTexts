@@ -4,6 +4,14 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [0.9.7] - 2026-04-23
+
+### Changed
+
+- **TOC Interface bumped to `120005`** for the Midnight 12.0.5 "Lingering Shadows" content update (live 2026-04-21). The addon already carries the Midnight-era safety work from 0.9.3 (`C_Secrets` predicate guards on identity/aura/cooldown reads, `pcall` backstops around `C_Club.GetClubMembers`, combat-lockdown audit on protected frame operations), so no further API migration is required for 12.0.5.
+
+---
+
 ## [0.9.6] - 2026-04-14
 
 ### Fixed
