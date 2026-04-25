@@ -1,7 +1,7 @@
 # DjinnisDataTexts — Task Tracker
 
 ## Project Overview
-A unified LDB DataText suite for WoW Retail (Interface 120005 — Midnight 12.0.5).
+A unified LDB DataText suite for WoW Retail (Interface 120005, Midnight 12.0.5).
 Absorbs DjinnisGuildFriends and adds new DataTexts with rich Djinni-style tooltips.
 
 ## Phase 1: Scaffold + Social Module Migration — COMPLETE

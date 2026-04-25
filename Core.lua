@@ -1430,14 +1430,26 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
     -- Check for DjinnisGuildFriends coexistence
     CheckDGFCoexistence()
 
-    -- Refresh all modules: initial update once data is available,
-    -- then periodically so labels stay current without requiring mouseover.
+    -- Refresh all modules one per frame. Running every module's UpdateData
+    -- in a single execution block can trip WoW's "script ran too long"
+    -- watchdog (e.g. Experience scans the quest log, SavedInstances iterates
+    -- characters, BagValue walks every bag slot).
     local function RefreshAllModules()
+        local queue = {}
         for _, mod in pairs(ns.modules) do
             if mod.UpdateData then
-                pcall(mod.UpdateData, mod)
+                queue[#queue + 1] = mod
             end
         end
+        local i = 0
+        local function step()
+            i = i + 1
+            local mod = queue[i]
+            if not mod then return end
+            pcall(mod.UpdateData, mod)
+            C_Timer.After(0, step)
+        end
+        step()
     end
 
     -- Delay initial refresh 1s: many WoW data APIs (GetProfessions,

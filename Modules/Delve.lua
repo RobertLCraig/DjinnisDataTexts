@@ -1245,7 +1245,9 @@ end
 
 local function ScanStringsForSanctified(v, seen)
     if type(v) == "string" then
-        return v:lower():find("sanctified") ~= nil
+        -- Secret-tainted strings error on :lower()/:find, so pcall the check.
+        local ok, found = pcall(function() return v:lower():find("sanctified") ~= nil end)
+        return ok and found
     end
     if type(v) == "table" then
         seen = seen or {}

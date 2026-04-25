@@ -287,10 +287,31 @@ end
 -- Data collection
 ---------------------------------------------------------------------------
 
+-- Read GetUnitSpeed into the file-level upvalues. Under Midnight 12.0.5,
+-- GetUnitSpeed can return secret-tainted numbers when ShouldUnitStatsBeSecret
+-- is true (e.g. while in arena prep, while spectating, etc.); arithmetic on
+-- those values errors out under tainted execution. Predicate-guard first,
+-- pcall-backstop second, and on failure preserve the previously cached
+-- values so the label keeps showing the last known speed.
+local function ReadSpeed()
+    if C_Secrets and C_Secrets.ShouldUnitStatsBeSecret and C_Secrets.ShouldUnitStatsBeSecret() then
+        return false
+    end
+    local ok, cs, rs, fs, ss = pcall(GetUnitSpeed, "player")
+    if not ok then return false end
+    local ok2, rp, fp, sp = pcall(function()
+        return rs / BASE_SPEED * 100, fs / BASE_SPEED * 100, ss / BASE_SPEED * 100
+    end)
+    if not ok2 then return false end
+    currentSpeed, runSpeed, flightSpeed, swimSpeed = cs, rs, fs, ss
+    runPercent, flyPercent, swimPercent = rp, fp, sp
+    return true
+end
+
 -- Lightweight speed-only poll for OnUpdate (no buff scan)
 function MoveSpeed:UpdateSpeed()
     local prevPercent = currentPercent
-    currentSpeed, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
+    if not ReadSpeed() then return end
 
     isFlying = IsFlying() or false
     isSwimming = IsSwimming() or false
@@ -304,10 +325,6 @@ function MoveSpeed:UpdateSpeed()
             glideSpeed = fwdSpeed or 0
         end
     end
-
-    runPercent = runSpeed / BASE_SPEED * 100
-    flyPercent = flightSpeed / BASE_SPEED * 100
-    swimPercent = swimSpeed / BASE_SPEED * 100
 
     if isGliding and glideSpeed > 0 then
         currentPercent = glideSpeed / BASE_SPEED * 100
@@ -333,7 +350,7 @@ function MoveSpeed:UpdateSpeed()
 end
 
 function MoveSpeed:UpdateData()
-    currentSpeed, runSpeed, flightSpeed, swimSpeed = GetUnitSpeed("player")
+    if not ReadSpeed() then return end
 
     isFlying = IsFlying() or false
     isSwimming = IsSwimming() or false
@@ -347,11 +364,6 @@ function MoveSpeed:UpdateData()
             glideSpeed = fwdSpeed or 0
         end
     end
-
-    -- Calculate percentages
-    runPercent = runSpeed / BASE_SPEED * 100
-    flyPercent = flightSpeed / BASE_SPEED * 100
-    swimPercent = swimSpeed / BASE_SPEED * 100
 
     if isGliding and glideSpeed > 0 then
         currentPercent = glideSpeed / BASE_SPEED * 100
