@@ -1,61 +1,13 @@
 # Release Notes
 
-## Version: 0.9.6
+## Version: 0.9.8
+
+### Changed
+
+- **TOC Interface bumped to `120005`** for the Midnight 12.0.5 "Lingering Shadows" content update (live 2026-04-21). The addon already carries the Midnight-era safety work from 0.9.3 (`C_Secrets` predicate guards on identity/aura/cooldown reads, `pcall` backstops around `C_Club.GetClubMembers`, combat-lockdown audit on protected frame operations), so no further API migration was required for 12.0.5 itself.
 
 ### Fixed
 
-- **Delve Sanctified Banner detection (Tier 11+)** - banner click was stuck showing "Available" even after clicking. The previous chat-event matching shipped in 0.9.4 did not work because the "Sanctified Spoils Will Manifest Upon Delve Completion" notification does not ride any `CHAT_MSG_*` or `UI_INFO_MESSAGE` channel. Detection now post-hooks `EventToastManagerFrame:DisplayToast` and reads the resolved toast from `frame.currentDisplayingToast.toastInfo.title` (matching on "Sanctified Spoils"). The legacy `BANNER_BUFF_SPELL_IDS` aura scan is retained as a fallback for older delve variants.
-
-### Added
-
-- **`/ddtdelve listen`** - wide-net event + EventToast diagnostic listener for future detection regressions. Logs scenario/widget/delve events and every EventToast with `displayType`, `title`, and `subtitle` so the source channel of any new notification can be identified in a single run.
-- **`/ddtdelve watch`** - live player-aura diff monitor (gained/lost auras) for identifying transient buff IDs.
-
----
-
-## Version: 0.9.5
-
-### Fixed
-
-- **Scrollable tooltips** (Guild, Communities, and all modules using the shared tooltip factory) - scroll position no longer resets to the top when the underlying data refreshes while the tooltip is open. `FinalizeLayout` now preserves the current scroll offset (clamped to the new content bounds) on re-populate, and only resets on a fresh show.
-
----
-
-## Version: 0.9.4
-
-### Major Update: ActiveActivity Aggregator, Combat and Secret Safety Pass, Delve Tier 11+ Support
-
-This release consolidates three beta iterations (0.9.0-beta, 0.9.1-beta, 0.9.2-beta) into a single stable release.
-
-#### ActiveActivity (New)
-
-Unified LDB broker that routes hover, click, and label updates to whichever sub-tracker is currently engaged. Sub-trackers register via `RegisterActivityTracker` API rather than owning their own brokers.
-
-- **Delve** and **Prey Tracker** now register as sub-trackers and notify on label change
-- Idle-state click actions configurable independently of active-tracker click actions
-- Single data broker replaces multiple empty brokers when no activity is active
-
-#### Secret API Safety (Midnight hardening)
-
-Every module that reads identity, aura, or cooldown data is now guarded against Midnight-era secret return values.
-
-- **Guild / Communities** — `C_Club.GetClubMembers` secret-table crashes fixed. `C_Secrets.ShouldUnitIdentityBeSecret("player")` predicate fast-path plus `pcall` backstop around the member iteration (the predicate does not always pair perfectly with this API's secrecy state on tooltip-hover paths). Fallback to `GetGuildInfo("player")` for guild name.
-- **Movement Speed / Delve / Professions** — Aura reads guarded with `C_Secrets.ShouldAurasBeSecret()`.
-- **Pet Info / Professions** — Cooldown reads guarded with `C_Secrets.ShouldCooldownsBeSecret()`.
-- **Core.ExpandTag** — `pcall` around `tostring`/`gsub` so secret label values degrade gracefully to `?` instead of erroring the entire label.
-
-#### Combat Safety
-
-Audit pass on protected frame operations. Protected calls (`SetAttribute`, `RegisterForClicks`) now gated behind `InCombatLockdown()` checks with `PLAYER_REGEN_ENABLED` deferral.
-
-#### Delve
-
-- **Tier 11+ Sanctified Banner detection** — Newer delve variants (Atal'Aman and later) grant no player aura on banner click, so detection now matches the on-screen "Sanctified Spoils Will Manifest Upon Delve Completion" notification across `UI_INFO_MESSAGE`, `CHAT_MSG_RAID_BOSS_EMOTE`, `CHAT_MSG_MONSTER_EMOTE`, `CHAT_MSG_MONSTER_YELL`, and `CHAT_MSG_SYSTEM`.
-- **`/ddtdelve watch`** — New diagnostic command. Live aura-diff monitor that prints gained/lost player auras on every `UNIT_AURA` fire. Used for identifying aura signals on future delve variants.
-
-#### Other Fixes
-
-- **VolumeControl** — `OnMouseWheel` now hooked on the display frame in `OnEnter` (display addons like ElvUI do not wire up `dataobj.OnMouseWheel`).
-- **SavedInstances / AudioOutput** — Non-ASCII glyphs replaced with ASCII equivalents so WoW's default font renders them.
-- **Professions** — Catch-up currency row rendered in KP section; Wild Perception buff tracker gains `name` field.
-- **ActiveActivity** — Registration key normalized from `activeactivity` to `ActiveActivity` to match the canonical module name.
+- **"Script ran too long" watchdog on periodic refresh.** `RefreshAllModules()` previously called every module's `UpdateData` in a single execution block, which could trip WoW's long-running-script guard when heavy scanners (Experience walking the quest log, SavedInstances iterating characters, BagValue stepping every bag slot) all fired in the same frame. Refresh now queues the modules and processes one per frame via `C_Timer.After(0, ...)`.
+- **Movement Speed crashing on secret-tainted `GetUnitSpeed` returns.** Under Midnight 12.0.5, `GetUnitSpeed("player")` can return secret number values when `C_Secrets.ShouldUnitStatsBeSecret()` is true; arithmetic on those values errored out under tainted execution and spammed `OnUpdate` with hundreds of identical errors. Speed reads are now gated by the predicate and wrapped in `pcall` as a backstop, with previously cached values preserved when a read is refused.
+- **Delve Sanctified scan crashing on secret-tainted strings.** `ScanStringsForSanctified` called `:lower():find("sanctified")` directly on every string in scanned tables; if any string came from a secret-tainted source the operation would error out and abort the scan. The string check is now wrapped in `pcall` so tainted entries are skipped without breaking detection.
