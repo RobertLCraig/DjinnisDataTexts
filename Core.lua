@@ -783,6 +783,21 @@ function ns.AnchorTooltip(tooltip, anchor, direction)
     end
 end
 
+--- Shared GameTooltipTemplate frame for row-hover tooltips (notes, item links, etc).
+--- Routed through our own frame instead of the global GameTooltip so DDT never taints
+--- the tooltip Blizzard's world-map area-POI handler reuses (AreaPoiUtil.lua:16). When
+--- the global tooltip is owned by an addon-created frame, subsequent SetOwner from
+--- Blizzard fires GameTooltip_OnHide -> ClearWidgetSet -> ResizeLayoutMixin:Layout in
+--- a tainted context, where GetNumPoints on the widget container returns a secret
+--- number and the `== 0` comparison errors (LayoutFrame.lua:491).
+local hoverTooltip
+function ns.GetHoverTooltip()
+    if not hoverTooltip then
+        hoverTooltip = CreateFrame("GameTooltip", "DDTHoverTooltip", UIParent, "GameTooltipTemplate")
+    end
+    return hoverTooltip
+end
+
 --- Create a scrollable tooltip frame with standard DDT styling.
 --- All content should be placed on f.content (the scroll child).
 --- After populating, call f:FinalizeLayout(width, contentHeight [, contentWidth]).

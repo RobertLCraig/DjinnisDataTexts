@@ -1176,29 +1176,30 @@ local ROLE_LABELS = { TANK = "Tank", HEALER = "Healer", DAMAGER = "DPS" }
 
 function SavedInst:ShowCharTooltip(anchor, charInfo)
     local db = self:GetDB()
-    GameTooltip:SetOwner(anchor, db.altHoverAnchor or "ANCHOR_BOTTOM")
-    GameTooltip:AddLine(charInfo.name, 1, 0.82, 0)
+    local tip = ns.GetHoverTooltip()
+    tip:SetOwner(anchor, db.altHoverAnchor or "ANCHOR_BOTTOM")
+    tip:AddLine(charInfo.name, 1, 0.82, 0)
 
     if db.altHoverRealm and charInfo.realm and charInfo.realm ~= "" then
-        GameTooltip:AddLine("Realm: " .. charInfo.realm, 0.7, 0.7, 0.7)
+        tip:AddLine("Realm: " .. charInfo.realm, 0.7, 0.7, 0.7)
     end
     if db.altHoverClass and charInfo.class and charInfo.class ~= "" then
         local cc = RAID_CLASS_COLORS[charInfo.class]
         local className = charInfo.class:sub(1, 1) .. charInfo.class:sub(2):lower():gsub("_(%l)", function(c) return " " .. c:upper() end)
         if cc then
-            GameTooltip:AddLine("Class: " .. className, cc.r, cc.g, cc.b)
+            tip:AddLine("Class: " .. className, cc.r, cc.g, cc.b)
         else
-            GameTooltip:AddLine("Class: " .. className, 0.7, 0.7, 0.7)
+            tip:AddLine("Class: " .. className, 0.7, 0.7, 0.7)
         end
     end
     if db.altHoverSpec and charInfo.specName and charInfo.specName ~= "" then
-        GameTooltip:AddLine("Spec: " .. charInfo.specName, 0.7, 0.7, 0.7)
+        tip:AddLine("Spec: " .. charInfo.specName, 0.7, 0.7, 0.7)
     end
     if db.altHoverRole and charInfo.role and charInfo.role ~= "" then
-        GameTooltip:AddLine("Role: " .. (ROLE_LABELS[charInfo.role] or charInfo.role), 0.7, 0.7, 0.7)
+        tip:AddLine("Role: " .. (ROLE_LABELS[charInfo.role] or charInfo.role), 0.7, 0.7, 0.7)
     end
 
-    GameTooltip:Show()
+    tip:Show()
 end
 
 ---------------------------------------------------------------------------
@@ -1390,7 +1391,7 @@ function SavedInst:BuildTooltipContent()
             end)
             youOv:SetScript("OnLeave", function()
                 capturedYouHL:Hide()
-                GameTooltip:Hide()
+                ns.GetHoverTooltip():Hide()
                 SavedInst:StartHideTimer()
             end)
 
@@ -1437,7 +1438,7 @@ function SavedInst:BuildTooltipContent()
                 end)
                 altOv:SetScript("OnLeave", function()
                     capturedAltHL:Hide()
-                    GameTooltip:Hide()
+                    ns.GetHoverTooltip():Hide()
                     SavedInst:StartHideTimer()
                 end)
             end

@@ -93,6 +93,7 @@ local BANNER_LOCATIONS = {
     },
     ["The Gulf of Memory"] = {
         { x = 0.5651, y = 0.4652 },
+        { x = 0.4132, y = 0.2374, note = "Upper Rootway variant" },
     },
     ["The Shadow Enclave"] = {
         { x = 0.4600, y = 0.2200 },
@@ -1045,17 +1046,18 @@ local function CreateMapPin()
 
     pin:EnableMouse(true)
     pin:SetScript("OnEnter", function(self)
-        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-        GameTooltip:AddLine("Sanctified Banner spawn", 1, 0.82, 0)
+        local tip = ns.GetHoverTooltip()
+        tip:SetOwner(self, "ANCHOR_RIGHT")
+        tip:AddLine("Sanctified Banner spawn", 1, 0.82, 0)
         if self.coordText then
-            GameTooltip:AddLine(self.coordText, 0.7, 0.85, 1)
+            tip:AddLine(self.coordText, 0.7, 0.85, 1)
         end
         if self.note then
-            GameTooltip:AddLine(self.note, 0.7, 0.7, 0.7)
+            tip:AddLine(self.note, 0.7, 0.7, 0.7)
         end
-        GameTooltip:Show()
+        tip:Show()
     end)
-    pin:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    pin:SetScript("OnLeave", function() ns.GetHoverTooltip():Hide() end)
 
     return pin
 end

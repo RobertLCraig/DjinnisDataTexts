@@ -381,14 +381,15 @@ local function GetOrCreateRow(parent, index)
     row:SetScript("OnEnter", function(self)
         FriendsBroker:CancelTooltipHideTimer()
         if self.friendData and self.friendData.notes and self.friendData.notes ~= "" then
-            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
-            GameTooltip:AddLine(self.friendData.notes, 1, 1, 1, true)
-            GameTooltip:Show()
+            local tip = ns.GetHoverTooltip()
+            tip:SetOwner(self, "ANCHOR_RIGHT")
+            tip:AddLine(self.friendData.notes, 1, 1, 1, true)
+            tip:Show()
         end
     end)
 
     row:SetScript("OnLeave", function()
-        GameTooltip:Hide()
+        ns.GetHoverTooltip():Hide()
         FriendsBroker:StartTooltipHideTimer()
     end)
 

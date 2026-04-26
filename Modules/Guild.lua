@@ -384,20 +384,21 @@ local function GetOrCreateRow(parent, index)
             local hasNote = self.memberData.notes and self.memberData.notes ~= ""
             local hasONote = self.memberData.officerNote and self.memberData.officerNote ~= ""
             if hasNote or hasONote then
-                GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+                local tip = ns.GetHoverTooltip()
+                tip:SetOwner(self, "ANCHOR_RIGHT")
                 if hasNote then
-                    GameTooltip:AddLine("Note: " .. self.memberData.notes, 1, 1, 1, true)
+                    tip:AddLine("Note: " .. self.memberData.notes, 1, 1, 1, true)
                 end
                 if hasONote then
-                    GameTooltip:AddLine("Officer: " .. self.memberData.officerNote, 1, 0.5, 0, true)
+                    tip:AddLine("Officer: " .. self.memberData.officerNote, 1, 0.5, 0, true)
                 end
-                GameTooltip:Show()
+                tip:Show()
             end
         end
     end)
 
     row:SetScript("OnLeave", function()
-        GameTooltip:Hide()
+        ns.GetHoverTooltip():Hide()
         GuildBroker:StartTooltipHideTimer()
     end)
 
