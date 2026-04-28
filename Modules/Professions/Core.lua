@@ -435,7 +435,9 @@ function Professions:ShowTooltip(profKey, anchor)
     tooltipFrames[profKey]:SetScale(scale)
 
     self:PopulateTooltip(profKey)
-    tooltipFrames[profKey]:Show()
+    if not InCombatLockdown() then
+        tooltipFrames[profKey]:Show()
+    end
 end
 
 -- Per-profession pin state. When pinned[profKey] is true, the auto-hide
@@ -447,8 +449,17 @@ function Professions:StartHideTimer(profKey)
     self:CancelHideTimer(profKey)
     if pinned[profKey] then return end
     hideTimers[profKey] = C_Timer.NewTimer(ns.HIDE_DELAY, function()
-        if tooltipFrames[profKey] then tooltipFrames[profKey]:Hide() end
         hideTimers[profKey] = nil
+        local f = tooltipFrames[profKey]
+        if not f then return end
+        -- Tooltip parents SecureActionButtonTemplate lure buttons; hiding
+        -- it in combat is protected and triggers ADDON_ACTION_BLOCKED.
+        -- Reschedule so it hides once combat ends.
+        if InCombatLockdown() then
+            Professions:StartHideTimer(profKey)
+            return
+        end
+        f:Hide()
     end)
 end
 
@@ -459,7 +470,7 @@ function Professions:TogglePin(profKey)
     else
         pinned[profKey] = true
         self:CancelHideTimer(profKey)
-        if tooltipFrames[profKey] and not tooltipFrames[profKey]:IsShown() then
+        if tooltipFrames[profKey] and not tooltipFrames[profKey]:IsShown() and not InCombatLockdown() then
             tooltipFrames[profKey]:Show()
         end
     end

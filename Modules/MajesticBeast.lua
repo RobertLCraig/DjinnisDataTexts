@@ -1677,14 +1677,23 @@ function MajesticBeast:ShowTooltip(anchor)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
     self:UpdateData()
     self:BuildTooltipContent()
-    tooltipFrame:Show()
+    if not InCombatLockdown() then
+        tooltipFrame:Show()
+    end
 end
 
 function MajesticBeast:StartHideTimer()
     self:CancelHideTimer()
     hideTimer = C_Timer.NewTimer(ns.HIDE_DELAY, function()
-        if tooltipFrame then tooltipFrame:Hide() end
         hideTimer = nil
+        if not tooltipFrame then return end
+        -- Tooltip parents SecureActionButtonTemplate lure/consumable buttons;
+        -- hiding it in combat is protected. Reschedule until combat ends.
+        if InCombatLockdown() then
+            MajesticBeast:StartHideTimer()
+            return
+        end
+        tooltipFrame:Hide()
     end)
 end
 

@@ -1,11 +1,8 @@
 # Release Notes
 
-## Version: 0.9.9
+## Version: 0.9.10
 
 ### Fixed
 
-- **"Secret number" compare crash on world-map Area POI hover.** Hovering an Area POI (such as a Delve entrance) on the main world map could throw `attempt to compare a secret number value (execution tainted by 'DjinnisDataTexts')` from `Blizzard_SharedXML/LayoutFrame.lua:491` inside `ResizeLayoutMixin:Layout`, called during `GameTooltip_ClearWidgetSet`. Root cause: DDT routed every hover tooltip (Friends / Guild / Communities row notes, ItemLevel item links, SavedInstances character info, and the Sanctified Banner map pin) through the global `GameTooltip`, which left the tooltip owned by addon-created frames. The next Blizzard `SetOwner` then fired `GameTooltip_OnHide` -> `ClearWidgetSet` -> widget-container layout in tainted execution, where `GetNumPoints` returned a secret value and the `== 0` test errored. All DDT hover sites now route through a private `DDTHoverTooltip` frame (`GameTooltipTemplate`) via the new `ns.GetHoverTooltip()` helper, so the global tooltip is never touched from insecure code.
-
-### Added
-
-- **Delve Sanctified Banner: The Gulf of Memory (Upper Rootway variant)** at `/way 41.32 23.74`. Listed alongside the existing Lower Rootway spawn for the delve so the in-game map pin shows whichever variant is active.
+- **`ADDON_ACTION_BLOCKED` on profession tooltip auto-hide in combat.** The Professions tooltip parents `SecureActionButtonTemplate` lure buttons; when the auto-hide timer fired during combat, `tooltipFrames[profKey]:Hide()` cascaded to the secure children and tripped `Frame:Hide()` is protected. The hide timer now checks `InCombatLockdown()` and reschedules itself until combat ends. Same combat guard applied preventatively to the matching `Show()` paths in `ShowTooltip` and `TogglePin`, and to the equivalent code in the Majestic Beast Tracker module (which parents the same secure lure / consumable buttons).
+- **Guild tooltip crash on secret-tainted MOTD.** Caching `clubInfo.broadcast` into `self.motdCache` does not launder the Midnight-era taint that rides the value, so subsequent operations on the cached MOTD errored with `attempt to compare a secret string value` (the `motd ~= ""` test) and `attempt to perform arithmetic on a secret number value` (`GetStringHeight() + 4` on a fontstring whose text was set from the tainted string). There is no `C_Secrets.Should*` predicate covering guild MOTD specifically, so the entire MOTD render block (compare, SetText, GetStringHeight) is now wrapped in a single `pcall`; on failure, the MOTD line clears and hides cleanly. Matches the existing `Modules/Delve.lua` Sanctified-string pattern.

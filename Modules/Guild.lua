@@ -457,20 +457,26 @@ function GuildBroker:PopulateTooltip()
         DDT:ColorText(" / " .. tostring(self.totalCount), 0.63, 0.63, 0.63)
     )
 
-    -- Use cached MOTD captured from the GUILD_MOTD event. Calling
-    -- C_GuildInfo.GetMOTD() directly is now protected and taints the tooltip.
+    -- MOTD comes from clubInfo.broadcast, which can be a secret-tainted
+    -- string. Comparison ("motd ~= ''") and GetStringHeight on tainted text
+    -- both leak taint into the rest of the tooltip render path. pcall the
+    -- whole block; on failure, hide the MOTD line.
     local motd = self.motdCache or ""
-    if motd ~= "" then
-        tooltipFrame.motd:SetText("|cff888888MOTD: " .. motd .. "|r")
-        tooltipFrame.motd:Show()
-    else
-        tooltipFrame.motd:SetText("")
-        tooltipFrame.motd:Hide()
-    end
-
     local motdHeight = 0
-    if motd ~= "" then
-        motdHeight = tooltipFrame.motd:GetStringHeight() + 4
+    local ok = pcall(function()
+        if motd ~= "" then
+            tooltipFrame.motd:SetText("|cff888888MOTD: " .. motd .. "|r")
+            tooltipFrame.motd:Show()
+            motdHeight = tooltipFrame.motd:GetStringHeight() + 4
+        else
+            tooltipFrame.motd:SetText("")
+            tooltipFrame.motd:Hide()
+        end
+    end)
+    if not ok then
+        pcall(function() tooltipFrame.motd:SetText("") end)
+        tooltipFrame.motd:Hide()
+        motdHeight = 0
     end
 
     -- Column headers anchored below MOTD (or titleSep when no MOTD)
