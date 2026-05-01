@@ -418,6 +418,11 @@ end
 ---------------------------------------------------------------------------
 
 function Professions:ShowTooltip(profKey, anchor)
+    -- Once populated, the tooltip parents SecureActionButtonTemplate lure
+    -- buttons; SetPoint/SetScale/SetWidth/Show on it are all protected in
+    -- combat. Bail out entirely so we don't trip ADDON_ACTION_BLOCKED.
+    if InCombatLockdown() then return end
+
     if not tooltipFrames[profKey] then
         tooltipFrames[profKey] = self:CreateTooltipFrame(profKey)
     end
@@ -435,9 +440,7 @@ function Professions:ShowTooltip(profKey, anchor)
     tooltipFrames[profKey]:SetScale(scale)
 
     self:PopulateTooltip(profKey)
-    if not InCombatLockdown() then
-        tooltipFrames[profKey]:Show()
-    end
+    tooltipFrames[profKey]:Show()
 end
 
 -- Per-profession pin state. When pinned[profKey] is true, the auto-hide
@@ -722,6 +725,13 @@ end
 function Professions:PopulateTooltip(profKey)
     local tf = tooltipFrames[profKey]
     if not tf then return end
+
+    -- Tooltip parents secure lure buttons; SetWidth and per-row SetPoint
+    -- calls below are protected in combat. UNIT_AURA refreshes can fire
+    -- during combat with the tooltip still visible from before pull, so
+    -- gate the rebuild here. Content goes stale until combat ends, then
+    -- the next refresh path repopulates.
+    if InCombatLockdown() then return end
 
     local state = profState[profKey]
     if not state then return end

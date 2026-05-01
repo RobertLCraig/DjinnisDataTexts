@@ -1284,6 +1284,14 @@ end
 ---------------------------------------------------------------------------
 
 function MajesticBeast:BuildTooltipContent()
+    -- Tooltip parents secure lure / consumable buttons; SetPoint and
+    -- SetSize calls below are protected in combat. UpdateData refreshes
+    -- (BAG_UPDATE_DELAYED, LOOT_CLOSED, ...) can fire during combat with
+    -- the tooltip still visible from before pull, so gate the rebuild.
+    -- Content goes stale until combat ends, then the next refresh path
+    -- repopulates.
+    if InCombatLockdown() then return end
+
     HideAllPooled()
 
     local f = tooltipFrame
@@ -1668,6 +1676,12 @@ end
 ---------------------------------------------------------------------------
 
 function MajesticBeast:ShowTooltip(anchor)
+    -- Once populated, the tooltip parents SecureActionButtonTemplate lure /
+    -- consumable buttons; SetPoint/SetScale/SetWidth/Show on it are all
+    -- protected in combat. Bail out entirely so we don't trip
+    -- ADDON_ACTION_BLOCKED.
+    if InCombatLockdown() then return end
+
     self:CancelHideTimer()
     if not tooltipFrame then
         tooltipFrame = ns.CreateTooltipFrame("DDTMajesticBeastTooltip", self)
@@ -1677,9 +1691,7 @@ function MajesticBeast:ShowTooltip(anchor)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
     self:UpdateData()
     self:BuildTooltipContent()
-    if not InCombatLockdown() then
-        tooltipFrame:Show()
-    end
+    tooltipFrame:Show()
 end
 
 function MajesticBeast:StartHideTimer()
