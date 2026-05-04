@@ -1,8 +1,18 @@
 # Release Notes
 
-## Version: 0.9.11
+## Version: 0.9.12
 
 ### Fixed
 
-- **`ADDON_ACTION_BLOCKED` on profession tooltip auto-hide in combat.** The Professions tooltip parents `SecureActionButtonTemplate` lure buttons; when the auto-hide timer fired during combat, `tooltipFrames[profKey]:Hide()` cascaded to the secure children and tripped `Frame:Hide()` is protected. The hide timer now checks `InCombatLockdown()` and reschedules itself until combat ends. Same combat guard applied preventatively to the matching `Show()` paths in `ShowTooltip` and `TogglePin`, and to the equivalent code in the Majestic Beast Tracker module (which parents the same secure lure / consumable buttons).
-- **Guild tooltip crash on secret-tainted MOTD.** Caching `clubInfo.broadcast` into `self.motdCache` does not launder the Midnight-era taint that rides the value, so subsequent operations on the cached MOTD errored with `attempt to compare a secret string value` (the `motd ~= ""` test) and `attempt to perform arithmetic on a secret number value` (`GetStringHeight() + 4` on a fontstring whose text was set from the tainted string). There is no `C_Secrets.Should*` predicate covering guild MOTD specifically, so the entire MOTD render block (compare, SetText, GetStringHeight) is now wrapped in a single `pcall`; on failure, the MOTD line clears and hides cleanly. Matches the existing `Modules/Delve.lua` Sanctified-string pattern.
+- **LFG Status tooltip row overlap.** Instance name and wait/elapsed time were on the same row; at any tooltip width the two strings could collide. They now render on separate rows, with the timing row only appearing when time data is available.
+- **LFG Status elapsed time wildly wrong.** `GetLFGQueueStats` returns `queuedTime` as a `GetTime()` timestamp, not a duration. The tooltip row and the `<elapsed>` label tag were displaying the raw timestamp (tens of thousands of seconds) instead of computing `GetTime() - queuedTime`. Both sites now match Blizzard's own `QueueStatusFrame` implementation.
+
+### Changed
+
+- **LFG Status default tooltip width** reduced from 360 to 340.
+- **Tooltip width slider maximum** raised from 500-800 (varied per module) to 2000 across all modules.
+- **Experience default tooltip width** raised from 300 to 340 to prevent the XP progress row (`12,345,678 / 23,456,789 (52.6%)`) from overlapping the label.
+
+### Added
+
+- **Reset to Defaults** - every module settings panel now has a collapsed "Reset to Defaults" section at the bottom. Clicking the button wipes the module's saved settings and re-applies its registered defaults, then refreshes all settings widgets live. The General panel has an equivalent button covering number formatting, gold display, and font settings.

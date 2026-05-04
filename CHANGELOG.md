@@ -4,6 +4,24 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [0.9.12] - 2026-05-04
+
+### Fixed
+
+- **LFG Status tooltip row overlap.** Instance name and wait/elapsed time were on the same row and collided at any tooltip width. They now render on separate rows; the timing row only appears when time data is available.
+- **LFG Status elapsed time wildly wrong.** `GetLFGQueueStats` returns `queuedTime` as a `GetTime()` timestamp, not a duration. Both the tooltip row and the `<elapsed>` label tag were displaying the raw value (tens of thousands of seconds). Both now compute `GetTime() - queuedTime`, matching Blizzard's own `QueueStatusFrame`.
+
+### Changed
+
+- **LFG Status default tooltip width** reduced from 360 to 340.
+- **Tooltip width slider maximum** raised to 2000 across all modules (was 500-800, varied per module).
+- **Experience default tooltip width** raised from 300 to 340 to prevent the XP progress row from overlapping its label.
+
+### Added
+
+- **Reset to Defaults** - every module settings panel gains a collapsed "Reset to Defaults" section. Clicking the button wipes the module's saved settings and re-applies its registered defaults, refreshing all settings widgets live. The General panel has an equivalent covering number formatting, gold display, and font settings.
+
+
 ## [0.9.11] - 2026-05-04
 
 ### Fixed
