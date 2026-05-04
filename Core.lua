@@ -262,6 +262,17 @@ local function MergeDefaults(target, defaults)
     end
 end
 
+--- Wipe a module's saved settings and re-apply its registered defaults.
+--- @param key string  Module db key (e.g. "guild") or "global" for global settings.
+function ns.ResetModuleDefaults(key)
+    if not ns.db or not ns.defaults then return end
+    local defaults = ns.defaults[key]
+    local target   = ns.db[key]
+    if type(defaults) ~= "table" or type(target) ~= "table" then return end
+    for k in pairs(target) do target[k] = nil end
+    MergeDefaults(target, defaults)
+end
+
 ---------------------------------------------------------------------------
 -- Migration: DjinnisGuildFriends → DjinnisDataTexts
 ---------------------------------------------------------------------------

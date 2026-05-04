@@ -16,7 +16,7 @@ local tooltipFrame = nil
 local hideTimer = nil
 
 -- Layout
-local TOOLTIP_WIDTH  = 360
+local TOOLTIP_WIDTH  = 340
 
 -- State
 local activeQueues = {}   -- { {category, categoryName, mode, instanceName, waitTime, queuedTime} }
@@ -36,7 +36,7 @@ local DEFAULTS = {
     showListed     = true,
     tooltipScale     = 1.0,
     tooltipMaxHeight = 500,
-    tooltipWidth     = 360,
+    tooltipWidth     = 340,
     clickActions   = {
         leftClick       = "groupfinder",
         rightClick      = "leavequeue",
@@ -311,7 +311,7 @@ local function ExpandLabel(template, db)
     -- Elapsed time for first queue
     local elapsedStr = "\226\128\148"
     if #activeQueues > 0 and activeQueues[1].queuedTime > 0 then
-        elapsedStr = FormatTime(activeQueues[1].queuedTime)
+        elapsedStr = FormatTime(GetTime() - activeQueues[1].queuedTime)
     end
     result = E(result, "elapsed", elapsedStr)
     return result
@@ -518,24 +518,34 @@ function LFGStatus:BuildTooltipContent()
             catLine.value:SetText("")
             y = y - ns.ROW_HEIGHT
 
-            -- Row 2: instance name + wait/elapsed
+            -- Row 2: instance name
             lineIdx = lineIdx + 1
             local instLine = GetLine(c, lineIdx)
             instLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 16, y)
             instLine.label:SetText(q.instanceName)
             instLine.label:SetTextColor(1, 1, 1)
+            instLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
+            instLine.value:SetText("")
+            y = y - ns.ROW_HEIGHT
 
+            -- Row 3: wait/elapsed times
             local timeParts = {}
             if q.queuedTime > 0 then
-                table.insert(timeParts, FormatTime(q.queuedTime) .. " in queue")
+                table.insert(timeParts, FormatTime(GetTime() - q.queuedTime) .. " in queue")
             end
             if q.hasData and q.waitTime > 0 then
                 table.insert(timeParts, "est. " .. FormatTime(q.waitTime))
             end
-            instLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
-            instLine.value:SetText(table.concat(timeParts, " / "))
-            instLine.value:SetTextColor(0.7, 0.7, 0.7)
-            y = y - ns.ROW_HEIGHT
+            if #timeParts > 0 then
+                lineIdx = lineIdx + 1
+                local timeLine = GetLine(c, lineIdx)
+                timeLine.label:SetPoint("TOPLEFT", c, "TOPLEFT", 16, y)
+                timeLine.label:SetText("")
+                timeLine.value:SetPoint("TOPRIGHT", c, "TOPRIGHT", 0, y)
+                timeLine.value:SetText(table.concat(timeParts, " / "))
+                timeLine.value:SetTextColor(0.7, 0.7, 0.7)
+                y = y - ns.ROW_HEIGHT
+            end
         end
 
         y = y - 4
@@ -700,7 +710,7 @@ function LFGStatus:BuildSettingsPanel(panel)
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
           set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 200, max = 500, step = 10,
+        { label = "Width", min = 200, max = 2000, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
     y = W.AddSliderPair(body, y,

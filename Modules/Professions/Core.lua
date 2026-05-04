@@ -2248,7 +2248,7 @@ function Professions:BuildSettingsPanel(panel)
         { label = "Default Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
           set = function(v) db().tooltipScale = v end },
-        { label = "Default Width", min = 250, max = 600, step = 10,
+        { label = "Default Width", min = 250, max = 2000, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
     y = W.AddSlider(body, y, "Default Max Height", 200, 1000, 10,
@@ -2287,7 +2287,7 @@ function Professions:BuildSettingsPanel(panel)
             { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
               get = function() return pdb().tooltipScale or db().tooltipScale end,
               set = function(v) pdb().tooltipScale = v end },
-            { label = "Width", min = 250, max = 600, step = 10,
+            { label = "Width", min = 250, max = 2000, step = 10,
               get = function() return pdb().tooltipWidth or db().tooltipWidth end,
               set = function(v) pdb().tooltipWidth = v end }, r)
 

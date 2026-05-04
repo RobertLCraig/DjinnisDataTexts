@@ -16,7 +16,7 @@ local tooltipFrame = nil
 local hideTimer = nil
 
 -- Layout
-local TOOLTIP_WIDTH  = 300
+local TOOLTIP_WIDTH  = 340
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -60,7 +60,7 @@ local DEFAULTS = {
     barWidth      = 20,
     tooltipScale     = 1.0,
     tooltipMaxHeight = 400,
-    tooltipWidth     = 300,
+    tooltipWidth     = 340,
     clickActions  = {
         leftClick       = "character",
         rightClick      = "none",
@@ -685,7 +685,7 @@ function Experience:BuildSettingsPanel(panel)
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
           set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 200, max = 500, step = 10,
+        { label = "Width", min = 200, max = 2000, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
     y = W.AddSliderPair(body, y,

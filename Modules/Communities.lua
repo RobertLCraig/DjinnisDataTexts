@@ -777,7 +777,7 @@ function CommunitiesBroker:BuildSettingsPanel(panel)
         { label = "Scale", min = 0.5, max = 2.0, step = 0.05,
           get = function() return db().tooltipScale end,
           set = function(v) db().tooltipScale = v end },
-        { label = "Width", min = 300, max = 800, step = 10,
+        { label = "Width", min = 300, max = 2000, step = 10,
           get = function() return db().tooltipWidth end,
           set = function(v) db().tooltipWidth = v end }, r)
     y = W.AddSliderPair(body, y,

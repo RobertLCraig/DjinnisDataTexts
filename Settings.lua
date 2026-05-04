@@ -1239,6 +1239,20 @@ local function BuildGeneralPanel(panel)
             fontSizeTimer = C_Timer.NewTimer(0.15, function() ns:UpdateFonts() end)
         end, r)
     EndSection(panel, y)
+
+    -- Reset global settings
+    body = AddSection(panel, "Reset to Defaults", true)
+    y = 0
+    y = AddNote(body, y, "Resets number formatting, gold display, and font settings to their defaults.")
+    y = AddButton(body, y, "Reset to Defaults", function()
+        ns.ResetModuleDefaults("global")
+        for _, cb in ipairs(r) do cb() end
+        ns:UpdateFonts()
+        for _, mod in pairs(ns.modules) do
+            if mod.UpdateData then mod:UpdateData() end
+        end
+    end)
+    EndSection(panel, y)
 end
 
 ---------------------------------------------------------------------------
@@ -1287,6 +1301,21 @@ function DDT:SetupOptions()
         if mod.BuildSettingsPanel then
             local modPanel = CreateScrollPanel()
             mod:BuildSettingsPanel(modPanel)
+
+            -- Inject reset section into every module panel
+            local capturedKey   = key
+            local capturedMod   = mod
+            local capturedPanel = modPanel
+            local resetBody = AddSection(modPanel, "Reset to Defaults", true)
+            local ry = 0
+            ry = AddNote(resetBody, ry, "Resets all settings for this module to their defaults. Any customisation will be lost.")
+            ry = AddButton(resetBody, ry, "Reset to Defaults", function()
+                ns.ResetModuleDefaults(capturedKey)
+                for _, cb in ipairs(capturedPanel.refreshCallbacks) do cb() end
+                if capturedMod.UpdateData then capturedMod:UpdateData() end
+            end)
+            EndSection(modPanel, ry)
+
             local label = mod.settingsLabel or key
             table.insert(subcats, { label = label, panel = modPanel })
         end
