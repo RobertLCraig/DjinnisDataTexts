@@ -1,7 +1,7 @@
 ## Interface: 120005
 ## Title: Djinni's Data Texts
 ## Author: Djinni
-## Version: 0.9.10
+## Version: 0.9.11
 ## Notes: LDB data brokers for a unified suite of DataTexts with rich tooltips. Works with any LDB display.
 ## Category: Data Brokers
 ## X-Category: Data Broker
