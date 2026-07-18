@@ -1195,7 +1195,7 @@ function Professions:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, inne
 
         -- Icon from spell
         local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(alert.spellID)
-            or GetSpellTexture(alert.spellID)
+            or GetSpellTexture(alert.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
         if iconID then
             row.icon:SetTexture(iconID)
             row.icon:SetDesaturated(not isActive)
@@ -1277,7 +1277,7 @@ function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, inner
 
             -- Spell icon
             local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(cd.spellID)
-                or GetSpellTexture(cd.spellID)
+                or GetSpellTexture(cd.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
             if iconID then
                 row.icon:SetTexture(iconID)
                 row.icon:Show()
@@ -1358,7 +1358,7 @@ function Professions:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, in
         row:SetWidth(innerWidth)
 
         local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(tracker.spellID)
-            or GetSpellTexture(tracker.spellID)
+            or GetSpellTexture(tracker.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
         if iconID then
             row.icon:SetTexture(iconID)
             row.icon:SetDesaturated(not isActive)
@@ -1441,7 +1441,7 @@ function Professions:RenderTrackingToggle(sc, yOffset, rowIdx, hdrIdx, profKey, 
     row:SetWidth(innerWidth)
 
     local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(toggle.spellID)
-        or GetSpellTexture(toggle.spellID)
+        or GetSpellTexture(toggle.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
     if iconID then
         row.icon:SetTexture(iconID)
         row.icon:SetDesaturated(not isTracking)

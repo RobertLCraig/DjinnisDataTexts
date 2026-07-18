@@ -1642,6 +1642,44 @@ function SavedInst:BuildTooltipContent()
         mpHdr:SetText("Mythic+ This Week (" .. mythicPlusCount .. ")" .. vaultText)
         y = y - HEADER_HEIGHT
 
+        -- Per-level count summary: "+20 x2  +18 x1  +15 x3"
+        if #mythicPlusRuns > 0 then
+            local lvlCounts = {}
+            local lvlOrder = {}
+            for _, run in ipairs(mythicPlusRuns) do
+                if not lvlCounts[run.level] then
+                    table.insert(lvlOrder, run.level)
+                    lvlCounts[run.level] = 0
+                end
+                lvlCounts[run.level] = lvlCounts[run.level] + 1
+            end
+            table.sort(lvlOrder, function(a, b) return a > b end)
+            local lvlColor = DIFFICULTY_COLORS["M+"] or { 0.78, 0, 1 }
+            local lvlHex = ("|cff%02x%02x%02x"):format(lvlColor[1] * 255, lvlColor[2] * 255, lvlColor[3] * 255)
+            local lvlParts = {}
+            for _, lvl in ipairs(lvlOrder) do
+                table.insert(lvlParts, lvlHex .. "+" .. lvl .. "|r x" .. lvlCounts[lvl])
+            end
+            rowIndex = rowIndex + 1
+            local sumRow = GetRow(c, rowIndex)
+            sumRow:SetPoint("TOPLEFT", c, "TOPLEFT", PADDING, y)
+            sumRow:SetPoint("RIGHT", c, "RIGHT", -PADDING, 0)
+            sumRow:SetHeight(ns.ROW_HEIGHT)
+            sumRow.nameText:SetText("")
+            sumRow.diffText:SetText("")
+            sumRow.progressText:SetText(table.concat(lvlParts, "  "))
+            sumRow.progressText:SetTextColor(1, 1, 1)
+            sumRow.resetText:SetText("")
+            sumRow.extendedBar:Hide()
+            sumRow:SetScript("OnClick", nil)
+            if numAltCols > 0 then
+                EnsureAltColumns(sumRow, numAltCols)
+                sumRow.youText:SetText("")
+                for i = 1, numAltCols do sumRow.altTexts[i]:SetText("") end
+            end
+            y = y - ns.ROW_HEIGHT
+        end
+
         SortMPlusRuns(mythicPlusRuns, db.mplusSortOrder)
 
         if db.condensedMPlus then
@@ -2046,7 +2084,27 @@ function SavedInst:BuildAltSection(c, y, rowIndex, headerIndex, sepIndex)
         local summaryParts = {}
         if rCt > 0 then table.insert(summaryParts, rCt .. "R") end
         if dCt > 0 then table.insert(summaryParts, dCt .. "D") end
-        if mCt > 0 then table.insert(summaryParts, mCt .. "M+") end
+        if mCt > 0 then
+            if #mpRuns > 0 then
+                local altLvlCounts = {}
+                local altLvlOrder = {}
+                for _, run in ipairs(mpRuns) do
+                    if not altLvlCounts[run.level] then
+                        table.insert(altLvlOrder, run.level)
+                        altLvlCounts[run.level] = 0
+                    end
+                    altLvlCounts[run.level] = altLvlCounts[run.level] + 1
+                end
+                table.sort(altLvlOrder, function(a, b) return a > b end)
+                local altLvlParts = {}
+                for _, lvl in ipairs(altLvlOrder) do
+                    table.insert(altLvlParts, "+" .. lvl .. "x" .. altLvlCounts[lvl])
+                end
+                table.insert(summaryParts, table.concat(altLvlParts, " "))
+            else
+                table.insert(summaryParts, mCt .. "M+")
+            end
+        end
         if dvCt > 0 then table.insert(summaryParts, dvCt .. "Dv") end
         local summary = #summaryParts > 0 and table.concat(summaryParts, " ") or "No lockouts"
 
