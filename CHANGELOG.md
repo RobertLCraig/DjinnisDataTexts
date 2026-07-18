@@ -4,6 +4,22 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [Unreleased]
+
+### Added
+
+- **World of Warcraft 12.1 support.** The `## Interface:` line now declares both `120007` and `120100`, so the addon loads without an "out of date" flag on 12.0.7 and 12.1. A full audit of the addon's API surface against the 12.1.0 client source found nothing it calls was removed or changed.
+- **Pet Info Safari Hat "Equipped" state.** The Equip Safari Hat action now detects the Safari Hat buff (spell 158486) via `C_UnitAuras.GetPlayerAuraBySpellID` and shows a green "Equipped" status with a desaturated icon while the hat is active. Guarded by `C_Secrets.ShouldAurasBeSecret`; the row still re-applies the toy/bag item on click.
+
+### Fixed
+
+- **Pet Info Revive Battle Pets / Equip Safari Hat / consumable buttons did nothing for players with "cast on key down" enabled.** The secure action buttons registered only `"AnyUp"`, but Blizzard's `SecureActionButton_OnClick` performs the protected action on just one click edge chosen by the `ActionButtonUseKeyDown` CVar — so with cast-on-key-down on, an up-only registration never fired (the non-secure Open Journal / Summon buttons kept working because they bypass the secure handler). Secure buttons now register both `"AnyUp"` and `"AnyDown"`, matching the working Professions / Majestic Beast lure buttons; Blizzard's own `clickAction` gate guarantees exactly one edge fires, so there is no double-cast. Non-secure buttons stay `"AnyUp"`-only.
+
+### Changed
+
+- **Wider default tooltip widths** so English content no longer collides with the right-aligned values: Pet Info 300→340, Played Time 280→340, Movement Speed 320→380. A one-time, version-gated saved-variables migration raises any saved width still sitting at the old default to the new value; widths the user has customized are left untouched.
+
+
 ## [0.9.12] - 2026-05-04
 
 ### Fixed

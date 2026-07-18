@@ -17,7 +17,7 @@ local tooltipFrame = nil
 local hideTimer = nil
 
 -- Layout
-local TOOLTIP_WIDTH  = 320
+local TOOLTIP_WIDTH  = 380
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -48,7 +48,7 @@ local DEFAULTS = {
     showSpeedBuffs    = true,
     tooltipScale      = 1.0,
     tooltipMaxHeight  = 500,
-    tooltipWidth      = 320,
+    tooltipWidth      = 380,
     clickActions      = {
         leftClick       = "character",
         rightClick      = "none",

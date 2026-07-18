@@ -16,7 +16,7 @@ local tooltipFrame = nil
 local hideTimer = nil
 
 -- Layout
-local TOOLTIP_WIDTH  = 280
+local TOOLTIP_WIDTH  = 340
 local HEADER_HEIGHT  = 18
 local PADDING        = 10
 local HINT_HEIGHT    = 18
@@ -35,7 +35,7 @@ local DEFAULTS = {
     labelTemplate = "<session>",
     tooltipScale     = 1.0,
     tooltipMaxHeight = 400,
-    tooltipWidth     = 280,
+    tooltipWidth     = 340,
     clickActions  = {
         leftClick       = "refresh",
         rightClick      = "stopwatch",

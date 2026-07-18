@@ -310,6 +310,48 @@ local function MigrateFromDGF()
 end
 
 ---------------------------------------------------------------------------
+-- Schema migrations (one-time, version-gated)
+---------------------------------------------------------------------------
+-- Bump SCHEMA_VERSION whenever a migration step is added below. The stamp lives
+-- in DjinnisDataTextsDB._schemaVersion; a fresh DB starts at 0 and runs every
+-- step once, then never again.
+local SCHEMA_VERSION = 1
+
+-- v1: the default tooltip widths for these modules were widened so English
+-- content no longer collides with the right-aligned values. Raise any saved
+-- width that still sits at the OLD default (i.e. the user never customized it)
+-- to the NEW default. A user who had deliberately set the old value is
+-- indistinguishable from an untouched default and gets the new width too --
+-- a harmless side effect, and the per-module "Reset to Defaults" button still
+-- lets them go back.
+local WIDTH_BUMPS_V1 = {
+    petinfo       = { old = 300, new = 340 },
+    playedtime    = { old = 280, new = 340 },
+    movementspeed = { old = 320, new = 380 },
+}
+
+--- Run any pending one-time schema migrations against DjinnisDataTextsDB.
+--- Must run after the saved DB exists but before/after MergeDefaults is fine:
+--- it only rewrites existing keys equal to a known old default, and fresh
+--- installs already carry the new default so the == old check is a no-op.
+local function RunSchemaMigrations()
+    local db = DjinnisDataTextsDB
+    local from = db._schemaVersion or 0
+    if from >= SCHEMA_VERSION then return end
+
+    if from < 1 then
+        for key, bump in pairs(WIDTH_BUMPS_V1) do
+            local mod = db[key]
+            if type(mod) == "table" and mod.tooltipWidth == bump.old then
+                mod.tooltipWidth = bump.new
+            end
+        end
+    end
+
+    db._schemaVersion = SCHEMA_VERSION
+end
+
+---------------------------------------------------------------------------
 -- DjinnisGuildFriends coexistence check
 ---------------------------------------------------------------------------
 
@@ -1420,6 +1462,11 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
 
     -- Migrate from DjinnisGuildFriends if present
     local migrated = MigrateFromDGF()
+
+    -- Raise unmodified saved widths to widened defaults (one-time, version-gated).
+    -- Runs before MergeDefaults so it only sees genuinely saved values; fresh
+    -- installs have no module tables yet, so nothing matches and it just stamps.
+    RunSchemaMigrations()
 
     -- Merge defaults into saved vars
     MergeDefaults(DjinnisDataTextsDB, ns.defaults)
