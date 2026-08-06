@@ -100,7 +100,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-PetInfo", {
+local dataobj = ns:NewBroker("petinfo", "DDT-PetInfo", {
     type  = "data source",
     text  = "Battle Pets",
     icon  = "Interface\\Icons\\INV_Pet_Achievement",

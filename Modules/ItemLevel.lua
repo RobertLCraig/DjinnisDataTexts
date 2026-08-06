@@ -343,8 +343,7 @@ local ldbCallbacks = {
         end
     end,
 }
-dataobj = LDB:NewDataObject("DDT-ItemLevel", ldbCallbacks)
-    or LDB:GetDataObjectByName("DDT-ItemLevel")
+dataobj = ns:NewBroker("itemlevel", "DDT-ItemLevel", ldbCallbacks)
 
 ItemLevel.dataobj = dataobj
 

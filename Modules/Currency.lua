@@ -150,7 +150,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Currency", {
+local dataobj = ns:NewBroker("currency", "DDT-Currency", {
     type  = "data source",
     text  = "0g",
     icon  = "Interface\\Icons\\INV_Misc_Coin_01",

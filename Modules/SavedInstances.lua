@@ -380,7 +380,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-SavedInstances", {
+local dataobj = ns:NewBroker("savedinstances", "DDT-SavedInstances", {
     type  = "data source",
     text  = "Lockouts: 0",
     icon  = "Interface\\Icons\\INV_Misc_Key_04",

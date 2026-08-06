@@ -174,7 +174,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-BagValue", {
+local dataobj = ns:NewBroker("bagvalue", "DDT-BagValue", {
     type  = "data source",
     text  = "Bags: 0g",
     icon  = "Interface\\Icons\\INV_Misc_Bag_07_Green",

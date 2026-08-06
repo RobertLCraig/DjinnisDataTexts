@@ -17,6 +17,14 @@ ns.db = nil
 -- Module registry - modules call ns:RegisterModule() during load
 ns.modules = {}
 
+-- Deferred LDB brokers - modules call ns:NewBroker() during load.
+-- Module files run before saved variables exist, so nothing can know at that
+-- point whether its module is switched off. Specs queue here and are handed to
+-- LDB in ADDON_LOADED once ns.db is live. LDB has no unregister, so deferring
+-- creation is the only way a disabled module can vanish completely rather than
+-- just going quiet.
+ns.pendingBrokers = {}
+
 -- Default settings (flat structure, no profiles)
 -- Each module merges its own defaults into this table via RegisterModule().
 ns.defaults = {
@@ -196,6 +204,114 @@ function ns:RegisterModule(key, mod, defaults)
     if defaults then
         self.defaults[key] = defaults
     end
+end
+
+---------------------------------------------------------------------------
+-- Module enable state and poll intervals
+--
+-- Kept in ns.db.modules, deliberately outside each module's own settings
+-- table, so that neither a module's nor the global "Reset to Defaults" can
+-- silently switch a module back on or change how often it polls. "modules" is
+-- safe as a sibling of the per-module tables because no module registers under
+-- that key.
+---------------------------------------------------------------------------
+
+-- Seconds between periodic refreshes for a module that has never been
+-- configured. Matches the interval every module used before toggles existed,
+-- so upgrading changes nothing.
+ns.DEFAULT_POLL = 180
+
+-- Poll choices offered in the Modules settings panel, in display order.
+-- `false` means no periodic refresh at all; the module still updates from its
+-- own events, which is all most modules need when nothing is displaying them.
+ns.POLL_VALUES = {
+    { value = 30,    label = "30 seconds" },
+    { value = 60,    label = "1 minute" },
+    { value = 180,   label = "3 minutes (default)" },
+    { value = 300,   label = "5 minutes" },
+    { value = 600,   label = "10 minutes" },
+    { value = false, label = "Events only" },
+}
+
+--- Fetch (creating if needed) the saved state table for one module.
+--- Returns nil before saved variables load, and every caller treats that as
+--- "assume defaults" rather than erroring.
+local function ModuleState(key)
+    if not ns.db then return nil end
+    ns.db.modules = ns.db.modules or {}
+    local state = ns.db.modules[key]
+    if not state then
+        state = {}
+        ns.db.modules[key] = state
+    end
+    return state
+end
+
+--- Is this module switched on? Defaults to true, so upgrading from a version
+--- without toggles leaves every module exactly where the user had it.
+function ns:IsModuleEnabled(key)
+    local state = ModuleState(key)
+    if not state then return true end
+    return state.enabled ~= false
+end
+
+function ns:SetModuleEnabled(key, enabled)
+    local state = ModuleState(key)
+    if state then
+        state.enabled = enabled and true or false
+    end
+end
+
+--- Seconds between periodic refreshes, or nil for "events only".
+function ns:GetModulePoll(key)
+    local state = ModuleState(key)
+    local poll = state and state.poll
+    if poll == nil then return ns.DEFAULT_POLL end
+    if poll == false then return nil end
+    return poll
+end
+
+function ns:SetModulePoll(key, poll)
+    local state = ModuleState(key)
+    if state then
+        state.poll = poll
+    end
+end
+
+--- Has the user toggled a module since this session applied its enable state?
+--- Drives the "changes pending" note and is why the panel offers a reload
+--- button rather than pretending the change already took effect.
+function ns:HasPendingModuleChanges()
+    if not ns.appliedEnabled then return false end
+    for key in pairs(ns.modules) do
+        if ns.appliedEnabled[key] ~= ns:IsModuleEnabled(key) then
+            return true
+        end
+    end
+    return false
+end
+
+--- Display name for a module, falling back to its key.
+function ns:GetModuleLabel(key)
+    local mod = ns.modules[key]
+    return (mod and mod.settingsLabel) or key
+end
+
+--- Queue an LDB broker for creation once saved variables have loaded.
+---
+--- Returns the spec table itself, which is what makes the deferral invisible to
+--- callers. LDB:NewDataObject moves the spec's fields into its own storage and
+--- returns that same table with a metatable attached, so the table a module
+--- holds as its `dataobj` upvalue is the identical table that later becomes the
+--- live broker. Writes made before registration land on the raw table and are
+--- picked up when LDB finally consumes it.
+---
+--- A disabled module still gets its table back, so its file-level code runs
+--- unchanged; the table simply never reaches LDB, and the module's Init never
+--- runs to write to it.
+function ns:NewBroker(key, name, spec)
+    ns.pendingBrokers[#ns.pendingBrokers + 1] = { key = key, name = name, spec = spec }
+    return spec
 end
 
 ---------------------------------------------------------------------------
@@ -1479,6 +1595,27 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
         DDT:Print("Settings migrated from Djinni's Guild & Friends.")
     end
 
+    -- Create LDB brokers for enabled modules only. Deferred to here because the
+    -- module files that queued them ran before saved variables existed. A
+    -- disabled module never gets a broker, so it disappears from the display
+    -- addon's list entirely instead of sitting there showing stale text.
+    local LDB = LibStub("LibDataBroker-1.1")
+    for _, pending in ipairs(ns.pendingBrokers) do
+        if ns:IsModuleEnabled(pending.key) then
+            LDB:NewDataObject(pending.name, pending.spec)
+        end
+    end
+    ns.pendingBrokers = {}
+
+    -- Snapshot what was actually applied this session, so the Modules panel can
+    -- tell the user which of their changes are still waiting on a reload.
+    -- Only enable state can ever be pending: poll intervals take effect
+    -- immediately because the scheduler re-reads them on every tick.
+    ns.appliedEnabled = {}
+    for key in pairs(ns.modules) do
+        ns.appliedEnabled[key] = ns:IsModuleEnabled(key)
+    end
+
     -- Setup settings UI (Settings.lua)
     DDT:SetupOptions()
 
@@ -1493,9 +1630,11 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
         end
     end
 
-    -- Initialize all registered modules
+    -- Initialize enabled modules only. A disabled module never registers its
+    -- events or starts its timers, so it costs nothing beyond the memory its
+    -- file already occupies.
     for key, mod in pairs(ns.modules) do
-        if mod.Init then
+        if ns:IsModuleEnabled(key) and mod.Init then
             mod:Init()
         end
     end
@@ -1509,8 +1648,8 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
     -- characters, BagValue walks every bag slot).
     local function RefreshAllModules()
         local queue = {}
-        for _, mod in pairs(ns.modules) do
-            if mod.UpdateData then
+        for key, mod in pairs(ns.modules) do
+            if mod.UpdateData and ns:IsModuleEnabled(key) then
                 queue[#queue + 1] = mod
             end
         end
@@ -1530,8 +1669,47 @@ initFrame:SetScript("OnEvent", function(_, _, loadedAddon)
     -- One frame isn't enough; 1s covers PLAYER_ENTERING_WORLD.
     C_Timer.After(1, RefreshAllModules)
 
-    -- Periodic refresh (180s) keeps labels current for data that changes
-    -- without firing events (e.g. gold, bag value, played time).
-    -- Shorter intervals waste CPU; longer ones make labels feel stale.
-    C_Timer.NewTicker(180, RefreshAllModules)
+    -- Periodic refresh keeps labels current for data that changes without
+    -- firing an event to say so. Each module carries its own interval
+    -- (ns.DEFAULT_POLL unless configured), and "Events only" opts out entirely.
+    --
+    -- Only modules that define UpdateData are polled at all. The rest are
+    -- either event-driven or run their own throttled OnUpdate (TimeDate,
+    -- Coordinates and PlayedTime all tick their own clocks), which is why the
+    -- Modules panel offers them no interval.
+    --
+    -- A 1s driver refreshing at most ONE due module per tick replaces the old
+    -- single aligned 180s ticker, for the same reason the initial refresh walks
+    -- one module per frame: running every UpdateData in one execution block can
+    -- trip WoW's "script ran too long" watchdog. Bunching is self-correcting -
+    -- modules that come due together are served one per second and then
+    -- re-scheduled from the moment they actually ran, so they spread out on
+    -- their own after the first cycle. The oldest due module goes first, so
+    -- nothing can be starved by a busier neighbour.
+    local nextDue = {}
+    C_Timer.NewTicker(1, function()
+        local now = GetTime()
+        local dueKey, dueMod, dueAt
+        for key, mod in pairs(ns.modules) do
+            if mod.UpdateData and ns:IsModuleEnabled(key) then
+                local poll = ns:GetModulePoll(key)
+                if poll then
+                    local at = nextDue[key]
+                    if at == nil then
+                        nextDue[key] = now + poll
+                    elseif now >= at and (dueAt == nil or at < dueAt) then
+                        dueKey, dueMod, dueAt = key, mod, at
+                    end
+                else
+                    -- "Events only": drop any pending schedule so switching back
+                    -- to a real interval starts a fresh countdown.
+                    nextDue[key] = nil
+                end
+            end
+        end
+        if dueMod then
+            nextDue[dueKey] = now + (ns:GetModulePoll(dueKey) or ns.DEFAULT_POLL)
+            pcall(dueMod.UpdateData, dueMod)
+        end
+    end)
 end)

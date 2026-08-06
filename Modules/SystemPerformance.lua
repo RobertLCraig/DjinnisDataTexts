@@ -256,7 +256,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-SystemPerformance", {
+local dataobj = ns:NewBroker("systemperformance", "DDT-SystemPerformance", {
     type  = "data source",
     text  = "0 fps  0ms",
     icon  = "Interface\\Icons\\INV_Gizmo_01",

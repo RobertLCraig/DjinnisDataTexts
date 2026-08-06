@@ -7,6 +7,8 @@ A unified LDB DataText suite for World of Warcraft: Midnight. Works with ElvUI, 
 Djinni's Data Texts (DDT) packs 24+ information-rich modules into a single addon. Each module appears as a DataText on your bar with a detailed tooltip and configurable click actions. Everything is configured through the standard Blizzard Settings interface.
 
 * **24+ modules** | Social, character, economy, instances, time, system, professions, audio
+* **Run only what you use** | Enable or disable each module individually; a disabled one creates no DataText and runs no code at all
+* **Refresh control** | Per-module refresh interval from 30 seconds to 10 minutes, or "Events only" for no timed refresh
 * **Label templates** | `<tag>` syntax with clickable tag-insert buttons and preset suggestions per module
 * **Click actions** | 9 modifier combinations per module (Left, Right, Middle, Shift, Ctrl, Alt variants)
 * **Tooltip sizing** | Width and scale configurable per module, up to 2000px wide

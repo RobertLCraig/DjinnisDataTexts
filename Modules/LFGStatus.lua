@@ -321,7 +321,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-LFGStatus", {
+local dataobj = ns:NewBroker("lfgstatus", "DDT-LFGStatus", {
     type  = "data source",
     text  = "Idle",
     icon  = "Interface\\Icons\\INV_Misc_GroupLooking",

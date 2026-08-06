@@ -330,7 +330,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-dataobj = LDB:NewDataObject("DDT-VolumeControl", {
+dataobj = ns:NewBroker("volumecontrol", "DDT-VolumeControl", {
     type  = "data source",
     text  = "Vol: --",
     icon  = "Interface\\Icons\\inv_misc_bell_01",

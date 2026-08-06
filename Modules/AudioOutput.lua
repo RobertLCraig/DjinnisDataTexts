@@ -277,7 +277,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-dataobj = LDB:NewDataObject("DDT-AudioOutput", {
+dataobj = ns:NewBroker("audiooutput", "DDT-AudioOutput", {
     type  = "data source",
     text  = "Audio: --",
     icon  = "Interface\\Icons\\inv_misc_enggizmos_29",

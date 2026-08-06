@@ -101,7 +101,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-MicroMenu", {
+local dataobj = ns:NewBroker("micromenu", "DDT-MicroMenu", {
     type  = "data source",
     text  = "Menu",
     icon  = "Interface\\Icons\\INV_Misc_Gear_01",

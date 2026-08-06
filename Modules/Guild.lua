@@ -70,7 +70,7 @@ local MOBILE_ICON = "|TInterface\\ChatFrame\\UI-ChatIcon-ArmoryChat:14|t "
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Guild", {
+local dataobj = ns:NewBroker("guild", "DDT-Guild", {
     type  = "data source",
     text  = "Guild: 0/0",
     icon  = "Interface\\GossipFrame\\TabardGossipIcon",

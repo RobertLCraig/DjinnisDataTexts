@@ -228,7 +228,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Experience", {
+local dataobj = ns:NewBroker("experience", "DDT-Experience", {
     type  = "data source",
     text  = "XP",
     icon  = "Interface\\Icons\\XP_Icon",

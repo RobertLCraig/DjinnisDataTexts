@@ -110,7 +110,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-PlayedTime", {
+local dataobj = ns:NewBroker("playedtime", "DDT-PlayedTime", {
     type  = "data source",
     text  = "0m",
     icon  = "Interface\\Icons\\Spell_Holy_BorrowedTime",

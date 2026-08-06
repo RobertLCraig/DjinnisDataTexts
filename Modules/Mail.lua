@@ -116,7 +116,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Mail", {
+local dataobj = ns:NewBroker("mail", "DDT-Mail", {
     type  = "data source",
     text  = "No Mail",
     icon  = "Interface\\Icons\\INV_Letter_15",

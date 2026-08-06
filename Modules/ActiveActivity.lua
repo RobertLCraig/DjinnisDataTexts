@@ -171,7 +171,7 @@ end
 -- LDB data object
 ---------------------------------------------------------------------------
 
-dataobj = LDB:NewDataObject("DDT-ActiveActivity", {
+dataobj = ns:NewBroker("ActiveActivity", "DDT-ActiveActivity", {
     type    = "data source",
     text    = IDLE_TEXT,
     icon    = IDLE_ICON,
@@ -180,9 +180,6 @@ dataobj = LDB:NewDataObject("DDT-ActiveActivity", {
     OnLeave = function() OnLeave() end,
     OnClick = OnClick,
 })
-if not dataobj then
-    dataobj = LDB:GetDataObjectByName("DDT-ActiveActivity")
-end
 ActiveActivity.dataobj = dataobj
 
 ---------------------------------------------------------------------------

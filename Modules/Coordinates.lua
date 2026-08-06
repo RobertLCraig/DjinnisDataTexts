@@ -121,7 +121,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Coordinates", {
+local dataobj = ns:NewBroker("coordinates", "DDT-Coordinates", {
     type  = "data source",
     text  = "0, 0",
     icon  = "Interface\\Icons\\INV_Misc_Map_01",

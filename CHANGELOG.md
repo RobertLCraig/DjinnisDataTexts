@@ -8,6 +8,8 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ### Added
 
+- **Per-module enable/disable toggles.** A new **Modules** panel, first in the DDT settings list, has an Enabled checkbox for every module plus Enable All / Disable All. A disabled module registers no LDB DataText at all, so it disappears from your display addon's list entirely and runs no code: no `Init`, no event registrations, no refreshes. This is the same effect as commenting a module out of the `.toc`, without editing files after every update. Enabling or disabling takes effect on UI reload; the panel shows a "changes pending" note and a Reload UI button. Every module defaults to enabled, so upgrading changes nothing.
+- **Per-module refresh intervals.** Each module that refreshes on a timer can be set to 30 seconds, 1 minute, 3 minutes (the previous fixed value, still the default), 5 minutes, 10 minutes, or **Events only**. "Events only" stops timed refreshes completely: the module still updates when the game reports a change, and its tooltip is always built fresh on hover. Interval changes apply immediately, without a reload. Modules that keep their own clock (Time / Date, Coordinates, Played Time) or are purely event-driven are shown as "updates on its own" rather than being offered an interval they never used.
 - **World of Warcraft 12.1 support.** The `## Interface:` line now declares both `120007` and `120100`, so the addon loads without an "out of date" flag on 12.0.7 and 12.1. A full audit of the addon's API surface against the 12.1.0 client source found nothing it calls was removed or changed.
 - **Pet Info Safari Hat "Equipped" state.** The Equip Safari Hat action now detects the Safari Hat buff (spell 158486) via `C_UnitAuras.GetPlayerAuraBySpellID` and shows a green "Equipped" status with a desaturated icon while the hat is active. Guarded by `C_Secrets.ShouldAurasBeSecret`; the row still re-applies the toy/bag item on click.
 
@@ -17,6 +19,7 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ### Changed
 
+- **Refresh scheduling now spreads modules out instead of bursting.** The single 180-second ticker that refreshed every module in one pass has been replaced by a 1-second driver that refreshes at most one due module per tick, honouring each module's own interval. Modules that fall due together are served one per second and then re-scheduled from when they actually ran, so they spread out on their own; the longest-overdue module always goes first, so none can be starved. This removes the periodic spike where every module's `UpdateData` landed on the same frame.
 - **Wider default tooltip widths** so English content no longer collides with the right-aligned values: Pet Info 300→340, Played Time 280→340, Movement Speed 320→380. A one-time, version-gated saved-variables migration raises any saved width still sitting at the old default to the new value; widths the user has customized are left untouched.
 
 

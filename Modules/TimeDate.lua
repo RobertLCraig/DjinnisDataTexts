@@ -151,7 +151,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-TimeDate", {
+local dataobj = ns:NewBroker("timedate", "DDT-TimeDate", {
     type  = "data source",
     text  = "00:00",
     icon  = "Interface\\Icons\\INV_Misc_PocketWatch_01",

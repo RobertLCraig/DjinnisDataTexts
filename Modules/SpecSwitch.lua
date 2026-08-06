@@ -292,7 +292,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-SpecSwitch", {
+local dataobj = ns:NewBroker("specswitch", "DDT-SpecSwitch", {
     type  = "data source",
     text  = "Specialization",
     icon  = "Interface\\Icons\\INV_Misc_QuestionMark",

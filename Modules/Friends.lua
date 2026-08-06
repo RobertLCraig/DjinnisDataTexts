@@ -110,7 +110,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Friends", {
+local dataobj = ns:NewBroker("friends", "DDT-Friends", {
     type  = "data source",
     text  = "Friends: 0/0",
     icon  = "Interface\\FriendsFrame\\UI-Toast-FriendOnlineIcon",

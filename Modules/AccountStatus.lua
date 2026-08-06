@@ -91,7 +91,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-AccountStatus", {
+local dataobj = ns:NewBroker("accountstatus", "DDT-AccountStatus", {
     type  = "data source",
     text  = "Acct",
     icon  = "Interface\\Icons\\Achievement_GuildPerk_MobileBank",

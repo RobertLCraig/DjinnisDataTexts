@@ -61,7 +61,7 @@ local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-Communities", {
+local dataobj = ns:NewBroker("communities", "DDT-Communities", {
     type  = "data source",
     text  = "Communities: 0",
     icon  = "Interface\\FriendsFrame\\UI-Toast-ChatInviteIcon",

@@ -1285,6 +1285,138 @@ end
 ns.AddSocialSettingsSection = AddSocialSettingsSection
 
 ---------------------------------------------------------------------------
+-- Modules panel: per-module enable + poll interval
+--
+-- One row per registered module. Purpose-built rather than assembled from
+-- AddCheckbox + AddDropdown because those each own a full row, which would
+-- make a ~27 module list twice as tall as it needs to be, and because the
+-- poll dropdown must keep ns.POLL_VALUES' deliberate order (30s, 1m, 3m, 5m,
+-- 10m, Events only) rather than the alphabetical sort AddDropdown applies.
+---------------------------------------------------------------------------
+
+local function AddModuleRow(content, y, key, refreshList)
+    local cb = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    cb:SetPoint("TOPLEFT", content, "TOPLEFT", 14, y)
+    cb:SetChecked(ns:IsModuleEnabled(key))
+    cb:SetScript("OnClick", function(self)
+        ns:SetModuleEnabled(key, self:GetChecked())
+        for _, refresh in ipairs(refreshList) do refresh() end
+    end)
+
+    local text = cb:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    text:SetPoint("LEFT", cb, "RIGHT", 2, 0)
+    text:SetText(ns:GetModuleLabel(key))
+
+    -- Only modules with an UpdateData method are reachable by the scheduler.
+    -- The rest are event-driven or run their own OnUpdate, so offering them an
+    -- interval would promise something that could never happen.
+    local mod = ns.modules[key]
+    if not (mod and mod.UpdateData) then
+        local na = content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
+        na:SetPoint("TOPLEFT", content, "TOPLEFT", 302, y - 6)
+        na:SetText("updates on its own")
+        table.insert(refreshList, function() cb:SetChecked(ns:IsModuleEnabled(key)) end)
+        return y - 28
+    end
+
+    local dropdown = CreateFrame("DropdownButton", nil, content, "WowStyle1DropdownTemplate")
+    dropdown:SetPoint("TOPLEFT", content, "TOPLEFT", 300, y - 2)
+    dropdown:SetWidth(170)
+    dropdown:SetupMenu(function(_, rootDescription)
+        for _, choice in ipairs(ns.POLL_VALUES) do
+            rootDescription:CreateButton(choice.label, function()
+                ns:SetModulePoll(key, choice.value)
+            end):SetIsSelected(function()
+                local current = ns:GetModulePoll(key)
+                if choice.value == false then return current == nil end
+                return current == choice.value
+            end)
+        end
+    end)
+
+    table.insert(refreshList, function()
+        cb:SetChecked(ns:IsModuleEnabled(key))
+        -- A disabled module does no work at all, so its interval is moot.
+        dropdown:SetEnabled(ns:IsModuleEnabled(key))
+        dropdown:GenerateMenu()
+    end)
+    dropdown:SetEnabled(ns:IsModuleEnabled(key))
+
+    return y - 28
+end
+
+local function BuildModulesPanel(panel)
+    local r = panel.refreshCallbacks
+
+    local body = AddSection(panel, "Modules")
+    local y = 0
+    y = AddDescription(body, y,
+        "Turn individual DataTexts on or off. A disabled module creates no " ..
+        "DataText at all: it disappears from your display addon's list and " ..
+        "stops doing any work, exactly as if it were removed from the addon.")
+    y = AddDescription(body, y,
+        "The interval sets how often a module refreshes its label on a timer. " ..
+        "\"Events only\" stops timed refreshes entirely; the module still " ..
+        "updates when the game tells it something changed, and its tooltip is " ..
+        "always built fresh when you hover. Modules marked \"updates on its " ..
+        "own\" keep their own clock and were never on the timer. Interval " ..
+        "changes apply straight away. Enabling or disabling a module needs a " ..
+        "UI reload.")
+
+    -- Pending-change note. Rebuilt on every refresh so it appears and clears
+    -- as the user ticks boxes rather than only when the panel is reopened.
+    local pending = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pending:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y - 4)
+    pending:SetTextColor(1, 0.82, 0)
+    table.insert(r, function()
+        pending:SetText(ns:HasPendingModuleChanges()
+            and "Changes pending - reload the UI to apply them."
+            or "")
+    end)
+    y = y - 22
+
+    y = AddButton(body, y, "Reload UI", function() ReloadUI() end)
+
+    local allBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
+    allBtn:SetPoint("TOPLEFT", body, "TOPLEFT", 188, y + 30)
+    allBtn:SetSize(110, 24)
+    allBtn:SetText("Enable All")
+    allBtn:SetScript("OnClick", function()
+        for key in pairs(ns.modules) do ns:SetModuleEnabled(key, true) end
+        for _, refresh in ipairs(r) do refresh() end
+    end)
+
+    local noneBtn = CreateFrame("Button", nil, body, "UIPanelButtonTemplate")
+    noneBtn:SetPoint("TOPLEFT", body, "TOPLEFT", 306, y + 30)
+    noneBtn:SetSize(110, 24)
+    noneBtn:SetText("Disable All")
+    noneBtn:SetScript("OnClick", function()
+        for key in pairs(ns.modules) do ns:SetModuleEnabled(key, false) end
+        for _, refresh in ipairs(r) do refresh() end
+    end)
+
+    y = y - 10
+
+    -- Column headings, aligned with the rows below.
+    local hEnabled = body:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hEnabled:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
+    hEnabled:SetText("Module")
+    local hPoll = body:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hPoll:SetPoint("TOPLEFT", body, "TOPLEFT", 300, y)
+    hPoll:SetText("Refresh interval")
+    y = y - 18
+
+    local keys = {}
+    for key in pairs(ns.modules) do keys[#keys + 1] = key end
+    table.sort(keys, function(a, b) return ns:GetModuleLabel(a) < ns:GetModuleLabel(b) end)
+    for _, key in ipairs(keys) do
+        y = AddModuleRow(body, y, key, r)
+    end
+
+    EndSection(panel, y)
+end
+
+---------------------------------------------------------------------------
 -- Registration
 ---------------------------------------------------------------------------
 
@@ -1295,7 +1427,15 @@ function DDT:SetupOptions()
     -- Register with Blizzard Settings
     local mainCategory = Settings.RegisterCanvasLayoutCategory(generalPanel, "Djinni's Data Texts")
 
-    -- Collect all subcategories from registered modules, sort alphabetically
+    -- Registered before the alphabetical loop below so it sits at the top of the
+    -- list rather than being filed under "M".
+    local modulesPanel = CreateScrollPanel()
+    BuildModulesPanel(modulesPanel)
+    Settings.RegisterCanvasLayoutSubcategory(mainCategory, modulesPanel, "Modules")
+
+    -- Collect all subcategories from registered modules, sort alphabetically.
+    -- Disabled modules keep their subcategory so their settings stay reachable
+    -- and are not silently lost while the module is switched off.
     local subcats = {}
     for key, mod in pairs(ns.modules) do
         if mod.BuildSettingsPanel then

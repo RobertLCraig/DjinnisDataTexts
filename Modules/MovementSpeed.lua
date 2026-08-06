@@ -221,7 +221,7 @@ end
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
-local dataobj = LDB:NewDataObject("DDT-MovementSpeed", {
+local dataobj = ns:NewBroker("movementspeed", "DDT-MovementSpeed", {
     type  = "data source",
     text  = "0%",
     icon  = "Interface\\Icons\\Ability_Rogue_Sprint",
