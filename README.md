@@ -36,7 +36,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Friends** | Character and Battle.net friends with game info, status, broadcasts. Filterable by type. |
 | **Communities** | WoW Communities roster showing online members, role badges, M+ scores, and BNet App status. |
 
-![Friends](Docs/Friends.png) ![Guild](Docs/Guild.png) ![Communities](Docs/Communities.png)
+![Friends](docs/images/Friends.png) ![Guild](docs/images/Guild.png) ![Communities](docs/images/Communities.png)
 
 ### Character & Stats
 
@@ -49,9 +49,9 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Spec Switch** | Active spec, talent loadout switching, loot spec selection. Shows all specs with role icons and loadouts. |
 | **Movement Speed** | Current/base speed as %, ground/fly/swim/skyriding speeds, active speed buff detection. Shopping list integration (Auctionator/TSM) for Midnight-era speed consumables. |
 
-![Spec Switch](Docs/SpecSwitch.png) ![Character Info](Docs/CharacterInfo.png) ![Experience](Docs/Experience.png) ![Movement Speed](Docs/MoveSpeed.png)
+![Spec Switch](docs/images/SpecSwitch.png) ![Character Info](docs/images/CharacterInfo.png) ![Experience](docs/images/Experience.png) ![Movement Speed](docs/images/MoveSpeed.png)
 
-![Account Status](Docs/AccountStatus.png) ![Account Status (tooltip)](Docs/AccountStatus2.png)
+![Account Status](docs/images/AccountStatus.png) ![Account Status (tooltip)](docs/images/AccountStatus2.png)
 
 ### Inventory & Economy
 
@@ -61,7 +61,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Bag Value** | Total bag value via TSM price sources (6 sources) with vendor fallback. Top items breakdown, free/total slot display. |
 | **Mail** | Unread mail indicator with full mailbox scan: sender, subject, money, attachments, expiry countdown. |
 
-![Currency](Docs/Currency.png) ![Bag Value](Docs/BagValue.png) ![Mail](Docs/Mail.png)
+![Currency](docs/images/Currency.png) ![Bag Value](docs/images/BagValue.png) ![Mail](docs/images/Mail.png)
 
 ### Instances & Progress
 
@@ -74,9 +74,9 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Delve** | Live delve progress — tier, step criteria, companion level and XP, Sanctified Banner state, active modifiers. Diagnostic dump via `/ddtdelve`. |
 | **Active Activity** | Unified aggregator that routes hover, clicks, and label updates to whichever sub-tracker (Delve, Prey Tracker, ...) is currently engaged. One broker instead of several empty ones when idle. |
 
-![Saved Instances](Docs/SavedInstances.png) ![Saved Instances (extended)](Docs/SavedInstances2.png) ![Saved Instances (condensed)](Docs/SavedInstances3.png)
+![Saved Instances](docs/images/SavedInstances.png) ![Saved Instances (extended)](docs/images/SavedInstances2.png) ![Saved Instances (condensed)](docs/images/SavedInstances3.png)
 
-![LFG Status](Docs/LFGStatus.png) ![LFG Status (queued)](Docs/LFGStatus2.png) ![Pet Info](Docs/Pets.png)
+![LFG Status](docs/images/LFGStatus.png) ![LFG Status (queued)](docs/images/LFGStatus2.png) ![Pet Info](docs/images/Pets.png)
 
 ### Time & Location
 
@@ -85,7 +85,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Time / Date** | Server and local time with 12h/24h toggle, seconds display. Daily and weekly reset countdowns. Calendar events and holidays. Configurable strftime date format with presets. |
 | **Coordinates** | Player map coordinates via C_Map API. Zone, subzone, map name, map ID in tooltip. Click actions for world/zone map, coord copy, TomTom waypoint paste. |
 
-![Time / Date](Docs/DateTime.png) ![Coordinates](Docs/Coords.png)
+![Time / Date](docs/images/DateTime.png) ![Coordinates](docs/images/Coords.png)
 
 ### System & Utility
 
@@ -95,7 +95,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Played Time** | Session timer, total /played time, level /played time. Class-colored character display. |
 | **Micro Menu** | Quick-access clickable launcher for all game panels (character, spellbook, talents, achievements, collections, etc.). |
 
-![System Performance](Docs/SystemPerformance.png)
+![System Performance](docs/images/SystemPerformance.png)
 
 ### Audio *(alpha)*
 
@@ -141,9 +141,9 @@ Every module supports customizable LDB text via `<tag>` template syntax. Tags ar
 
 ### Settings
 
-![Account Status Settings](Docs/Settings%20-%20AccountStatus.png) ![Friends Settings 1](Docs/Settings%20-%20Friends%201.png) ![Friends Settings 2](Docs/Settings%20-%20Friends%202.png)
+![Account Status Settings](docs/images/Settings%20-%20AccountStatus.png) ![Friends Settings 1](docs/images/Settings%20-%20Friends%201.png) ![Friends Settings 2](docs/images/Settings%20-%20Friends%202.png)
 
-![Pet Info Settings](Docs/Settings%20-%20PetInfo.png) ![Saved Instances Settings](Docs/Settings%20-%20SavedInstances.png)
+![Pet Info Settings](docs/images/Settings%20-%20PetInfo.png) ![Saved Instances Settings](docs/images/Settings%20-%20SavedInstances.png)
 
 ### Click Actions
 

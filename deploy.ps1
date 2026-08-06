@@ -18,13 +18,12 @@ $ExcludeFiles = @(
     "release.ps1"
     "RELEASE_NOTES.md"
     "CHANGELOG.md"
-    "task.md"
 )
 $ExcludeFolders = @(
     ".git"
     ".claude"
     ".agents"
-    "Docs"
+    "docs"
     "releases"
 )
 
