@@ -43,33 +43,61 @@ cannot know it is disabled at file-load time because saved variables do not exis
 <!-- AC:END -->
 
 ## Tasks
-- [ ] `Core.lua`: `ns.db.modules = { [key] = { enabled, poll } }`, stored outside per-module
+- [x] `Core.lua`: `ns.db.modules = { [key] = { enabled, poll } }`, stored outside per-module
       settings so resets cannot clear it. Helpers `ns:IsModuleEnabled(key)` (default true)
       and `ns:GetModulePoll(key)` (default 180).
-- [ ] `Core.lua`: `ns:NewBroker(key, name, spec)` queues `{key, name, spec}` on
+- [x] `Core.lua`: `ns:NewBroker(key, name, spec)` queues `{key, name, spec}` on
       `ns.pendingBrokers` and returns `spec` unchanged, so each module's `dataobj` upvalue
       keeps working. The plan verified identity is preserved: `LDB:NewDataObject` mutates
       and returns that same table.
-- [ ] `Core.lua`: in `ADDON_LOADED`, after the db is ready and before Init, create brokers
+- [x] `Core.lua`: in `ADDON_LOADED`, after the db is ready and before Init, create brokers
       for enabled modules only. Gate the Init loop on `ns:IsModuleEnabled(key)`.
-- [ ] `Core.lua`: replace `C_Timer.NewTicker(180, RefreshAllModules)` with a 1s driver that
+- [x] `Core.lua`: replace `C_Timer.NewTicker(180, RefreshAllModules)` with a 1s driver that
       refreshes at most one due module per tick, honouring each module's interval.
-- [ ] ~23 module files: swap `LDB:NewDataObject("DDT-X", {...})` for
+- [x] ~23 module files: swap `LDB:NewDataObject("DDT-X", {...})` for
       `ns:NewBroker("xkey", "DDT-X", {...})`. Mechanical, one line each.
-- [ ] ActiveActivity / PreyTracker / Delve: inspect rather than mechanically edit. The two
+- [x] ActiveActivity / PreyTracker / Delve: inspect rather than mechanically edit. The two
       feeders push a plain-table dataobj into the aggregator's combined broker; confirm a
       disabled feeder or aggregator no-ops instead of erroring, and add guards if not.
-- [ ] Professions: no broker line to change (brokers are created in Init). One toggle,
+- [x] Professions: no broker line to change (brokers are created in Init). One toggle,
       handled by gating Init and refresh.
-- [ ] `Settings.lua`: a "Modules" panel registered before the alphabetical loop so it sits
+- [x] `Settings.lua`: a "Modules" panel registered before the alphabetical loop so it sits
       first. Scrollable list, per row an Enabled checkbox and a poll dropdown
       (180s default / 30s / 60s / 5m / 10m / Events only). Top note that changes apply
       after a reload, a Reload UI button, Enable All / Disable All, pending indicator.
-- [ ] Bump `.toc` to 0.10.0 and write CHANGELOG / RELEASE_NOTES / CURSEFORGE entries.
-      Rob drives the actual release.
-- [ ] Verify in game: `deploy.ps1`, `/reload`, disable a module and confirm the broker is
-      gone from the display addon's list and stops refreshing; set another to Events only
-      and confirm hover still shows live data; re-enable and confirm it returns.
+- [~] CHANGELOG and CURSEFORGE entries written. **`.toc` and RELEASE_NOTES left
+      alone deliberately**: `release.ps1` derives the `.toc` version from the
+      `## Version:` line in RELEASE_NOTES.md and auto-corrects any mismatch, so
+      hand-bumping the `.toc` to 0.10.0 while RELEASE_NOTES still reads 0.9.12
+      would be silently reverted at release time. RELEASE_NOTES is also still
+      holding the already-shipped 0.9.12 notes, and composing the next release
+      (which version, and whether the unreleased 12.1 work ships with it) is
+      Rob's call, not this card's. Notes are in CHANGELOG `[Unreleased]`.
+- [ ] **Not done: verify in game.** `deploy.ps1`, `/reload`, disable a module and
+      confirm the broker is gone from the display addon's list and stops
+      refreshing; set another to Events only and confirm hover still shows live
+      data; re-enable and confirm it returns. This is the acceptance evidence
+      that cannot be produced outside the game client.
+
+## Verification so far
+
+- `luac -p` parses every Lua file in the addon cleanly. Note this is Lua 5.4 and
+  WoW runs 5.1, so it proves syntax, not runtime compatibility.
+- A throwaway harness loaded the real `Core.lua` against a stubbed WoW API and
+  ran 30 checks, all passing, covering acceptance 1 to 7: no broker and no
+  `Init` for a disabled module, per-module intervals honoured, "Events only"
+  never polling, at most one refresh per tick, defaults preserved on upgrade,
+  both resets leaving toggles alone, and a re-enabled module getting its broker
+  and its saved settings back. The harness is not committed; it stubs enough of
+  the WoW API to load one file and is not a test suite.
+- Acceptance 8 (aggregator trio) was verified by reading rather than running:
+  `RegisterActivityTracker` and `NotifyActivityChange` are both defined at file
+  scope in ActiveActivity.lua, so they exist even when that module is disabled,
+  both feeder call sites are guarded with `if ns.X then`, and both bodies are
+  gated on `_initialized`, which only `Init` sets.
+- **Nothing has been run in the game client.** The Settings panel is entirely
+  unexercised: no frame in it has ever been constructed. Treat the whole
+  Modules panel as unverified until someone loads it.
 
 ## Direction
 **2026-06-23** Scope locked to toggles plus poll control, applied on reload rather than live.
