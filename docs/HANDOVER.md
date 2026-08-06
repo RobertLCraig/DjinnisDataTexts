@@ -5,9 +5,9 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.12 released; nine build phases complete; next feature is per-module
-enable/disable toggles (card 0001), planned in full and not yet started.
-_Last updated: 2026-08-06 (first handover; doc layout migrated and board scaffolded)_
+**Status:** v0.9.12 released; per-module toggles and poll control (card 0001) are built and
+in `ai-review/`, unverified in the game client and unreleased.
+_Last updated: 2026-08-06 (card 0001 built; toggles and per-module refresh intervals)_
 
 ## Goal & success criteria
 
@@ -84,11 +84,22 @@ Three modules are not one-broker-one-file: **PreyTracker** and **Delve** feed pl
 dataobjs into **ActiveActivity**, which owns the combined broker. Treat them as a unit.
 
 The refresh model, which is the thing most likely to be misunderstood:
-`C_Timer.NewTicker(180, RefreshAllModules)` at [Core.lua:1536](../Core.lua#L1536) refreshes
-**every** module with an `UpdateData`, whether or not any display is showing it. It walks
-one module per frame deliberately, because doing them all in one block trips WoW's
-"script ran too long" watchdog. Heavy work (tooltip contents, deep scans) is hover-gated and
-does not run on the ticker. Card 0001 replaces the ticker with a per-module scheduler.
+
+- **Brokers are deferred.** A module calls `ns:NewBroker(key, name, spec)` at file-load time,
+  which queues the spec and hands the same table straight back; `ADDON_LOADED` then registers
+  only the enabled ones with LDB. This exists because module files run before saved variables
+  do, so nothing can know it is disabled when it registers, and LDB has no unregister.
+- **Enable state and poll interval live in `ns.db.modules`**, outside each module's own
+  settings table, so neither reset path can reach them. Both default to the old behaviour.
+- **A 1s driver refreshes at most one due module per tick**, each on its own interval. One
+  per tick, and one per frame during the initial refresh, both exist for the same reason:
+  Experience scans the quest log, SavedInstances iterates characters and BagValue walks every
+  bag slot, and running them together trips WoW's "script ran too long" watchdog.
+- **Only modules defining `UpdateData` are ever polled.** Eight are not: ActiveActivity,
+  AudioOutput, BagValue, Coordinates, MicroMenu, PlayedTime, TimeDate, VolumeControl. They
+  are event-driven or keep their own throttled `OnUpdate`. This was already true of the old
+  ticker, whose comment wrongly claimed it refreshed bag value and played time.
+- Heavy work (tooltip contents, deep scans) is hover-gated and never runs on the timer.
 
 ## Key files / structure
 
@@ -158,7 +169,10 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   settings migrate automatically and a coexistence warning fires if both are loaded.
   Recent releases have mostly been Midnight-era compatibility: combat-lockdown guards on
   secure tooltip parents, secret-taint pcalls, and the 12.1 support pass.
-- **In progress:** nothing. The tree is clean and no card is in `in-progress/`.
+- **In progress:** nothing is in `in-progress/`. Card 0001 sits in `ai-review/`: per-module
+  enable/disable toggles and per-module refresh intervals are written and committed, but
+  **have never been run in the game client**, and the new Modules settings panel has not had
+  a single frame constructed. It is unreleased; the `.toc` still reads 0.9.12.
 - **Known bugs / broken:** none open. Note that this is the absence of a bug list rather
   than the presence of a green test suite; there is no automated verification at all, and
   everything is confirmed by loading the addon in game.
@@ -168,9 +182,9 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **0001 per-module enable/disable toggles and poll control.** Fully planned in
-   [docs/build/PLAN-module-toggles.md](build/PLAN-module-toggles.md), acceptance criteria
-   written, nothing blocking it. This is the card to pick up.
+1. **Run card 0001 in the game client.** It is in `ai-review/` and is the only thing standing
+   between the toggle work and a release. `deploy.ps1`, `/reload`, then work the Modules
+   panel. Its acceptance criteria are the test script, and none of them are ticked yet.
 2. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 3. **0003 / 0004 Achievements and Quest Log module scope.** Both waiting on card 0002.
