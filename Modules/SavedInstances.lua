@@ -529,9 +529,9 @@ function SavedInst:SaveCurrentCharData()
 
     -- Current spec and role
     local specName, specRole
-    local specID = GetSpecialization and GetSpecialization()
+    local specID = C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization()
     if specID then
-        _, specName, _, _, specRole = GetSpecializationInfo(specID)
+        _, specName, _, _, specRole = C_SpecializationInfo.GetSpecializationInfo(specID)
     end
 
     ns.db.altLockouts[key] = {
@@ -1381,9 +1381,9 @@ function SavedInst:BuildTooltipContent()
             youOv:SetScript("OnEnter", function(self)
                 SavedInst:CancelHideTimer()
                 capturedYouHL:Show()
-                local specID = GetSpecialization and GetSpecialization()
+                local specID = C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization()
                 local specName, specRole
-                if specID then _, specName, _, _, specRole = GetSpecializationInfo(specID) end
+                if specID then _, specName, _, _, specRole = C_SpecializationInfo.GetSpecializationInfo(specID) end
                 SavedInst:ShowCharTooltip(self, {
                     name = youName, realm = GetRealmName(), class = youClass,
                     specName = specName or "", role = specRole or "",

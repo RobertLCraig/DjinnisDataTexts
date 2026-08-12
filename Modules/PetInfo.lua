@@ -432,7 +432,7 @@ local function ConfigureActionButton(btn, def)
             btn:SetAttribute("type", "toy")
             btn:SetAttribute("toy", def.toyID)
             btn.icon:SetDesaturated(true)
-            if IsEquippedItem and IsEquippedItem(def.toyID) then
+            if C_Item.IsEquippedItem and C_Item.IsEquippedItem(def.toyID) then
                 btn.status:SetText("|cff888888Equipped|r")
             else
                 btn.status:SetText("|cff888888not owned|r")

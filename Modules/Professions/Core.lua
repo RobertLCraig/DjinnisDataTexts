@@ -181,7 +181,7 @@ function Professions:DetectProfessions()
             local expData = profDef.expansions[expansion]
             -- Detection via expansion-specific spell rather than skill line
             -- because skill line exists even if the player hasn't trained yet.
-            local hasExpansion = expData and C_SpellBook and C_SpellBook.IsSpellKnown(expData.spellID)
+            local hasExpansion = expData and C_SpellBook.IsSpellKnown(expData.spellID, Enum.SpellBookSpellBank.Player)
             self:RegisterProfession(profKey, profDef, profIndex, texture, hasExpansion)
         end
     end
@@ -1194,8 +1194,7 @@ function Professions:RenderBuffAlerts(sc, yOffset, rowIdx, hdrIdx, profKey, inne
         row:SetWidth(innerWidth)
 
         -- Icon from spell
-        local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(alert.spellID)
-            or GetSpellTexture(alert.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
+        local iconID = C_Spell.GetSpellTexture(alert.spellID)
         if iconID then
             row.icon:SetTexture(iconID)
             row.icon:SetDesaturated(not isActive)
@@ -1266,8 +1265,7 @@ function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, inner
 
     for _, cd in ipairs(cooldowns) do
         -- Check if the player knows this spell
-        local isKnown = C_SpellBook and C_SpellBook.IsSpellKnown(cd.spellID)
-        if isKnown == nil then isKnown = IsSpellKnown and IsSpellKnown(cd.spellID) end
+        local isKnown = C_SpellBook.IsSpellKnown(cd.spellID, Enum.SpellBookSpellBank.Player)
         if isKnown then
             rowIdx = rowIdx + 1
             local row = GetOrCreateRow(profKey, sc, rowIdx)
@@ -1276,8 +1274,7 @@ function Professions:RenderCooldowns(sc, yOffset, rowIdx, hdrIdx, profKey, inner
             row:SetWidth(innerWidth - 4)
 
             -- Spell icon
-            local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(cd.spellID)
-                or GetSpellTexture(cd.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
+            local iconID = C_Spell.GetSpellTexture(cd.spellID)
             if iconID then
                 row.icon:SetTexture(iconID)
                 row.icon:Show()
@@ -1357,8 +1354,7 @@ function Professions:RenderBuffTrackers(sc, yOffset, rowIdx, hdrIdx, profKey, in
         row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
         row:SetWidth(innerWidth)
 
-        local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(tracker.spellID)
-            or GetSpellTexture(tracker.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
+        local iconID = C_Spell.GetSpellTexture(tracker.spellID)
         if iconID then
             row.icon:SetTexture(iconID)
             row.icon:SetDesaturated(not isActive)
@@ -1440,8 +1436,7 @@ function Professions:RenderTrackingToggle(sc, yOffset, rowIdx, hdrIdx, profKey, 
     row:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
     row:SetWidth(innerWidth)
 
-    local iconID = C_Spell and C_Spell.GetSpellTexture and C_Spell.GetSpellTexture(toggle.spellID)
-        or GetSpellTexture(toggle.spellID)  -- FLAG(legacy): deprecated GetSpellTexture global; dead fallback (C_Spell always present) — revisit/cleanup
+    local iconID = C_Spell.GetSpellTexture(toggle.spellID)
     if iconID then
         row.icon:SetTexture(iconID)
         row.icon:SetDesaturated(not isTracking)

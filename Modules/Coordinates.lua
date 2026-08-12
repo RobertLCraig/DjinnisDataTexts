@@ -161,7 +161,7 @@ local dataobj = ns:NewBroker("coordinates", "DDT-Coordinates", {
             msg = msg .. " (" .. coordStr .. ")"
             local channel = IsInRaid() and "RAID" or IsInGroup() and "PARTY" or nil
             if channel then
-                SendChatMessage(msg, channel)
+                C_ChatInfo.SendChatMessage(msg, channel)
             else
                 ChatFrameUtil.OpenChat(msg)
             end

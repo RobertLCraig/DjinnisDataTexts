@@ -18,6 +18,9 @@ $ExcludeFiles = @(
     "release.ps1"
     "RELEASE_NOTES.md"
     "CHANGELOG.md"
+    "CURSEFORGE.md"
+    "pkgmeta.yaml"
+    ".gitattributes"
 )
 $ExcludeFolders = @(
     ".git"

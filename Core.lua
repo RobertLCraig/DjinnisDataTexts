@@ -1386,7 +1386,7 @@ function DDT:ExecuteAction(action, charName, realmName, fullName, bnet, tooltipF
 
     elseif action == "invite" then
         if bnet and bnet.gameAccountID then
-            BNInviteFriend(bnet.gameAccountID)
+            C_BattleNet.InviteFriend(bnet.gameAccountID)
         elseif fullName and fullName ~= "" then
             C_PartyInfo.InviteUnit(fullName)
         end

@@ -343,12 +343,12 @@ function SpecSwitch:GetDB()
 end
 
 function SpecSwitch:UpdateData()
-    self.currentSpecIndex = GetSpecialization() or 0
+    self.currentSpecIndex = C_SpecializationInfo.GetSpecialization() or 0
     local numSpecs = GetNumSpecializations() or 0
 
     wipe(self.specCache)
     for i = 1, numSpecs do
-        local id, name, _, icon, role = GetSpecializationInfo(i)
+        local id, name, _, icon, role = C_SpecializationInfo.GetSpecializationInfo(i)
         if id then
             self.specCache[i] = { id = id, name = name, icon = icon, role = role }
         end

@@ -398,8 +398,8 @@ function ItemLevel:CopySimCString()
     local lines = {}
     local _, classFile = UnitClass("player")
     local _, raceName = UnitRace("player")
-    local specID = GetSpecialization and GetSpecialization()
-    local specName = specID and select(2, GetSpecializationInfo(specID)) or "Unknown"
+    local specID = C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization()
+    local specName = specID and select(2, C_SpecializationInfo.GetSpecializationInfo(specID)) or "Unknown"
     local level = UnitLevel("player")
     local realmName = GetRealmName():gsub("%s", "")
 
