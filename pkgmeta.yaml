@@ -1,21 +1,48 @@
 ## CurseForge / WoWInterface automatic packager configuration
 ## https://support.curseforge.com/support/solutions/articles/9000197281
+##
+## The `ignore:` list below is the SINGLE SOURCE OF TRUTH for what is not part of
+## the addon. Three things read it:
+##
+##   1. the CurseForge packager, which builds the zip users download
+##   2. release.ps1, which builds the local/GitHub release zip
+##   3. deploy.ps1, which mirrors into the game's Interface\AddOns folder
+##
+## Both scripts parse this block at runtime rather than keeping their own copies.
+## They used to keep their own, the three drifted, and CURSEFORGE.md shipped inside
+## every release zip as a result. Add an entry here and all three honour it.
+##
+## The rule: if the addon does not need it to run in the game, it goes in this list.
 
 package-as: DjinnisDataTexts
 
 ignore:
+  # Version control and agent tooling
   - .git
+  - .gitattributes
   - .gitignore
   - .claude
+  - .agents
+  # Documentation. CHANGELOG.md is ignored here but still read by manual-changelog
+  # below: the packager publishes it to the addon page instead of shipping it.
   - CHANGELOG.md
   - CLAUDE.md
-  - DemoMode.lua
-  - deploy.ps1
-  - docs
-  - pkgmeta.yaml
-  - release.ps1
+  - CURSEFORGE.md
+  - README.md
   - RELEASE_NOTES.md
+  - docs
+  # Build and deploy tooling
+  - deploy.ps1
+  - deploy.sh
+  - release.ps1
+  - pkgmeta.yaml
   - releases
+  # Lua that exists in the tree but is not loaded by the .toc, so it cannot run:
+  # DemoMode is commented out, MajesticBeast was retired into Modules/Professions/
+  - DemoMode.lua
+  - Modules/MajesticBeast.lua
+  # A SavedVariables file, if one is ever copied into the repo to reproduce a bug
+  - DjinnisDataTextsDB.lua
 
 manual-changelog:
   filename: CHANGELOG.md

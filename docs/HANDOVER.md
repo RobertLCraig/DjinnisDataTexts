@@ -7,8 +7,8 @@
 **Stage:** shipped
 **Status:** v0.9.12 is the last release; the tree is at 0.9.13, carrying the 12.1.0 pass and
 per-module toggles and poll control (card 0001). Neither has been run in the game client, and
-0.9.13 is unreleased. Deployed to the game folder and clean in git, on a branch, unpushed.
-_Last updated: 2026-08-14 (12.1.0 pass reviewed and confirmed deployed; changelog corrected)_
+0.9.13 is unreleased. Deployed to the game folder as 54 files, and clean in git.
+_Last updated: 2026-08-14 (12.1.0 pass reviewed and deployed; one exclusion list in pkgmeta.yaml)_
 
 ## Goal & success criteria
 
@@ -122,28 +122,31 @@ docs/                      HANDOVER + board + build/ + spec/ + images/
 ```
 
 Non-obvious things worth knowing before you touch them:
-- **Three exclusion lists must agree**: `pkgmeta.yaml`, `release.ps1` (`$ExcludeNames`) and
-  `deploy.ps1` (`$ExcludeFiles` / `$ExcludeFolders`). Adding a root-level dev file means
-  editing all three, or it ships to users. **They currently disagree**, because the 12.1.0
-  pass edited only `deploy.ps1`, which is exactly the trap this note warns about:
+- **There is one exclusion list, and it lives in `pkgmeta.yaml`** (2026-08-14). Its `ignore:`
+  block is parsed at runtime by `release.ps1` and `deploy.ps1`, so the CurseForge zip, the
+  release zip and the game folder cannot disagree. **Add exclusions there and nowhere else.**
+  Both scripts throw rather than continue if the file is missing or the block is empty, so
+  the failure mode is a refusal, not a silent ship of everything.
 
-  | File | `deploy.ps1` | `release.ps1` | `pkgmeta.yaml` | Effect |
-  |---|---|---|---|---|
-  | `CURSEFORGE.md` | excluded | — | — | ships inside both zips |
-  | `.gitattributes` | excluded | — | — | ships inside both zips |
-  | `DemoMode.lua` | — | excluded | excluded | copied into the game folder |
-
-  `DemoMode.lua` is harmless: it is commented out of the `.toc`, so it is copied and never
-  loaded. The other two are the live question, and it is still Rob's rather than a tidy-up,
-  for the reason below.
-- **`CURSEFORGE.md` ships inside the addon zip**, and did so in every release to date. That
-  is probably unintended, but removing it changes what users receive, so it is Rob's call.
-  Left as found and flagged, now with the added wrinkle that `deploy.ps1` alone stopped
-  copying it as of `12f483c`.
+  This replaces three hand-synced lists that had already drifted: `CURSEFORGE.md` and
+  `.gitattributes` were shipping inside every zip, and `DemoMode.lua` plus the retired
+  `Modules/MajesticBeast.lua` were being copied into the game folder. The rule the list
+  encodes: **if the addon does not need it to run in the game, it is ignored.** That is 54
+  files shipped, identical in all three destinations.
 - **`--help/DjinnisDataTexts-v0.9.11.zip` was tracked in git**: a 793KB build artefact in a
   directory created from a mistyped `release.ps1` argument. `12f483c` untracked it and moved
   the zip into gitignored `releases/`. Card 0005 stays open for the other half of its ask:
   `release.ps1` still turns an unparsed `--help` into a directory rather than refusing.
+- **`release.ps1` would currently roll the version backwards.** It takes the version from
+  `RELEASE_NOTES.md`, which still reads `0.9.12`, and rewrites the `.toc` to match. The
+  `.toc` is at `0.9.13`. Running it as-is would therefore release 0.9.13's code labelled
+  0.9.12. There is also no `v0.9.12` git tag despite this handover recording v0.9.12 as
+  released, so the auto-bump guard that would otherwise catch the collision will not fire.
+  **Set `RELEASE_NOTES.md` to the version you actually intend before releasing.**
+- **`-DryRun` on `release.ps1` is not entirely dry.** If the tag it computes already exists,
+  the auto-bump block writes `RELEASE_NOTES.md` and the `.toc` without checking `$DryRun`
+  ([release.ps1](../release.ps1), section 3). Harmless today because no colliding tag exists,
+  but do not treat the dry run as read-only on a version that has been tagged.
 - `Libs/` is vendored third-party code. Do not edit it.
 
 ## Decisions locked
@@ -172,6 +175,15 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   in the tree but commented out of the `.toc`.
 - **Docs live under `docs/`** as of 2026-08-06, except README / CHANGELOG / RELEASE_NOTES /
   CURSEFORGE, which the release toolchain and the addon page read from the root.
+- **`pkgmeta.yaml` owns the one exclusion list** (2026-08-14), parsed by both PowerShell
+  scripts rather than duplicated into them. Rejected keeping three lists and re-aligning
+  them: they had drifted once already, and a list that must be edited in three places is a
+  list that will drift again. The scripts duplicate a twelve-line parser instead, which is
+  the cheaper thing to keep in step because it has no reason to change.
+- **Nothing ships that the addon does not need to run** (2026-08-14). This is what decided
+  the open `CURSEFORGE.md` question, and it also drops `DemoMode.lua` and the retired
+  `Modules/MajesticBeast.lua`, both of which are in the tree but absent from the `.toc` and
+  therefore incapable of running.
 
 ## Current state
 
