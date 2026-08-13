@@ -284,13 +284,17 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `claude/wow-12.1.0-patch-update`, clean, no PR. It is one commit ahead of `master`
-(`12f483c`, the 12.1.0 pass), and `master` is itself **7 commits ahead of `origin/master`**.
-Nothing since v0.9.12 has reached GitHub. The merge is a fast-forward; this is workspace
-card 0007.
+On `master`, clean, and pushed to `origin/master`. `claude/wow-12.1.0-patch-update`
+fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and the exclusion-list
+consolidation, closing a ten-commit gap in which nothing since v0.9.12 had reached GitHub.
+That was workspace card 0007. The merged branch still exists locally and is safe to delete.
 
-There is otherwise no branching convention in the history: work lands directly on `master`
-and releases are tagged from it, so this branch is the exception rather than a new habit.
+No branching convention in the history otherwise: work lands directly on `master` and
+releases are tagged from it, so that branch was the exception rather than a new habit.
+
+Tags are a separate matter and are **behind the code**. The newest is `v0.9.11`; this
+handover records v0.9.12 as released, but no `v0.9.12` tag exists, and the tree is at
+0.9.13. See the release-trap notes under Key files before running `release.ps1`.
 
 ## Session log
 
