@@ -5,9 +5,10 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.12 released; per-module toggles and poll control (card 0001) are built and
-in `ai-review/`, unverified in the game client and unreleased.
-_Last updated: 2026-08-06 (card 0001 built; toggles and per-module refresh intervals)_
+**Status:** v0.9.12 is the last release; the tree is at 0.9.13, carrying the 12.1.0 pass and
+per-module toggles and poll control (card 0001). Neither has been run in the game client, and
+0.9.13 is unreleased. Deployed to the game folder and clean in git, on a branch, unpushed.
+_Last updated: 2026-08-14 (12.1.0 pass reviewed and confirmed deployed; changelog corrected)_
 
 ## Goal & success criteria
 
@@ -123,12 +124,26 @@ docs/                      HANDOVER + board + build/ + spec/ + images/
 Non-obvious things worth knowing before you touch them:
 - **Three exclusion lists must agree**: `pkgmeta.yaml`, `release.ps1` (`$ExcludeNames`) and
   `deploy.ps1` (`$ExcludeFiles` / `$ExcludeFolders`). Adding a root-level dev file means
-  editing all three, or it ships to users.
-- **`CURSEFORGE.md` is in none of them**, so it currently ships inside the addon zip. That
-  is probably unintended, but changing it changes what users receive, so it is Rob's call
-  rather than a tidy-up. Left as found and flagged here.
-- **`--help/DjinnisDataTexts-v0.9.11.zip` is tracked in git**: a 793KB build artefact in a
-  directory created from a mistyped `release.ps1` argument. Card 0005.
+  editing all three, or it ships to users. **They currently disagree**, because the 12.1.0
+  pass edited only `deploy.ps1`, which is exactly the trap this note warns about:
+
+  | File | `deploy.ps1` | `release.ps1` | `pkgmeta.yaml` | Effect |
+  |---|---|---|---|---|
+  | `CURSEFORGE.md` | excluded | — | — | ships inside both zips |
+  | `.gitattributes` | excluded | — | — | ships inside both zips |
+  | `DemoMode.lua` | — | excluded | excluded | copied into the game folder |
+
+  `DemoMode.lua` is harmless: it is commented out of the `.toc`, so it is copied and never
+  loaded. The other two are the live question, and it is still Rob's rather than a tidy-up,
+  for the reason below.
+- **`CURSEFORGE.md` ships inside the addon zip**, and did so in every release to date. That
+  is probably unintended, but removing it changes what users receive, so it is Rob's call.
+  Left as found and flagged, now with the added wrinkle that `deploy.ps1` alone stopped
+  copying it as of `12f483c`.
+- **`--help/DjinnisDataTexts-v0.9.11.zip` was tracked in git**: a 793KB build artefact in a
+  directory created from a mistyped `release.ps1` argument. `12f483c` untracked it and moved
+  the zip into gitignored `releases/`. Card 0005 stays open for the other half of its ask:
+  `release.ps1` still turns an unparsed `--help` into a directory rather than refusing.
 - `Libs/` is vendored third-party code. Do not edit it.
 
 ## Decisions locked
@@ -161,6 +176,7 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 ## Current state
 
 - **Done:** v0.9.12 is released and on CurseForge, supporting interface 120007 and 120100.
+  The tree has since moved to 0.9.13 and interface `120100` alone, which is the 12.1.0 pass.
   Twenty-five DataText module files plus the thirteen-file Professions framework are loaded
   from the `.toc`, covering social, character, economy, instances, time and location,
   system, professions and audio. Every module has a Blizzard Settings subcategory with label
@@ -172,7 +188,9 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 - **In progress:** nothing is in `in-progress/`. Card 0001 sits in `ai-review/`: per-module
   enable/disable toggles and per-module refresh intervals are written and committed, but
   **have never been run in the game client**, and the new Modules settings panel has not had
-  a single frame constructed. It is unreleased; the `.toc` still reads 0.9.12.
+  a single frame constructed. The `.toc` reads 0.9.13 and 0.9.13 is unreleased, so the version
+  bump covers both card 0001 and the 12.1.0 pass. Both are deployed to the game folder and
+  both are still waiting on the same thing: someone loading the addon and looking.
 - **Known bugs / broken:** none open. Note that this is the absence of a bug list rather
   than the presence of a green test suite; there is no automated verification at all, and
   everything is confirmed by loading the addon in game.
@@ -182,9 +200,12 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **Run card 0001 in the game client.** It is in `ai-review/` and is the only thing standing
-   between the toggle work and a release. `deploy.ps1`, `/reload`, then work the Modules
-   panel. Its acceptance criteria are the test script, and none of them are ticked yet.
+1. **Load 0.9.13 in the game client.** One session covers two things, because both are already
+   deployed and both are unverified. Card 0001 in `ai-review/` is the bigger half: `/reload`,
+   then work the Modules panel, whose acceptance criteria are the test script and none of which
+   are ticked. While in there, exercise the three modules the 12.1.0 pass changed — Professions
+   tooltips, Pet Info's Safari Hat row, and the SimC export on Item Level — which is workspace
+   card 0008. Together they are the only thing standing between 0.9.13 and a release.
 2. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 3. **0003 / 0004 Achievements and Quest Log module scope.** Both waiting on card 0002.
@@ -251,8 +272,13 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `master`, clean, no PR. There is no branching convention in the history: work lands
-directly on `master` and releases are tagged from it.
+On `claude/wow-12.1.0-patch-update`, clean, no PR. It is one commit ahead of `master`
+(`12f483c`, the 12.1.0 pass), and `master` is itself **7 commits ahead of `origin/master`**.
+Nothing since v0.9.12 has reached GitHub. The merge is a fast-forward; this is workspace
+card 0007.
+
+There is otherwise no branching convention in the history: work lands directly on `master`
+and releases are tagged from it, so this branch is the exception rather than a new habit.
 
 ## Session log
 

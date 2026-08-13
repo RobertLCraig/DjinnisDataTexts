@@ -42,4 +42,18 @@ Option 1 now, option 3 if the `release.ps1` guard turns out to be a couple of li
 leave it: it is the kind of thing that costs a minute to fix and gets re-investigated from
 scratch every few months.
 
+## Direction
+
+**2026-08-14** The state this card describes no longer exists, so options 1 and 2 are moot.
+Commit `12f483c` untracked `--help/DjinnisDataTexts-v0.9.11.zip` and moved the zip into
+`releases/`, which is gitignored and already holds every other release artefact including
+v0.9.11's siblings. The `--help/` directory is gone from the working tree; the blob stays in
+history, as the card said it would either way. `git ls-files -- '--help'` now returns nothing.
+
+That was option 1 taken without the yes this card asked for. Flagging it rather than closing
+the card, because the second half is still live and still yours: **option 3's `release.ps1`
+guard was not done.** The script will still create a directory from an unparsed `--help`, so
+the same mistyped invocation produces the same stray folder tomorrow. That is the only part
+of this card left to decide.
+
 ## Decided
