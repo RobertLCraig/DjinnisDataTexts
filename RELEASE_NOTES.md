@@ -25,4 +25,13 @@
 
 ## Version: 0.9.14
 
-_No changes yet. The last release was 0.9.13 on 2026-08-14._
+### Fixed
+
+- **The Modules panel's text overlapped itself and the buttons.** The panel measured each paragraph's height before it had been given a width, so a wrapped paragraph was measured as a single line and everything below it was placed about 45 pixels too high. The two descriptions collided and the Reload UI / Enable All / Disable All row landed on top of them. Descriptions are now measured against a known width, which affects every settings panel, not just this one.
+- **Active Activity read its saved settings from the wrong key.** It looked up `activeactivity` where its settings are actually stored under `ActiveActivity`, so the lookup always missed and silently fell back to the built-in defaults. Two things were broken by this and both now work: its idle click actions were saved but never read, so configuring them did nothing; and its tracker on/off checkboxes could not persist, forgetting themselves on every reload while writing into the defaults table in memory.
+- **Active Activity was the only module showing its internal name.** It now reads "Active Activity" in the settings list instead of `ActiveActivity`.
+
+### Changed
+
+- **Delve and Prey Hunt have one switch each instead of two.** They have no DataText of their own; they feed Active Activity, which owns the broker and shows whichever activity you are currently in. They were nevertheless listed in the Modules panel as though disabling them would remove a DataText, while Active Activity's own panel carried a second, separate switch for each. The two could disagree, and the worst case was a tracker that kept scanning, kept registering events and kept polling every three minutes while Active Activity discarded everything it produced. Their controls now live only in Active Activity's panel, complete with the refresh-interval dropdown, and that switch is the real one: turning a tracker off stops its work rather than only hiding its output.
+- **The Modules panel says what it actually does.** It described every row as one DataText. Professions is one row that adds one DataText per profession you have learned, which the description now says.

@@ -17,6 +17,14 @@ ns.db = nil
 -- Module registry - modules call ns:RegisterModule() during load
 ns.modules = {}
 
+-- Sub-tracker modules: key -> the module key that owns their DataText.
+-- Populated by ns:RegisterActivityTracker(). A module in here is a real module
+-- with real settings and a real enable flag, but it creates no broker of its
+-- own; it feeds a parent that does. The Modules panel skips these, because a
+-- row there promises "turning this off removes a DataText" and for a sub-tracker
+-- there is no DataText to remove. Their on/off lives in the parent's panel.
+ns.subTrackerModules = {}
+
 -- Deferred LDB brokers - modules call ns:NewBroker() during load.
 -- Module files run before saved variables exist, so nothing can know at that
 -- point whether its module is switched off. Specs queue here and are handed to

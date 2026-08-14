@@ -26,7 +26,13 @@ local DEFAULTS = {
     -- label text via GetLabelText(), so the aggregator just displays it
     -- verbatim. Per-tracker label customization lives in each tracker's own
     -- settings panel.
-    enabled       = { delve = true, prey = true },
+    -- No `enabled` table. Sub-tracker on/off used to live here, but it was read
+    -- through a GetDB() that looked up the wrong saved key, so it never
+    -- persisted and its setter wrote into this defaults table instead. Tracker
+    -- enable now goes through ns:IsModuleEnabled/SetModuleEnabled, the same flag
+    -- the Modules panel uses for everything else, which actually saves and also
+    -- stops the tracker doing work rather than only hiding its output. Nothing
+    -- to migrate: the old value could never reach the saved DB.
     clickActions  = {
         leftClick       = "none",
         rightClick      = "none",
@@ -67,6 +73,13 @@ function ns:RegisterActivityTracker(key, def)
     def.key = key
     def.priority = def.priority or 100
     trackers[key] = def
+    -- Claim the backing module so the Modules panel leaves it out of its list
+    -- and this panel becomes its only switch. Recorded here rather than on the
+    -- module table because trackers register at file load, before the module
+    -- registers itself further down the same file.
+    if def.moduleKey then
+        ns.subTrackerModules[def.moduleKey] = "ActiveActivity"
+    end
     table.insert(trackerOrder, key)
     table.sort(trackerOrder, function(a, b)
         return (trackers[a].priority or 100) < (trackers[b].priority or 100)
@@ -82,14 +95,24 @@ end
 -- Active tracker resolution
 ---------------------------------------------------------------------------
 
+-- The saved key is "ActiveActivity", matching ns:RegisterModule below. This
+-- read said "activeactivity" until 0.9.14, which is not the key MergeDefaults
+-- creates, so it always missed and fell through to DEFAULTS. That silently made
+-- the idle click actions unconfigurable (saved correctly, read from defaults)
+-- and the tracker toggles unsaveable. Keep the case in step with the
+-- registration; this module is the only one registered CamelCase.
 local function GetDB()
-    return ns.db and ns.db.activeactivity or DEFAULTS
+    return (ns.db and ns.db.ActiveActivity) or DEFAULTS
 end
 
+-- A tracker is on when its backing module is on. One flag, in ns.db.modules,
+-- so the Modules panel and this panel cannot disagree about the same tracker.
 local function IsTrackerEnabled(key)
-    local db = GetDB()
-    if not db.enabled then return true end
-    return db.enabled[key] ~= false
+    local t = trackers[key]
+    if t and t.moduleKey then
+        return ns:IsModuleEnabled(t.moduleKey)
+    end
+    return true
 end
 
 local function ResolveActiveTracker()
@@ -200,19 +223,44 @@ function ActiveActivity:BuildSettingsPanel(panel)
     local y = 0
     y = W.AddDescription(body, y,
         "Toggle which activity types this datatext should follow. The first " ..
-        "active tracker (by priority order) is shown.")
+        "active tracker (by priority order) is shown. These are the whole " ..
+        "on/off switch for each tracker, so turning one off also stops it " ..
+        "scanning and polling rather than just hiding it here. That is why a " ..
+        "change needs a UI reload, exactly like the Modules panel.")
+    -- Column headings, matching the Modules panel so the rows read the same way.
+    local hTracker = body:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hTracker:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y)
+    hTracker:SetText("Tracker")
+    local hPoll = body:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    hPoll:SetPoint("TOPLEFT", body, "TOPLEFT", 300, y)
+    hPoll:SetText("Refresh interval")
+    y = y - 18
+
     for _, key in ipairs(trackerOrder) do
         local t = trackers[key]
-        local label = t.displayName or key
-        y = W.AddCheckbox(body, y, label,
-            function() return IsTrackerEnabled(key) end,
-            function(v)
-                local db = GetDB()
-                db.enabled = db.enabled or {}
-                db.enabled[key] = v
-                self:UpdateLabel()
-            end, r)
+        if t.moduleKey and W.AddModuleRow then
+            -- The same row the Modules panel builds, so a sub-tracker keeps its
+            -- interval dropdown rather than being demoted to a bare checkbox.
+            y = W.AddModuleRow(body, y, t.moduleKey, r)
+        else
+            -- A tracker with no backing module cannot be switched off, so show
+            -- it rather than offering a control that would do nothing.
+            y = W.AddNote(body, y, (t.displayName or key) .. " (always on)")
+        end
     end
+
+    -- Mirrors the Modules panel's note, since these checkboxes now set the same
+    -- flag and are subject to the same reload.
+    local pending = body:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    pending:SetPoint("TOPLEFT", body, "TOPLEFT", 18, y - 4)
+    pending:SetTextColor(1, 0.82, 0)
+    table.insert(r, function()
+        pending:SetText(ns:HasPendingModuleChanges()
+            and "Changes pending - reload the UI to apply them."
+            or "")
+    end)
+    y = y - 22
+
     W.EndSection(panel, y)
 
     -- Click actions (idle fallback only - active tracker handles its own clicks)
@@ -221,5 +269,11 @@ function ActiveActivity:BuildSettingsPanel(panel)
         "active. While an activity is engaged, the active tracker's own click " ..
         "actions take over (configure them in their respective settings panels).")
 end
+
+-- The only module registered CamelCase, so its saved table is
+-- DjinnisDataTextsDB.ActiveActivity. Renaming the key would orphan every
+-- existing user's settings for this module, so it stays; GetDB() above matches
+-- the case deliberately.
+ActiveActivity.settingsLabel = "Active Activity"
 
 ns:RegisterModule("ActiveActivity", ActiveActivity, DEFAULTS)

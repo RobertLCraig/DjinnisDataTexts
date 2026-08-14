@@ -646,6 +646,10 @@ end
 if ns.RegisterActivityTracker then
     ns:RegisterActivityTracker("delve", {
         displayName = "Delve",
+        -- Backing module. Makes the Active Activity panel's checkbox the single
+        -- switch for this tracker and keeps it out of the Modules panel, which
+        -- lists things that are their own DataText. This one is not.
+        moduleKey   = "delve",
         icon        = "Interface\\Icons\\achievement_delves_01",
         priority    = 10,
         IsActive    = function() return Delve:IsActive() end,

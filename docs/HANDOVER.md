@@ -58,10 +58,15 @@ DjinnisDataTextsDB = {
   raised saved tooltip widths that still equalled a known old default. Bump the constant
   whenever a step is added.
 - **Divergence to be aware of:** module keys are lowercase (`bagvalue`, `savedinstances`,
-  `petinfo`) except `ActiveActivity`, registered CamelCase at
-  [Modules/ActiveActivity.lua:228](../Modules/ActiveActivity.lua#L228). Its saved table is
-  therefore `DjinnisDataTextsDB.ActiveActivity`. Do not tidy this without a migration step;
-  renaming the key orphans every existing user's settings for that module.
+  `petinfo`) except `ActiveActivity`, registered CamelCase. Its saved table is therefore
+  `DjinnisDataTextsDB.ActiveActivity`. Do not tidy this without a migration step; renaming
+  the key orphans every existing user's settings for that module. **This divergence had
+  already caused a live bug**: `GetDB()` read `ns.db.activeactivity`, which is not the key
+  `MergeDefaults` creates, so it always missed and returned the shared `DEFAULTS` table.
+  Reads therefore ignored saved values and writes landed on the defaults table in memory.
+  Fixed in 0.9.14. If a fourth module is ever registered CamelCase, check its `GetDB()`
+  first; the whole-codebase check is to compare each file's `RegisterModule("…")` key
+  against the `ns.db.<key>` it reads.
 - Broker names are a separate namespace from module keys: `DDT-<Name>`, and they are what
   the display addon persists in *its* config. Renaming a broker breaks users' bars.
 
@@ -84,6 +89,16 @@ Modules/Professions/   a sub-framework: Core.lua plus one Data_*.lua per profess
 
 Three modules are not one-broker-one-file: **PreyTracker** and **Delve** feed plain-table
 dataobjs into **ActiveActivity**, which owns the combined broker. Treat them as a unit.
+As of 0.9.14 they declare `moduleKey` on their tracker definition, which puts them in
+`ns.subTrackerModules` and keeps them out of the Modules panel; their row, dropdown and all,
+is rendered in ActiveActivity's panel instead via the exported `AddModuleRow`. **A module
+that owns no broker must never appear in the Modules panel**, because that panel's promise
+is "turning this off removes a DataText" and for a sub-tracker there is nothing to remove.
+
+**Professions** is the third, in the other direction: one module, many brokers. It calls
+`LDB:NewDataObject("DDT-Prof-…")` directly in `Init` rather than `ns:NewBroker`, so it sits
+outside the deferred-broker mechanism entirely. Disabling it still works, because `Init` is
+what is gated, but it works by a different route than every other module.
 
 The refresh model, which is the thing most likely to be misunderstood:
 

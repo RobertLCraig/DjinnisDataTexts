@@ -452,6 +452,10 @@ end
 if ns.RegisterActivityTracker then
     ns:RegisterActivityTracker("prey", {
         displayName = "Prey Hunt",
+        -- Backing module. Note the tracker key is "prey" but the module key is
+        -- "preytracker"; the two namespaces are not the same and the saved
+        -- settings hang off the module key.
+        moduleKey   = "preytracker",
         icon        = "Interface\\Icons\\worldquest-prey-crystal",
         priority    = 20,
         IsActive    = function() return PreyTracker:IsActive() end,

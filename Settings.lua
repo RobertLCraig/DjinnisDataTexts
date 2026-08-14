@@ -711,20 +711,36 @@ local function AddButton(content, y, label, onClick)
     return y - 30
 end
 
+-- Width used to measure wrapped description text.
+--
+-- GetStringHeight() only reports the wrapped height once the FontString has a
+-- definite width. Panels are built before they are ever shown, so
+-- content:GetWidth() is still 0 at this point: the old code skipped SetWidth
+-- because of that, measured the text as one unwrapped line, and returned about
+-- 14px for a paragraph that renders 60px tall. Everything placed afterwards
+-- then sat too high, which is why the Modules panel's two paragraphs overlapped
+-- each other and the buttons landed on top of them.
+--
+-- Setting an explicit width first makes the measurement honest. The anchors
+-- below still let the text reflow if the panel is wider in practice; this value
+-- only has to be right enough to measure against, and it matches the width the
+-- scroll panels actually get.
+local DESC_WIDTH = 560
+
 local function AddDescription(content, y, text)
     y = y - 6
     local desc = content:CreateFontString(nil, "OVERLAY", "GameFontDisable")
     desc:SetPoint("TOPLEFT", content, "TOPLEFT", 18, y)
-    desc:SetPoint("RIGHT", content, "RIGHT", -18, 0)
     desc:SetJustifyH("LEFT")
     desc:SetWordWrap(true)
     desc:SetSpacing(2)
-    desc:SetText(text)
+
     local cw = content:GetWidth()
-    if cw and cw > 50 then
-        desc:SetWidth(cw - 36)
-    end
-    local h = desc:GetStringHeight() or 14
+    desc:SetWidth((cw and cw > 50) and (cw - 36) or DESC_WIDTH)
+    desc:SetText(text)
+
+    local h = desc:GetStringHeight()
+    if not h or h < 1 then h = 14 end
     return y - h - 12
 end
 
@@ -1345,6 +1361,14 @@ local function AddModuleRow(content, y, key, refreshList)
     return y - 28
 end
 
+-- Exposed so a parent module's panel can render rows for the sub-trackers it
+-- owns. They get the identical control the Modules panel gives everything else,
+-- interval dropdown included, which matters because both current sub-trackers
+-- define UpdateData and are therefore genuinely on the scheduler. Moving them
+-- out of the Modules panel without moving the dropdown too would have quietly
+-- taken away the ability to set their refresh rate.
+ns.SettingsWidgets.AddModuleRow = AddModuleRow
+
 local function BuildModulesPanel(panel)
     local r = panel.refreshCallbacks
 
@@ -1353,7 +1377,11 @@ local function BuildModulesPanel(panel)
     y = AddDescription(body, y,
         "Turn individual DataTexts on or off. A disabled module creates no " ..
         "DataText at all: it disappears from your display addon's list and " ..
-        "stops doing any work, exactly as if it were removed from the addon.")
+        "stops doing any work, exactly as if it were removed from the addon. " ..
+        "Professions is one row but adds one DataText per profession you have " ..
+        "learned. Delve and Prey Hunt are not listed here because they have no " ..
+        "DataText of their own; they feed Active Activity, and their switches " ..
+        "are in its panel.")
     y = AddDescription(body, y,
         "The interval sets how often a module refreshes its label on a timer. " ..
         "\"Events only\" stops timed refreshes entirely; the module still " ..
@@ -1381,8 +1409,13 @@ local function BuildModulesPanel(panel)
     allBtn:SetPoint("TOPLEFT", body, "TOPLEFT", 188, y + 30)
     allBtn:SetSize(110, 24)
     allBtn:SetText("Enable All")
+    -- Both bulk buttons skip sub-trackers, for the same reason the list does:
+    -- they are not rows here, so flipping them would be an invisible change to
+    -- a setting the user is looking at in another panel.
     allBtn:SetScript("OnClick", function()
-        for key in pairs(ns.modules) do ns:SetModuleEnabled(key, true) end
+        for key in pairs(ns.modules) do
+            if not ns.subTrackerModules[key] then ns:SetModuleEnabled(key, true) end
+        end
         for _, refresh in ipairs(r) do refresh() end
     end)
 
@@ -1391,7 +1424,9 @@ local function BuildModulesPanel(panel)
     noneBtn:SetSize(110, 24)
     noneBtn:SetText("Disable All")
     noneBtn:SetScript("OnClick", function()
-        for key in pairs(ns.modules) do ns:SetModuleEnabled(key, false) end
+        for key in pairs(ns.modules) do
+            if not ns.subTrackerModules[key] then ns:SetModuleEnabled(key, false) end
+        end
         for _, refresh in ipairs(r) do refresh() end
     end)
 
@@ -1406,8 +1441,14 @@ local function BuildModulesPanel(panel)
     hPoll:SetText("Refresh interval")
     y = y - 18
 
+    -- Sub-trackers are deliberately absent: they own no broker, so a row here
+    -- could not keep this panel's promise that switching one off removes a
+    -- DataText. Their switch lives in the panel of the module that does own the
+    -- broker, which is also the only place it can be described honestly.
     local keys = {}
-    for key in pairs(ns.modules) do keys[#keys + 1] = key end
+    for key in pairs(ns.modules) do
+        if not ns.subTrackerModules[key] then keys[#keys + 1] = key end
+    end
     table.sort(keys, function(a, b) return ns:GetModuleLabel(a) < ns:GetModuleLabel(b) end)
     for _, key in ipairs(keys) do
         y = AddModuleRow(body, y, key, r)
