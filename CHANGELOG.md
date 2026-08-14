@@ -4,6 +4,11 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ---
 
+## [0.9.15] - 2026-08-15
+
+_No changes yet. The last release was 0.9.14 on 2026-08-15._
+
+
 ## [0.9.14] - 2026-08-15
 
 ### Fixed
