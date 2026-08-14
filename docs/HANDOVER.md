@@ -5,11 +5,11 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.13 released 2026-08-14 to GitHub and CurseForge, carrying the 12.1.0 pass and
-per-module toggles and poll control (card 0001). **Neither has ever been run in the game
-client**, so this release shipped on reasoning alone. Deployed to the game folder as 54 files,
-clean in git, `master` in sync with `origin`.
-_Last updated: 2026-08-14 (0.9.13 released; one exclusion list in pkgmeta.yaml)_
+**Status:** v0.9.14 released 2026-08-15 to GitHub and CurseForge. **Card 0001's Modules panel
+has now been seen working in a live client**, which is the first in-game verification this
+project has had; the three bugs that check found are what 0.9.14 fixes. Deployed to the game
+folder as 54 files, clean in git, `master` in sync with `origin`.
+_Last updated: 2026-08-15 (0.9.14 released; Modules panel verified in game)_
 
 ## Goal & success criteria
 
@@ -220,12 +220,15 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   settings migrate automatically and a coexistence warning fires if both are loaded.
   Recent releases have mostly been Midnight-era compatibility: combat-lockdown guards on
   secure tooltip parents, secret-taint pcalls, and the 12.1 support pass.
-- **In progress:** nothing is in `in-progress/`. Card 0001 sits in `ai-review/` and is now
-  **released rather than pending**, which inverts its risk: per-module enable/disable toggles
-  and per-module refresh intervals are in users' hands, and the new Modules settings panel has
-  still never had a single frame constructed. Same for the 12.1.0 pass. Both are deployed
-  locally and both wait on the same thing they always did, which is someone loading the addon
-  and looking. That is now the highest-value hour available on this project.
+- **In progress:** nothing is in `in-progress/`. Card 0001 is released and, as of 0.9.14,
+  **partly verified in a live client**: the Modules panel and Active Activity's tracker rows
+  were confirmed by screenshot on 2026-08-15, including the row count, the eight
+  "updates on its own" modules, dropdowns greying out on disabled rows, and enable flags
+  surviving a reload. That single look found three bugs, one of which (the wrong saved key)
+  had been shipping silently for releases. **What is still unverified is everything else**:
+  the toggles have not been exercised through an actual enable, reload and disable cycle, and
+  the 12.1.0 pass has had no in-game check at all. Card 0001 stays in `ai-review/` until its
+  test script is actually walked.
 - **Known bugs / broken:** none open, and read that narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
