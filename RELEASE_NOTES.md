@@ -27,6 +27,6 @@
   it. Comments are stripped from the published notes.
 -->
 
-## Version: 0.9.15
+## Version: 0.9.16
 
-_No changes yet. The last release was 0.9.14 on 2026-08-15._
+_No changes yet. The last release was 0.9.15 on 2026-08-15._

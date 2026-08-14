@@ -35,6 +35,33 @@ function Show-Usage {
     Write-Host ""
 }
 
+# Two checks, because the two ways of launching this script bind arguments
+# differently and only covering one of them is worse than covering neither: it
+# reads as guarded while still firing a real release.
+#
+#   pwsh -File release.ps1 --help   ->  $OutputDir keeps its default,
+#                                       "--help" lands in $args
+#   & .\release.ps1 --help          ->  "--help" binds positionally to $OutputDir
+#
+# Measured on 2026-08-15, after the -File form ran a genuine release while the
+# guard, which only inspected $OutputDir, sat there looking correct.
+
+# 1. Anything unbound. Every real parameter is declared above, so a non-empty
+#    $args means the caller typed something this script does not understand.
+if ($args.Count -gt 0) {
+    $first = [string]$args[0]
+    if ($first -match '^-{1,2}(h|help|\?)$') {
+        Show-Usage
+        exit 0
+    }
+    Write-Host ""
+    Write-Host "ERROR: unrecognised argument '$first'." -ForegroundColor Red
+    Write-Host "       Refusing rather than starting a release you did not ask for." -ForegroundColor Red
+    Show-Usage
+    exit 1
+}
+
+# 2. A flag that bound positionally, which would then be created as a folder.
 if ($OutputDir -match '^-') {
     if ($OutputDir -match '^-{1,2}(h|help|\?)$') {
         Show-Usage

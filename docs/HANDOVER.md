@@ -5,11 +5,12 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.14 released 2026-08-15 to GitHub and CurseForge. **Card 0001's Modules panel
-has now been seen working in a live client**, which is the first in-game verification this
-project has had; the three bugs that check found are what 0.9.14 fixes. Deployed to the game
-folder as 54 files, clean in git, `master` in sync with `origin`.
-_Last updated: 2026-08-15 (0.9.14 released; Modules panel verified in game)_
+**Status:** v0.9.14 is the release that matters, out 2026-08-15 to GitHub and CurseForge. `v0.9.15`
+followed the same day and is a no-op republish of it, published by accident; see Key files.
+**Card 0001's Modules panel has now been seen working in a live client**, the first in-game
+verification this project has had, and the three bugs it found are what 0.9.14 fixes. Deployed to
+the game folder as 54 files, clean in git, `master` in sync with `origin`.
+_Last updated: 2026-08-15 (0.9.14 released and verified in game; 0.9.15 published in error)_
 
 ## Goal & success criteria
 
@@ -166,12 +167,23 @@ Non-obvious things worth knowing before you touch them:
   `RELEASE_NOTES.md` and the `.toc` without checking the switch. Verified against a throwaway
   clone with the tag already present: it previews the bumped version end to end and leaves the
   tree untouched.
-- **A single-dash typo still starts a real release.** `release.ps1 --help` is now guarded, but
-  that guard can only catch arguments PowerShell binds positionally. `-notaflag` is parsed as
-  a parameter name, fails to bind, and the script proceeds with defaults, which means a real
-  run. **The dirty-tree check in section 3 is the only thing that stops it**, so treat that
-  check as a safety mechanism rather than a convenience and do not relax it. Found the hard
-  way while testing the guard: the `.toc` was rewritten before the check caught it.
+- **`release.ps1` refuses unrecognised arguments, and it took two goes to get right.** The two
+  ways of launching a PowerShell script bind arguments differently:
+
+  | Invocation | Where `--help` ends up |
+  |---|---|
+  | `pwsh -File release.ps1 --help` | `$args`, with `$OutputDir` left at its default |
+  | `& .\release.ps1 --help` | bound positionally to `$OutputDir` |
+
+  The first guard only inspected `$OutputDir`, so it caught the `&` form and sailed straight past
+  the `-File` form. **That published v0.9.15 by accident**, from a command whose entire purpose was
+  to prove the guard worked. Both are covered now: a non-empty `$args` is refused outright, since
+  every real parameter is declared. If you add a parameter, do not add a positional one.
+- **The dirty-tree check in section 3 is load-bearing.** It is what stops an unintended invocation
+  going all the way, and it has now done so once for real. Treat it as a safety mechanism rather
+  than a convenience and do not relax it.
+- **`v0.9.15` is a no-op release** and is expected to be. Byte-identical to `v0.9.14` but for the
+  `.toc` version. Left in place rather than withdrawn, on the same reasoning as `v0.9.12`.
 - **The version regex runs before comments are stripped.** `release.ps1` finds the version
   with a plain regex over the raw file, then strips HTML comments later, so a version heading
   written inside a comment wins if it appears first. A draft `RELEASE_NOTES.md` did this and

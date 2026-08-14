@@ -6,7 +6,16 @@ All notable changes to Djinni's Data Texts will be documented in this file.
 
 ## [0.9.15] - 2026-08-15
 
-_No changes yet. The last release was 0.9.14 on 2026-08-15._
+**No changes for users.** This version is byte-identical to 0.9.14 apart from the version number
+in the `.toc`. It was published by accident, by a command that was meant to be testing that
+`release.ps1` refuses a mistyped argument and instead demonstrated the gap it was testing for. It
+is left in place rather than withdrawn, because a tag that has already reached CurseForge cannot
+usefully be recalled, and superseding is cleaner than rewriting history. Nothing needs doing if you
+are on 0.9.14; nothing is wrong if you are on 0.9.15.
+
+The guard is now fixed properly, which is the only real change here and it ships to nobody:
+`release.ps1` refuses unrecognised arguments under both ways of launching a PowerShell script,
+rather than only the one it had been tested against.
 
 
 ## [0.9.14] - 2026-08-15
