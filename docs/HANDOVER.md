@@ -5,10 +5,11 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.12 is the last release; the tree is at 0.9.13, carrying the 12.1.0 pass and
-per-module toggles and poll control (card 0001). Neither has been run in the game client, and
-0.9.13 is unreleased. Deployed to the game folder as 54 files, and clean in git.
-_Last updated: 2026-08-14 (12.1.0 pass reviewed and deployed; one exclusion list in pkgmeta.yaml)_
+**Status:** v0.9.13 released 2026-08-14 to GitHub and CurseForge, carrying the 12.1.0 pass and
+per-module toggles and poll control (card 0001). **Neither has ever been run in the game
+client**, so this release shipped on reasoning alone. Deployed to the game folder as 54 files,
+clean in git, `master` in sync with `origin`.
+_Last updated: 2026-08-14 (0.9.13 released; one exclusion list in pkgmeta.yaml)_
 
 ## Goal & success criteria
 
@@ -137,16 +138,23 @@ Non-obvious things worth knowing before you touch them:
   directory created from a mistyped `release.ps1` argument. `12f483c` untracked it and moved
   the zip into gitignored `releases/`. Card 0005 stays open for the other half of its ask:
   `release.ps1` still turns an unparsed `--help` into a directory rather than refusing.
-- **`release.ps1` would currently roll the version backwards.** It takes the version from
-  `RELEASE_NOTES.md`, which still reads `0.9.12`, and rewrites the `.toc` to match. The
-  `.toc` is at `0.9.13`. Running it as-is would therefore release 0.9.13's code labelled
-  0.9.12. There is also no `v0.9.12` git tag despite this handover recording v0.9.12 as
-  released, so the auto-bump guard that would otherwise catch the collision will not fire.
-  **Set `RELEASE_NOTES.md` to the version you actually intend before releasing.**
+- **`RELEASE_NOTES.md` must be cleared after every release, and this is not housekeeping.**
+  `release.ps1` takes the version from that file and rewrites the `.toc` to match, so stale
+  notes do not just look wrong, they rename the build. It happened on 2026-08-14: 0.9.12's
+  notes had sat in the file since May, a release run read `0.9.12` from them, rewrote a
+  0.9.13 `.toc` backwards, and published 0.9.13's code to GitHub and CurseForge as `v0.9.12`
+  with May's changelog entry. Superseded by a correct `v0.9.13` the same day rather than
+  unpicked, because deleting a tag CurseForge has already ingested achieves nothing. The
+  `v0.9.12` tag therefore points at 0.9.13's code and is expected to; do not try to fix it.
+  The file now carries the warning in its own header.
 - **`-DryRun` on `release.ps1` is not entirely dry.** If the tag it computes already exists,
   the auto-bump block writes `RELEASE_NOTES.md` and the `.toc` without checking `$DryRun`
-  ([release.ps1](../release.ps1), section 3). Harmless today because no colliding tag exists,
-  but do not treat the dry run as read-only on a version that has been tagged.
+  ([release.ps1](../release.ps1), section 3). No colliding tag exists today, but do not treat
+  the dry run as read-only on a version that has been tagged.
+- **The version regex runs before comments are stripped.** `release.ps1` finds the version
+  with a plain regex over the raw file, then strips HTML comments later, so a version heading
+  written inside a comment wins if it appears first. A draft `RELEASE_NOTES.md` did this and
+  resolved the version to a single backtick, which propagated into the tag name and zip path.
 - `Libs/` is vendored third-party code. Do not edit it.
 
 ## Decisions locked
@@ -187,8 +195,8 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 
 ## Current state
 
-- **Done:** v0.9.12 is released and on CurseForge, supporting interface 120007 and 120100.
-  The tree has since moved to 0.9.13 and interface `120100` alone, which is the 12.1.0 pass.
+- **Done:** v0.9.13 is released and on CurseForge, at interface `120100` alone. It carries the
+  12.1.0 pass and card 0001, and it ships 54 files after the exclusion lists were consolidated.
   Twenty-five DataText module files plus the thirteen-file Professions framework are loaded
   from the `.toc`, covering social, character, economy, instances, time and location,
   system, professions and audio. Every module has a Blizzard Settings subcategory with label
@@ -197,27 +205,29 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   settings migrate automatically and a coexistence warning fires if both are loaded.
   Recent releases have mostly been Midnight-era compatibility: combat-lockdown guards on
   secure tooltip parents, secret-taint pcalls, and the 12.1 support pass.
-- **In progress:** nothing is in `in-progress/`. Card 0001 sits in `ai-review/`: per-module
-  enable/disable toggles and per-module refresh intervals are written and committed, but
-  **have never been run in the game client**, and the new Modules settings panel has not had
-  a single frame constructed. The `.toc` reads 0.9.13 and 0.9.13 is unreleased, so the version
-  bump covers both card 0001 and the 12.1.0 pass. Both are deployed to the game folder and
-  both are still waiting on the same thing: someone loading the addon and looking.
-- **Known bugs / broken:** none open. Note that this is the absence of a bug list rather
-  than the presence of a green test suite; there is no automated verification at all, and
-  everything is confirmed by loading the addon in game.
+- **In progress:** nothing is in `in-progress/`. Card 0001 sits in `ai-review/` and is now
+  **released rather than pending**, which inverts its risk: per-module enable/disable toggles
+  and per-module refresh intervals are in users' hands, and the new Modules settings panel has
+  still never had a single frame constructed. Same for the 12.1.0 pass. Both are deployed
+  locally and both wait on the same thing they always did, which is someone loading the addon
+  and looking. That is now the highest-value hour available on this project.
+- **Known bugs / broken:** none open, and read that narrowly. There is no automated
+  verification of behaviour at all: what has been checked is that all 45 Lua files parse under
+  5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
+  `Blizzard_Deprecated*` shim. None of that exercises a single frame or tooltip. Everything
+  behavioural is confirmed by loading the addon in game, and 0.9.13 has not been.
 
 ## What's next (in order)
 
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **Load 0.9.13 in the game client.** One session covers two things, because both are already
-   deployed and both are unverified. Card 0001 in `ai-review/` is the bigger half: `/reload`,
-   then work the Modules panel, whose acceptance criteria are the test script and none of which
-   are ticked. While in there, exercise the three modules the 12.1.0 pass changed — Professions
-   tooltips, Pet Info's Safari Hat row, and the SimC export on Item Level — which is workspace
-   card 0008. Together they are the only thing standing between 0.9.13 and a release.
+1. **Load 0.9.13 in the game client.** It is released, so this is no longer a gate before
+   shipping but a check on something already shipped. One session covers both unverified
+   halves. Card 0001 in `ai-review/` is the bigger one: `/reload`, then work the Modules panel,
+   whose acceptance criteria are the test script and none of which are ticked. While in there,
+   exercise the three areas the 12.1.0 pass changed, which is workspace card 0008: Professions
+   tooltips, Pet Info's Safari Hat row, and the SimC export on Item Level.
 2. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 3. **0003 / 0004 Achievements and Quest Log module scope.** Both waiting on card 0002.
@@ -284,17 +294,18 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `master`, clean, and pushed to `origin/master`. `claude/wow-12.1.0-patch-update`
-fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and the exclusion-list
-consolidation, closing a ten-commit gap in which nothing since v0.9.12 had reached GitHub.
-That was workspace card 0007. The merged branch still exists locally and is safe to delete.
+On `master`, clean, in sync with `origin/master`, and tagged `v0.9.13`.
+`claude/wow-12.1.0-patch-update` fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and
+the exclusion-list consolidation, closing a ten-commit gap in which nothing since v0.9.12 had
+reached GitHub. That was workspace card 0007. The merged branch still exists locally and is
+safe to delete.
 
 No branching convention in the history otherwise: work lands directly on `master` and
 releases are tagged from it, so that branch was the exception rather than a new habit.
 
-Tags are a separate matter and are **behind the code**. The newest is `v0.9.11`; this
-handover records v0.9.12 as released, but no `v0.9.12` tag exists, and the tree is at
-0.9.13. See the release-trap notes under Key files before running `release.ps1`.
+Tags now match the code, with one deliberate scar: **`v0.9.12` points at 0.9.13's code** from
+the mis-versioned run described under Key files. `v0.9.13` is the real release and the one to
+reason from. Do not attempt to reconcile `v0.9.12`.
 
 ## Session log
 
