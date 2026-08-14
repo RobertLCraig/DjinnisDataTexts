@@ -1379,9 +1379,9 @@ local function BuildModulesPanel(panel)
         "DataText at all: it disappears from your display addon's list and " ..
         "stops doing any work, exactly as if it were removed from the addon. " ..
         "Professions is one row but adds one DataText per profession you have " ..
-        "learned. Delve and Prey Hunt are not listed here because they have no " ..
-        "DataText of their own; they feed Active Activity, and their switches " ..
-        "are in its panel.")
+        "learned. Delve and Prey Tracker are not listed here because they have " ..
+        "no DataText of their own; they feed Active Activity, and their " ..
+        "switches are in its panel.")
     y = AddDescription(body, y,
         "The interval sets how often a module refreshes its label on a timer. " ..
         "\"Events only\" stops timed refreshes entirely; the module still " ..
