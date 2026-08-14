@@ -12,6 +12,41 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+# ---------------------------------------------------------------------------
+# Guard the first positional parameter
+#
+# $OutputDir is positional, so any unrecognised argument binds to it and is
+# then treated as a path to create. `release.ps1 --help` therefore did not
+# print help: it built the release into a new directory literally named
+# "--help", and the resulting zip was committed and sat in the repo until
+# 2026-08-12. Refuse anything flag-shaped instead of making a folder out of it.
+# ---------------------------------------------------------------------------
+
+function Show-Usage {
+    Write-Host ""
+    Write-Host "  DjinnisDataTexts release script" -ForegroundColor Cyan
+    Write-Host ""
+    Write-Host "  Usage: release.ps1 [-OutputDir <path>] [-ReleaseType release|beta|alpha]"
+    Write-Host "                     [-DryRun] [-SkipTag] [-SkipPush]"
+    Write-Host ""
+    Write-Host "  The version comes from the '## Version:' line in RELEASE_NOTES.md."
+    Write-Host "  -DryRun previews without writing, committing, tagging or pushing."
+    Write-Host ""
+}
+
+if ($OutputDir -match '^-') {
+    if ($OutputDir -match '^-{1,2}(h|help|\?)$') {
+        Show-Usage
+        exit 0
+    }
+    Write-Host ""
+    Write-Host "ERROR: '$OutputDir' looks like a flag, not an output directory." -ForegroundColor Red
+    Write-Host "       It would have been created as a folder. Refusing." -ForegroundColor Red
+    Show-Usage
+    exit 1
+}
+
 $Root             = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $AddonName        = "DjinnisDataTexts"
 $TocFile          = Join-Path $Root "$AddonName.toc"
@@ -123,18 +158,28 @@ if ($tagExists -contains $Tag) {
 
     Write-Success "  Bumped to: $Tag"
 
-    # Update RELEASE_NOTES.md (numeric version only, no suffix)
-    $rnContent = $rnContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
-    [System.IO.File]::WriteAllText($ReleaseNotesFile, $rnContent, (New-Object System.Text.UTF8Encoding $false))
-    Write-Success "  Updated RELEASE_NOTES.md"
-
-    # Update .toc
+    # Both rewrites are DryRun-guarded. They were not until 0.9.15, which made
+    # -DryRun a liar in exactly the case you would most want to preview: a
+    # version that has already been tagged. The in-memory $rnContent and
+    # $tocContent are still updated either way, so the rest of the run previews
+    # the bumped version correctly without touching the working tree.
+    $rnContent  = $rnContent  -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
     $tocContent = $tocContent -replace '(##\s+Version:\s*)\S+', "`${1}$Version"
-    [System.IO.File]::WriteAllText($TocFile, $tocContent, (New-Object System.Text.UTF8Encoding $false))
-    Write-Success "  Updated $AddonName.toc"
 
-    # Re-read for changelog extraction
-    $rnContent = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
+    if ($DryRun) {
+        Write-Warn "  [DryRun] Would update RELEASE_NOTES.md and $AddonName.toc to $Version"
+    } else {
+        [System.IO.File]::WriteAllText($ReleaseNotesFile, $rnContent, (New-Object System.Text.UTF8Encoding $false))
+        Write-Success "  Updated RELEASE_NOTES.md"
+
+        [System.IO.File]::WriteAllText($TocFile, $tocContent, (New-Object System.Text.UTF8Encoding $false))
+        Write-Success "  Updated $AddonName.toc"
+
+        # Re-read so the changelog extraction below sees exactly what was
+        # written. Skipped on a dry run, where nothing was written and the
+        # in-memory copy above is already the bumped text.
+        $rnContent = Get-Content $ReleaseNotesFile -Raw -Encoding UTF8
+    }
 }
 
 # ---------------------------------------------------------------------------

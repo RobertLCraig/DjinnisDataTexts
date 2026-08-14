@@ -162,10 +162,16 @@ Non-obvious things worth knowing before you touch them:
   unpicked, because deleting a tag CurseForge has already ingested achieves nothing. The
   `v0.9.12` tag therefore points at 0.9.13's code and is expected to; do not try to fix it.
   The file now carries the warning in its own header.
-- **`-DryRun` on `release.ps1` is not entirely dry.** If the tag it computes already exists,
-  the auto-bump block writes `RELEASE_NOTES.md` and the `.toc` without checking `$DryRun`
-  ([release.ps1](../release.ps1), section 3). No colliding tag exists today, but do not treat
-  the dry run as read-only on a version that has been tagged.
+- **`-DryRun` is dry as of 0.9.15**, including the auto-bump path, which used to rewrite
+  `RELEASE_NOTES.md` and the `.toc` without checking the switch. Verified against a throwaway
+  clone with the tag already present: it previews the bumped version end to end and leaves the
+  tree untouched.
+- **A single-dash typo still starts a real release.** `release.ps1 --help` is now guarded, but
+  that guard can only catch arguments PowerShell binds positionally. `-notaflag` is parsed as
+  a parameter name, fails to bind, and the script proceeds with defaults, which means a real
+  run. **The dirty-tree check in section 3 is the only thing that stops it**, so treat that
+  check as a safety mechanism rather than a convenience and do not relax it. Found the hard
+  way while testing the guard: the `.toc` was rewritten before the check caught it.
 - **The version regex runs before comments are stripped.** `release.ps1` finds the version
   with a plain regex over the raw file, then strips HTML comments later, so a version heading
   written inside a comment wins if it appears first. A draft `RELEASE_NOTES.md` did this and

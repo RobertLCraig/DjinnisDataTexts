@@ -57,3 +57,19 @@ the same mistyped invocation produces the same stray folder tomorrow. That is th
 of this card left to decide.
 
 ## Decided
+
+**2026-08-15** Option 3, both halves, on Rob's instruction ("do them all"). The zip was
+already untracked and moved to gitignored `releases/` by `12f483c`; the guard is now in
+`release.ps1` and this card is closed.
+
+`$OutputDir` is the first positional parameter, so `--help` bound to it and became a
+directory to create. The script now refuses any value matching `^-`, printing usage and
+exiting 0 for `-h` / `--help` / `-?` and exiting 1 for anything else flag-shaped. Verified by
+running the original mistake, `release.ps1 --help`: it prints usage and creates nothing.
+
+Scope note for whoever reads this next: the guard only covers arguments PowerShell binds
+positionally, which is what double-dash arguments do. A single-dash typo like `-notaflag` is
+parsed as a parameter name, fails to bind, and the script runs with defaults instead. That is
+PowerShell's behaviour rather than something this script can intercept, and it is a real
+foot-gun: a mistyped single-dash flag starts a genuine release. The dirty-tree check is what
+stops it going all the way, so do not weaken that check.
