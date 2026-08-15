@@ -1,5 +1,42 @@
 # Per-module enable/disable toggles and per-module refresh control
 
+## What I need from you
+
+**One session in game, walking three checks. Everything else on this card is done and released.**
+
+1. Disable a module, `/reload`, and confirm it is gone from your display addon's picker.
+2. Re-enable it, `/reload`, and confirm it comes back with its old settings.
+3. Disable **Active Activity** while leaving Delve enabled, `/reload`, and watch for a Lua error.
+
+---
+
+**On 1 and 2.** This is acceptance 1, 2 and 6, and it is the core promise of the whole card:
+a disabled module registers no broker, runs no code, and loses nothing when it comes back.
+Pick a module with visible output, Bag Value or Item Level, so the picker change is obvious.
+
+Pass is all four of:
+- the DataText disappears from your display addon's list, not merely showing blank
+- no Lua error on the reload
+- re-enabling brings it back
+- its label template, tooltip width and click actions are as you left them
+
+**On 3.** This is acceptance 8, the only one never exercised even in the harness, and it is
+the case 0.9.14 changed. Delve and Prey Tracker feed Active Activity rather than owning a
+DataText, so their switches now live in Active Activity's panel. You can still turn the
+aggregator off while a feeder is on, which is the combination worth poking: the feeder's
+`Init` runs and pushes labels at an aggregator that never initialised.
+
+Pass is no Lua error and no stuck DataText. Fail is any error mentioning `ActiveActivity`.
+
+**Why it needs you.** There is no automated verification of behaviour in this project at all,
+and the parts a harness can reach were already checked. What is left is frames and reloads,
+which only a running client has. The one in-game look so far, at the settings panel on
+2026-08-15, found three bugs including a saved-variables key read with the wrong case that
+had been shipping silently. These three checks cover code that no static check can reach.
+
+**Fail on any of them:** paste the error here. Everything is released, so a fix is a 0.9.16,
+not a revert.
+
 ## Why
 Every module creates its LDB broker at file load and every module with an `UpdateData`
 method is refreshed by the single 180s ticker in `Core.lua`, whether or not any display
@@ -102,3 +139,27 @@ cannot know it is disabled at file-load time because saved variables do not exis
 ## Direction
 **2026-06-23** Scope locked to toggles plus poll control, applied on reload rather than live.
 Matches the existing edit-the-toc-and-reload workflow users already have.
+
+**2026-08-15** The adversarial pass happened, so this card moves to `human-review/`: what is left
+is a person in a game client, which no agent can do.
+
+The review was a screenshot of the Modules panel plus an audit of what that panel lists against
+what actually owns a broker. It found three bugs, all fixed and released in v0.9.14:
+
+- The panel's two description paragraphs overlapped each other and the button row, because
+  `AddDescription` measured wrapped height before the FontString had a width.
+- `ActiveActivity` read its saved settings under `activeactivity`, which is not the key it
+  registers, so it always fell through to the defaults table. Its idle click actions were saved
+  and never read, and its tracker toggles could not persist. **This had been shipping silently.**
+- Delve and Prey Tracker were listed here as though disabling them removed a DataText. They own
+  no broker. They had a second, separate switch in Active Activity's panel that did something
+  different, and the two could disagree into a tracker that scanned and polled while its output
+  was discarded.
+
+The last of those changes what acceptance 8 means. Delve and Prey Tracker can no longer be
+disabled independently from this panel, so the feeder-off case is gone; the aggregator-off case
+remains and is check 3 above.
+
+Also worth recording against the "verification so far" note: this card shipped. v0.9.13 and
+v0.9.14 are on CurseForge, so the unverified settings panel is in other people's game folders
+rather than only this one. That raises the value of the three checks rather than lowering it.
