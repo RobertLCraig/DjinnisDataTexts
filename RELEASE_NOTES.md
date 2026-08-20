@@ -29,4 +29,11 @@
 
 ## Version: 0.9.16
 
-_No changes yet. The last release was 0.9.15 on 2026-08-15._
+### Changed
+
+- **The Delve tracker now recognises Lairs.** Patch 12.1.0 added Lairs, and the game
+  reports every Lair as an active delve, so the tracker labelled them "Delve". The label
+  and the tooltip header now read "Lair" when you are in one.
+- The Delve tracker's label template gains a `<kind>` tag, which resolves to "Lair" or
+  "Delve". The default template is now `<kind>: <progress>`. If you were still on the old
+  default it is updated for you on first load; a template you typed yourself is untouched.

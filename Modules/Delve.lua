@@ -15,6 +15,9 @@ ns.Delve = Delve
 
 -- State
 local inDelve         = false
+local inLair          = false  -- 12.1.0 Lairs. Blizzard, InstanceDifficulty.lua: "every lair is
+                               -- a delve, but not every delve is a lair", so the widget path
+                               -- fires for both and only C_DelvesUI.IsInLair tells them apart.
 local delveTierText   = nil    -- e.g. "Tier 8"
 local delveHeaderText = nil    -- e.g. "Collegiate Calamity"
 local delveSpells     = {}     -- list of { spellID, name, earned, glow, progressStr, progLabel, hasProgress }
@@ -109,9 +112,15 @@ local rowPool      = {}
 -- Defaults
 ---------------------------------------------------------------------------
 
+--- "Lair" or "Delve", for every player-facing place that names the content type.
+-- Added in 12.1.0: Lairs report as active delves, so without this a Lair reads "Delve".
+local function KindLabel()
+    return inLair and "Lair" or "Delve"
+end
+
 local DEFAULTS = {
     -- <name> falls back to "Not in Delve" when idle, so a single template works in both states.
-    labelTemplate    = "Delve: <progress>",
+    labelTemplate    = "<kind>: <progress>",
     tooltipScale     = 1.0,
     tooltipMaxHeight = 500,
     tooltipWidth     = 360,
@@ -277,12 +286,20 @@ function Delve:UpdateData()
 
     -- Reset state
     inDelve         = false
+    inLair          = false
     delveTierText   = nil
     delveHeaderText = nil
     delveSpells     = {}
     rewardState     = nil
     rewardTooltip   = nil
     scenarioCriteria = {}
+
+    -- Lair check is independent of the widget, so resolve it once here and let both
+    -- branches below use it. Returns false when we are not in a delve at all.
+    if C_DelvesUI and C_DelvesUI.IsInLair then
+        local ok, isLair = pcall(C_DelvesUI.IsInLair)
+        inLair = ok and isLair or false
+    end
 
     -- C_DelvesUI.HasActiveDelve gives a quick gate, but the widget is the source of truth
     -- since the widget only appears when the scenario header is active.
@@ -508,9 +525,10 @@ function Delve:UpdateLabel()
     local E = ns.ExpandTag
 
     local nameStr, tierStr, progStr, statusStr
+    local kindStr = KindLabel()
 
     if inDelve then
-        nameStr = delveHeaderText or "Delve"
+        nameStr = delveHeaderText or kindStr
         tierStr = delveTierText or ""
 
         -- Count widget spells (skipping the Bountiful umbrella, which we represent
@@ -570,6 +588,7 @@ function Delve:UpdateLabel()
 
     local result = template
     result = E(result, "status",   statusStr)
+    result = E(result, "kind",     kindStr)
     result = E(result, "name",     nameStr)
     result = E(result, "tier",     tierStr)
     result = E(result, "progress", progStr)
@@ -759,7 +778,7 @@ function Delve:PopulateTooltip()
 
     for _, row in pairs(rowPool) do row:Hide() end
 
-    tooltipFrame.header:SetText(DDT:ColorText("Delve Tracker", 1, 0.82, 0))
+    tooltipFrame.header:SetText(DDT:ColorText(KindLabel() .. " Tracker", 1, 0.82, 0))
 
     local rowIdx = 0
     local yOffset = 0
@@ -817,7 +836,7 @@ function Delve:PopulateTooltip()
         AddRow("Enter a Bountiful Delve to see objective progress.", nil, { 0.5, 0.5, 0.5 })
     else
         -- Header: delve name + tier
-        local title = delveHeaderText or "Delve"
+        local title = delveHeaderText or KindLabel()
         if delveTierText and delveTierText ~= "" then
             title = title .. "  |cffaaaaaa(" .. delveTierText .. ")|r"
         end
@@ -1571,10 +1590,11 @@ function Delve:BuildSettingsPanel(panel)
     local r = panel.refreshCallbacks
     local db = function() return ns.db.delve end
 
-    W.AddLabelEditBox(panel, "status name tier progress prog",
+    -- <kind> resolves to "Lair" or "Delve" (12.1.0), so a fixed "Delve:" prefix is wrong now.
+    W.AddLabelEditBox(panel, "status kind name tier progress prog",
         function() return db().labelTemplate end,
         function(v) db().labelTemplate = v; self:UpdateLabel() end, r, {
-        { "Default",     "Delve: <progress>" },
+        { "Default",     "<kind>: <progress>" },
         { "Status",      "<status>" },
         { "Name + Prog", "<name> <progress>" },
         { "Tier + Prog", "<tier> <progress>" },

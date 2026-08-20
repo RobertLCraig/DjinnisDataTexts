@@ -439,7 +439,7 @@ end
 -- Bump SCHEMA_VERSION whenever a migration step is added below. The stamp lives
 -- in DjinnisDataTextsDB._schemaVersion; a fresh DB starts at 0 and runs every
 -- step once, then never again.
-local SCHEMA_VERSION = 1
+local SCHEMA_VERSION = 2
 
 -- v1: the default tooltip widths for these modules were widened so English
 -- content no longer collides with the right-aligned values. Raise any saved
@@ -453,6 +453,12 @@ local WIDTH_BUMPS_V1 = {
     playedtime    = { old = 280, new = 340 },
     movementspeed = { old = 320, new = 380 },
 }
+
+-- v2: 12.1.0 added Lairs, which report as active delves, so the Delve tracker's
+-- hardcoded "Delve:" prefix mislabels them. The default template now uses the new
+-- <kind> tag, which resolves to "Lair" or "Delve". Move anyone still sitting on the
+-- old default across; a user who typed their own template keeps it.
+local DELVE_TEMPLATE_V2 = { old = "Delve: <progress>", new = "<kind>: <progress>" }
 
 --- Run any pending one-time schema migrations against DjinnisDataTextsDB.
 --- Must run after the saved DB exists but before/after MergeDefaults is fine:
@@ -469,6 +475,13 @@ local function RunSchemaMigrations()
             if type(mod) == "table" and mod.tooltipWidth == bump.old then
                 mod.tooltipWidth = bump.new
             end
+        end
+    end
+
+    if from < 2 then
+        local delve = db.delve
+        if type(delve) == "table" and delve.labelTemplate == DELVE_TEMPLATE_V2.old then
+            delve.labelTemplate = DELVE_TEMPLATE_V2.new
         end
     end
 

@@ -5,12 +5,11 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
-**Status:** v0.9.14 is the release that matters, out 2026-08-15 to GitHub and CurseForge. `v0.9.15`
-followed the same day and is a no-op republish of it, published by accident; see Key files.
-**Card 0001's Modules panel has now been seen working in a live client**, the first in-game
-verification this project has had, and the three bugs it found are what 0.9.14 fixes. Deployed to
-the game folder as 54 files, clean in git, `master` in sync with `origin`.
-_Last updated: 2026-08-15 (0.9.14 released and verified in game; 0.9.15 published in error)_
+**Status:** v0.9.14 is the last release that matters, out 2026-08-15 to GitHub and CurseForge.
+`v0.9.15` followed the same day and is a no-op republish of it, published by accident; see Key
+files. **An unreleased 0.9.16 now sits in the tree**: the Delve tracker recognises 12.1.0 Lairs
+(card 0008 in `ai-review/`). It parses and nothing more; it has not been in a game client.
+_Last updated: 2026-08-20 (12.1.0 Lair awareness written, unverified in game)_
 
 ## Goal & success criteria
 
@@ -55,9 +54,12 @@ DjinnisDataTextsDB = {
   `ADDON_LOADED`, `MergeDefaults` copies anything missing from `ns.defaults` into the saved
   DB, so new settings appear on upgrade without a migration.
 - **Additive defaults need no migration; changed defaults do.** `SCHEMA_VERSION`
-  ([Core.lua:318](../Core.lua#L318)) plus `RunSchemaMigrations` handle the second case. v1
-  raised saved tooltip widths that still equalled a known old default. Bump the constant
-  whenever a step is added.
+  ([Core.lua:442](../Core.lua#L442)) plus `RunSchemaMigrations` handle the second case. Bump
+  the constant whenever a step is added. It is at **2**: v1 raised saved tooltip widths that
+  still equalled a known old default, and v2 (2026-08-20) moves the Delve tracker's label
+  template off `Delve: <progress>` now that Lairs exist. Both steps share one shape, rewrite a
+  saved value only when it still equals the known old default, so a user who customised the
+  setting keeps their value and a fresh install is a no-op. Copy that shape for step three.
 - **Divergence to be aware of:** module keys are lowercase (`bagvalue`, `savedinstances`,
   `petinfo`) except `ActiveActivity`, registered CamelCase. Its saved table is therefore
   `DjinnisDataTextsDB.ActiveActivity`. Do not tidy this without a migration step; renaming
@@ -152,8 +154,8 @@ Non-obvious things worth knowing before you touch them:
   files shipped, identical in all three destinations.
 - **`--help/DjinnisDataTexts-v0.9.11.zip` was tracked in git**: a 793KB build artefact in a
   directory created from a mistyped `release.ps1` argument. `12f483c` untracked it and moved
-  the zip into gitignored `releases/`. Card 0005 stays open for the other half of its ask:
-  `release.ps1` still turns an unparsed `--help` into a directory rather than refusing.
+  the zip into gitignored `releases/`. Card 0005 is closed and sits in `done/`; the argument
+  guard described below is the other half of its ask, and it has shipped.
 - **`RELEASE_NOTES.md` must be cleared after every release, and this is not housekeeping.**
   `release.ps1` takes the version from that file and rewrites the `.toc` to match, so stale
   notes do not just look wrong, they rename the build. It happened on 2026-08-14: 0.9.12's
@@ -238,6 +240,14 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   settings migrate automatically and a coexistence warning fires if both are loaded.
   Recent releases have mostly been Midnight-era compatibility: combat-lockdown guards on
   secure tooltip parents, secret-taint pcalls, and the 12.1 support pass.
+- **Uncommitted at the head of this doc:** an unreleased 0.9.16 covering **12.1.0 Lairs**,
+  card 0008. A Lair is a queueable delve added on 2026-08-18, and the game reports every Lair
+  as an active delve, so the tracker labelled one "Delve". `Modules/Delve.lua` now carries an
+  `inLair` flag from `C_DelvesUI.IsInLair()`, a `KindLabel()` helper and a `<kind>` label tag;
+  the default template moved to `<kind>: <progress>` with schema migration v2 behind it.
+  Verified against `wow-ui-source` at `12.1.0 (69382)` that nothing else we consume changed:
+  the `ScenarioHeaderDelves` widget is byte-identical and was only relocated, and no
+  `C_DelvesUI` call we make was removed. **It parses under Lua 5.1 and that is all.**
 - **In progress:** nothing is in `in-progress/`. Card 0001 is released and, as of 0.9.14,
   **partly verified in a live client**: the Modules panel and Active Activity's tracker rows
   were confirmed by screenshot on 2026-08-15, including the row count, the eight
@@ -245,38 +255,41 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   surviving a reload. That single look found three bugs, one of which (the wrong saved key)
   had been shipping silently for releases. **What is still unverified is everything else**:
   the toggles have not been exercised through an actual enable, reload and disable cycle, and
-  the 12.1.0 pass has had no in-game check at all. Card 0001 stays in `ai-review/` until its
-  test script is actually walked.
+  the 12.1.0 pass has had no in-game check at all. Card 0001 has since had its adversarial
+  pass and moved to `human-review/`, where it stays until Rob walks its test script.
 - **Known bugs / broken:** none open, and read that narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
   `Blizzard_Deprecated*` shim. None of that exercises a single frame or tooltip. Everything
-  behavioural is confirmed by loading the addon in game, and 0.9.13 has not been.
+  behavioural is confirmed by loading the addon in game, and 0.9.13 has not been. The 0.9.16
+  Lair work adds a second unverified layer on top of that.
 
 ## What's next (in order)
 
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **Load 0.9.13 in the game client.** It is released, so this is no longer a gate before
-   shipping but a check on something already shipped. One session covers both unverified
-   halves. Card 0001 in `ai-review/` is the bigger one: `/reload`, then work the Modules panel,
-   whose acceptance criteria are the test script and none of which are ticked. While in there,
-   exercise the three areas the 12.1.0 pass changed, which is workspace card 0008: Professions
-   tooltips, Pet Info's Safari Hat row, and the SimC export on Item Level.
-2. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
+1. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
+   then enter a Lair and an ordinary delve and check the four label and template criteria. It
+   is the only unverified code in the tree and it gates the 0.9.16 release.
+2. **Load the shipped code in the game client too**, in the same sitting. Card 0001 sits in
+   `human-review/` with its test script unticked: work the Modules panel, and while in there
+   exercise the three areas the 12.1.0 pass changed, which is workspace card 0008 on the
+   `C:\Dev\WoWAddons` board: Professions tooltips, Pet Info's Safari Hat row, and the SimC
+   export on Item Level.
+3. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
-3. **0003 / 0004 Achievements and Quest Log module scope.** Both waiting on card 0002.
 
 ## Blockers / open questions
 
-Two cards sit in [docs/board/human-review/](board/human-review/), each carrying its own
-options and a recommendation:
+Two cards sit in [docs/board/human-review/](board/human-review/):
 
-- **0002: how to answer the CurseForge comment.** Genuinely blocking, and the only
-  time-sensitive item here: it is a public comment awaiting a reply, and it gates the scope
-  decisions on cards 0003 and 0004. A draft reply is ready for each option.
-- **0005: the stray `--help/` release zip.** Not blocking anything, a one-minute answer.
+- **0002: how to answer the CurseForge comment.** A decision card, options and a
+  recommendation inside it. Genuinely blocking, and the only time-sensitive item here: it is
+  a public comment awaiting a reply, and it gates the scope decisions on cards 0003 and 0004.
+  A draft reply is ready for each option.
+- **0001: per-module enable / disable toggles.** Not a decision, a build awaiting acceptance.
+  It has had its adversarial pass; what it needs is Rob walking its test script in game.
 
 Nothing is waiting on an outside party, so no card carries a `waiting_on:` date.
 
@@ -330,7 +343,9 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `master`, clean, in sync with `origin/master`, and tagged `v0.9.13`.
+On `master`, tagged `v0.9.15`, with the unreleased 0.9.16 Lair work committed on top and not
+yet pushed. No branch was cut for it: it is one module plus one migration step, which is the
+size of change this project lands directly on `master`.
 `claude/wow-12.1.0-patch-update` fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and
 the exclusion-list consolidation, closing a ten-commit gap in which nothing since v0.9.12 had
 reached GitHub. That was workspace card 0007. The merged branch still exists locally and is
