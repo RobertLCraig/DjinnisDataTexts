@@ -5,6 +5,7 @@
 > `docs/board/`, before changing anything.
 
 **Stage:** shipped
+**Category:** addon (guess)
 **Status:** v0.9.14 is the last release that matters, out 2026-08-15 to GitHub and CurseForge.
 `v0.9.15` followed the same day and is a no-op republish of it, published by accident; see Key
 files. **An unreleased 0.9.16 now sits in the tree**: the Delve tracker recognises 12.1.0 Lairs
