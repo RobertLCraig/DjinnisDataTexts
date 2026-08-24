@@ -10,7 +10,10 @@
 `v0.9.15` followed the same day and is a no-op republish of it, published by accident; see Key
 files. **An unreleased 0.9.16 now sits in the tree**: the Delve tracker recognises 12.1.0 Lairs
 (card 0008 in `ai-review/`). It parses and nothing more; it has not been in a game client.
-_Last updated: 2026-08-20 (12.1.0 Lair awareness written, unverified in game)_
+**A shipped defect was found by reading on 2026-08-24 and is now card 0010**: the SimC export
+on the Item Level module never reaches the SimulationCraft addon and the string it copies
+instead is not the format Raidbots parses.
+_Last updated: 2026-08-24 (SimC export defect read out of the code and carded as 0010)_
 
 ## Goal & success criteria
 
@@ -258,7 +261,16 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   the toggles have not been exercised through an actual enable, reload and disable cycle, and
   the 12.1.0 pass has had no in-game check at all. Card 0001 has since had its adversarial
   pass and moved to `human-review/`, where it stays until Rob walks its test script.
-- **Known bugs / broken:** none open, and read that narrowly. There is no automated
+- **Known bugs / broken: one open, card 0010.** The SimC export on `Modules/ItemLevel.lua`
+  is broken in both of its two paths, and it is released. The delegation branch looks up the
+  SimulationCraft addon's slash handler under the key `SIMULATIONCRAFT`, but a command
+  registered as `/simc` lives under `SIMC`, so it misses even when that addon is installed and
+  the fallback always runs. The fallback then emits no `talents=`, `region=`, `role=` or
+  `professions=` line and writes gear as a raw `item:` link rather than the keyed
+  `head=,id=N,bonus_id=...` form, so Raidbots cannot read it. Found by reading, not by running.
+  **This is the second fault static checks would never surface**, alongside the wrong saved key
+  fixed in 0.9.14: the code runs, throws nothing, and produces output nobody had validated.
+- Beyond that, read "none open" narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
   `Blizzard_Deprecated*` shim. None of that exercises a single frame or tooltip. Everything
@@ -278,7 +290,11 @@ At the head:
    exercise the three areas the 12.1.0 pass changed, which is workspace card 0008 on the
    `C:\Dev\WoWAddons` board: Professions tooltips, Pet Info's Safari Hat row, and the SimC
    export on Item Level.
-3. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
+3. **0010 fix the SimC export**, and it is the only card here that is a live shipped defect
+   rather than tidying or verification. The slash-key half is a one-word change and restores
+   the whole feature for anyone who has SimulationCraft installed. The format half needs a
+   real `/simc` export captured first, so do the two halves in that order.
+4. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 
 ## Blockers / open questions

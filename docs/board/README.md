@@ -191,15 +191,53 @@ source, as a statement rather than a question.
 residue in front of the person. "The industry default is X, applied. What I cannot settle is whether
 your situation is the exception, because Y" is one line of reading instead of a whole card.
 
+**This test is also what `human-review/` is for**, and the two are one rule stated twice on purpose:
+the four rows above are the whole of what may enter that lane as a decision. See
+`## human-review/ IS A DECISION QUEUE AND NOT AN APPROVAL GATE` below for the other two ways in, both
+narrow, and for what the lane is explicitly NOT.
+
 ## One lane for the human, not three
 
-A call to make, a build to accept, and an outside party to chase are the same state: nothing moves
+A call to make, a decision to take, and an outside party to chase are the same state: nothing moves
 until a person spends attention. Splitting them would be three folders to sweep instead of one, and
 what a card wants is already derivable from its own shape, so the board can say "8 to call, 3 to
-accept" without a second folder saying it.
+decide" without a second folder saying it.
 
 The lane is named after the job, not the person, because these boards are read by more than their
 author and the convention is the same on every project.
+
+### `human-review/` IS A DECISION QUEUE AND NOT AN APPROVAL GATE
+
+Rob, 2026-08-21, and it is the rule this whole lane turns on:
+
+> Cards only move into human-review if I need to make a decision. It isn't there for me to approve
+> or disapprove of any work done, it's just so that I can answer any questions that the agent
+> raised. In all cases where possible, the agent should research what the suitable answer should be
+> (industry standards, best practices). Cards only come to human review for clear direction where
+> the agent would be unrecoverably blocked otherwise, maybe it thinks that I would choose
+> differently to it and has good reasoning for that.
+
+**So finished work does not come here to be signed off.** A card whose work is done and checked goes
+to `done/`. A reviewing agent that passes a card moves it to `done/` itself. There is no step where
+somebody reads good work and nods at it, because a nod carries no information and the queue exists
+to protect the attention it would spend.
+
+**Three, and only three, things put a card in this lane:**
+
+1. **A decision that turns on a preference, a cost, a risk, or local knowledge nobody wrote down.**
+   That is the same test as `## Is this actually a person's to decide?` below.
+2. **A step only a person can take**, because its effect leaves the repository and no `git revert`
+   reaches it: a scheduled task, a DNS record, a deploy, a message somebody receives, a browser
+   check on a screen.
+3. **An agent that has an answer and good reason to think the person's would differ.** This is the
+   narrow one and it is not "the agent is unsure". Write the question, the research behind it, and
+   what you would have chosen.
+
+**Everything else is the agent's to settle by reading.** If the answer is established practice, an
+industry standard, or written down anywhere findable, research it, apply it, and record the source
+on the card. Surfacing it instead is an agent asking a person to do its reading.
+
+**A card that arrives here without a question is a defect in that card**, not a task for the reader.
 
 There is no `blocked/` or `waiting/` lane. Both named a state without naming who clears it, and a
 holding lane nobody owns is how one real board reached 21 cards nobody could clear. If an outside
