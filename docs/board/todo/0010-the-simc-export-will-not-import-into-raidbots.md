@@ -8,12 +8,11 @@ number that comes back is about somebody else's character.
 
 Two separate faults produce that.
 
-**It never hands the job to the real SimulationCraft addon.** `Modules/ItemLevel.lua:391` looks for
-the slash handler under the key `SIMULATIONCRAFT`. That addon registers `/simc`, and a slash command
-registered as `/simc` lives under the key `SIMC`. So the lookup misses on every machine, including
-the ones where the addon is installed and working, and the home-made fallback runs instead of the
-authoritative export. `DjinnisDataTexts.toc` already names SimulationCraft in `## OptionalDeps`, so
-deferring to it was always the intent.
+**It never hands the job to the real Simulationcraft addon.** `Modules/ItemLevel.lua:391` looked for
+the slash handler under the key `SIMULATIONCRAFT`, which nothing ever registers, so the lookup
+missed on every machine and the home-made fallback always ran.
+`DjinnisDataTexts.toc` already names SimulationCraft in `## OptionalDeps`, so deferring to it was
+always the intent. **Fixed 2026-08-24, see `## Direction`.**
 
 **The fallback string is not the format SimC produces.** `Modules/ItemLevel.lua:396-444` writes five
 header lines plus one line per equipped item. Against real `/simc` output it is missing `talents=`
@@ -38,9 +37,7 @@ exists only for people who do not have it, and it stays a best-effort export.
 those as commented extras. Equipped gear plus a correct header is the whole scope.
 
 **Do not touch the Auctionator or TSM shopping-list code** further down the same file. It shares
-`GEAR_SLOTS` and nothing else.
-
-**No settings and no new saved variable.** Nothing here is configurable, so `SCHEMA_VERSION` in
+`GEAR_SLOTS` and nothing else. **No settings and no new saved variable**, so `SCHEMA_VERSION` in
 `Core.lua` does not move.
 
 ## Acceptance
@@ -63,8 +60,7 @@ those as commented extras. Equipped gear plus a correct header is the whole scop
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Install SimulationCraft, print the keys of `SlashCmdList` matching `SIMC`, and fix the guard
-      at `Modules/ItemLevel.lua:391` to the key it actually reports
+- [x] Find the real slash key and fix the guard at `Modules/ItemLevel.lua:391`
 - [ ] Capture a genuine `/simc` export from that addon and save it under `docs/spec/` as the
       reference the fallback is written against
 - [ ] Rewrite the fallback header to match that reference: comment lines, quoted name, and the
@@ -88,9 +84,31 @@ Split on `:` and take the pieces by position. No Blizzard helper hands this back
 so it is a loop of about fifteen lines.
 
 **To see it work.** Deploy with `C:\Dev\WoWAddons\bin\deploy.ps1 -WhatIf -Only DjinnisDataTexts`,
-then without `-WhatIf`. Log in, hover the item level DataText, right-click. With SimulationCraft
-enabled you should get its window; with it disabled you should get this addon's own copy box.
-`/reload` between changes.
+then again without `-WhatIf`. Log in, hover the item level DataText, right-click. With
+Simulationcraft enabled you should get its window; with it disabled you should get this addon's own
+copy box. `/reload` between changes. **There is no test suite here**, which is why every criterion
+says `manual`; the real check is a paste into <https://www.raidbots.com/simbot/droptimizer>.
 
-**There is no test suite in this repo**, which is why every criterion says `manual`. The real check
-is a paste into <https://www.raidbots.com/simbot/droptimizer>.
+## Direction
+**2026-08-24** The slash key is fixed, and it is neither name this card first guessed. The addon is
+installed at `C:\Games\World of Warcraft\_retail_\Interface\AddOns\Simulationcraft`, and
+`core.lua:132` registers its command through AceConsole rather than by hand:
+
+    Simulationcraft:RegisterChatCommand('simc', 'HandleChatCommand')
+
+`AceConsole-3.0.lua:85` builds the key as `"ACECONSOLE_" .. command:upper()`, so **the real key is
+`ACECONSOLE_SIMC`**. `SIMULATIONCRAFT` was wrong, and the plain `SIMC` this card originally proposed
+would have been wrong too. Every addon using AceConsole is keyed this way, which is worth knowing
+before guessing at another one.
+
+The `C_AddOns.IsAddOnLoaded` half of the guard is gone rather than corrected. The handler existing
+is already proof the addon loaded, and the old check matched on a folder name (`SimulationCraft`
+against the real `Simulationcraft`) that a rename would break silently.
+
+Empty input is the right argument. `HandleChatCommand` at `core.lua:167` splits it, matches none of
+`debug`, `nobag`, `merchant` or `minimap`, and falls through to
+`PrintSimcProfile(false, false, false)`, which is what the addon's own minimap button calls.
+
+**What has been checked: `luac -p Modules/ItemLevel.lua` parses under Lua 5.1, and nothing else.**
+Criterion #1 still needs the right-click in a live client. Criteria #2 to #6 are untouched by this
+change and the fallback is still wrong.

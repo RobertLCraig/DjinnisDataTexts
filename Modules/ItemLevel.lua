@@ -387,10 +387,14 @@ end
 ---------------------------------------------------------------------------
 
 function ItemLevel:CopySimCString()
-    -- Check if SimulationCraft addon is loaded and has its slash command
-    if C_AddOns and C_AddOns.IsAddOnLoaded and C_AddOns.IsAddOnLoaded("SimulationCraft")
-       and SlashCmdList["SIMULATIONCRAFT"] then
-        SlashCmdList["SIMULATIONCRAFT"]("")
+    -- Hand off to the Simulationcraft addon when it is present. It registers /simc
+    -- through AceConsole, which keys SlashCmdList by "ACECONSOLE_" .. command:upper(),
+    -- so the key is ACECONSOLE_SIMC and never SIMULATIONCRAFT. The handler existing is
+    -- itself proof the addon loaded, so there is nothing else to check. Empty input is
+    -- the plain export: its arg loop matches nothing and it opens its own window.
+    local simc = SlashCmdList["ACECONSOLE_SIMC"]
+    if simc then
+        simc("")
         return
     end
 
