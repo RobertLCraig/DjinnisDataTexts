@@ -29,6 +29,26 @@
 
 ## Version: 0.9.16
 
+### Fixed
+
+- **Saved Instances no longer remembers characters forever.** Every character you had ever
+  logged in kept its own tooltip column, carrying whatever keys and lockouts it had when you
+  last played it, however long ago. One of them was on a Mythic Dungeon International
+  tournament realm that Blizzard has since taken down, so it could never be cleared by
+  playing it again. Characters you have not played for a while are now forgotten.
+- **The Item Level module's SimC export now hands off to the Simulationcraft addon.** It was
+  looking for that addon's `/simc` command under a name nothing registers, so the handoff
+  missed on every machine, even where Simulationcraft was installed and working, and you
+  always got Data Texts' own simpler export instead. That fallback export is still not in a
+  format Raidbots accepts; fixing it is a separate job and is not done yet.
+
+### Added
+
+- **A "Forget an alt after this many weeks" slider**, under Saved Instances, Alt Lockouts.
+  It counts weekly resets and defaults to 3. Set it to 0 to keep every character forever,
+  which is the old behaviour. A character still holding an extended raid lockout is kept
+  whatever you set, because that lockout is genuinely still yours.
+
 ### Changed
 
 - **The Delve tracker now recognises Lairs.** Patch 12.1.0 added Lairs, and the game

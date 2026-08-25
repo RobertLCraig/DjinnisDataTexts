@@ -16,8 +16,14 @@ instead is not the format Raidbots parses.
 **A second shipped defect was reported from the game on 2026-08-25 and is card 0011**: Saved
 Instances kept every character it had ever seen forever, including one on an MDI tournament
 realm that Blizzard has since taken down, so a character nobody can log in to again had its
-own tooltip column. Fixed in the tree, deployed, not yet run in a client.
-_Last updated: 2026-08-25 (phantom alt column fixed and carded as 0011)_
+own tooltip column. **Fixed, checked in the client by Rob, and `done/`.**
+
+**0.9.16 is packaged and deliberately held.** `RELEASE_NOTES.md` carries all three changes,
+`release.ps1 -DryRun` is clean at 54 files, and the tag has not been cut. Rob was asked on
+2026-08-25 whether to publish with two of the three changes never run in a game, and chose to
+check them first. **The release is one command away and the only thing standing in front of it
+is the in-game check on cards 0008 and 0010.** Do not cut the tag until those are ticked.
+_Last updated: 2026-08-25 (0011 done; 0.9.16 packaged and held for the 0008 and 0010 checks)_
 
 ## Goal & success criteria
 
@@ -274,7 +280,7 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   `head=,id=N,bonus_id=...` form, so Raidbots cannot read it. Found by reading, not by running.
   **This is the second fault static checks would never surface**, alongside the wrong saved key
   fixed in 0.9.14: the code runs, throws nothing, and produces output nobody had validated.
-- **Card 0011 is fixed in the tree and awaiting a look in game.** `ns.db.altLockouts` grew one
+- **Card 0011 is fixed, checked in the client, and `done/`.** `ns.db.altLockouts` grew one
   entry per character ever logged in and nothing ever removed one, so an entry saved on
   2026-04-16 under the key `Djinni - EU Mythic Dungeons` rendered as a permanent extra tooltip
   column carrying last season's keys. **`EU Mythic Dungeons` is a real realm, not a bad string**:
@@ -300,31 +306,34 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **0011 in `human-review/`: hover Saved Instances after a `/reload`.** Already deployed, so
-   it costs one command. Its open question is answered (the prune window is a setting, default
-   3 weeks), so what remains is the in-game look and then its adversarial pass.
-2. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
-   then enter a Lair and an ordinary delve and check the four label and template criteria. It
-   gates the 0.9.16 release, and it can be done in the same sitting as 0011.
-3. **Load the shipped code in the game client too**, in the same sitting. Card 0001 sits in
+1. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
+   then enter a Lair and an ordinary delve and check the four label and template criteria.
+   **This and item 2 are the only things holding the packaged 0.9.16 release.**
+2. **0010's slash-key half: click the Item Level SimC export with Simulationcraft installed**
+   and confirm that addon's own window opens rather than Data Texts' simpler copy box. That
+   half is committed and unverified. The Raidbots-format half of the card is untouched and
+   does not gate the release, because the notes say so plainly.
+3. **Then publish 0.9.16.** `pwsh -File release.ps1`, then clear `RELEASE_NOTES.md` and bump
+   its heading in the same sitting. The dry run was clean on 2026-08-25 at 54 files.
+4. **Load the shipped code in the game client too**, in the same sitting. Card 0001 sits in
    `human-review/` with its test script unticked: work the Modules panel, and while in there
    exercise the three areas the 12.1.0 pass changed, which is workspace card 0008 on the
    `C:\Dev\WoWAddons` board: Professions tooltips, Pet Info's Safari Hat row, and the SimC
    export on Item Level.
-4. **0010 fix the SimC export**, and it is the only card here that is a live shipped defect
-   rather than tidying or verification. The slash-key half is a one-word change and restores
-   the whole feature for anyone who has SimulationCraft installed. The format half needs a
-   real `/simc` export captured first, so do the two halves in that order.
-5. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
+5. **0010's other half: the export format.** The slash-key half is committed, so what is left
+   is that Data Texts' own fallback string is not what Raidbots parses. It needs a real
+   `/simc` export captured from the Simulationcraft addon first, to compare against.
+6. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 
 ## Blockers / open questions
 
-Three cards sit in [docs/board/human-review/](board/human-review/):
+**The 0.9.16 release is held on two in-game checks**, cards 0008 and 0010, listed as items 1
+and 2 in the queue above. It is packaged and one command from going out. Rob made that call on
+2026-08-25 rather than publish two changes nobody had run.
 
-- **0011: the phantom Saved Instances column.** Cheapest of the three and the newest, and no
-  longer blocking anything: one `/reload` to confirm the fix and a look at the new prune-window
-  slider. Nothing waits on it.
+Two cards sit in [docs/board/human-review/](board/human-review/):
+
 - **0002: how to answer the CurseForge comment.** A decision card, options and a
   recommendation inside it. Genuinely blocking, and the only time-sensitive item here: it is
   a public comment awaiting a reply, and it gates the scope decisions on cards 0003 and 0004.
@@ -385,9 +394,11 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `master`, tagged `v0.9.15`, with the unreleased 0.9.16 Lair work and the card 0011 alt
-prune committed on top and not yet pushed. No branch was cut for it: it is one module plus one migration step, which is the
-size of change this project lands directly on `master`.
+On `master`, tagged `v0.9.15`, **ahead of `origin/master` by the whole unreleased 0.9.16**: the
+Lair work, the SimC slash-key fix, the card 0011 alt prune, and the release notes for all
+three. Nothing is pushed and no `v0.9.16` tag exists yet, by choice. No branch was cut for any
+of it: these are single-module changes, which is the size this project lands directly on
+`master`.
 `claude/wow-12.1.0-patch-update` fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and
 the exclusion-list consolidation, closing a ten-commit gap in which nothing since v0.9.12 had
 reached GitHub. That was workspace card 0007. The merged branch still exists locally and is

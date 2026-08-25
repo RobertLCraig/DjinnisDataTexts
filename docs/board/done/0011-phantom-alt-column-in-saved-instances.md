@@ -2,25 +2,14 @@
 
 ## What I need from you
 
-**One check, in game.**
+**Nothing. Rob checked it in the client on 2026-08-25 and accepted it.** It
+ships in 0.9.16, whose notes are written and whose release is held on two
+unrelated cards, 0008 and 0010, that have never been run in a game.
 
-1. `/reload`, then hover Saved Instances. Pass is all three of:
-   - the last column, the second "Djinni", is gone
-   - the characters you have played in the last three weeks are all still there
-   - no Lua error
-
-Already deployed to the game folder, so `/reload` is the whole job. Fail is a
-character you played recently going missing, or the column still being there.
-Say which in this card and I will revert; it is one commit.
-
-Then check the new slider suits you: **Settings, Saved Instances, Alt Lockouts,
-"Forget an alt after this many weeks"**. It is set to your 3. Set it to 0 to
-keep every character forever, including the tournament-realm one.
-
-Off the back of it, one thing worth knowing rather than deciding: the "show
-alts active in the last 30 / 60 / 90 / 180 days" dropdown can now outlive its
-own data. At 3 weeks nothing older than 21 days survives to be filtered, so the
-90 and 180 day options do nothing. Not urgent, and not this card.
+One thing left behind rather than fixed: the "show alts active in the last 30 /
+60 / 90 / 180 days" dropdown can now outlive its own data. At the default of 3
+weeks nothing older than 21 days survives to be filtered, so the 90 and 180 day
+options do nothing. Its own card if it ever matters.
 
 ## Why
 
@@ -62,16 +51,16 @@ that character in again and clear it.
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the Saved Instances data refreshes, THE APP SHALL delete any stored
+- [x] #1 WHEN the Saved Instances data refreshes, THE APP SHALL delete any stored
       character not seen within `altPruneWeeks` weekly resets.
-- [ ] #2 IF `altPruneWeeks` is 0, THEN THE APP SHALL delete no stored character.
-- [ ] #3 IF a stored character still holds an extended raid lockout that has not
+- [x] #2 IF `altPruneWeeks` is 0, THEN THE APP SHALL delete no stored character.
+- [x] #3 IF a stored character still holds an extended raid lockout that has not
       run out, THEN THE APP SHALL keep that character whatever the setting.
-- [ ] #4 IF the weekly reset time cannot be read from the game, THEN THE APP
+- [x] #4 IF the weekly reset time cannot be read from the game, THEN THE APP
       SHALL delete nothing.
-- [ ] #5 WHEN the settings panel is opened, THE APP SHALL offer `altPruneWeeks`
+- [x] #5 WHEN the settings panel is opened, THE APP SHALL offer `altPruneWeeks`
       as a 0 to 26 slider under Alt Lockouts, defaulting to 3.
-- [ ] #6 WHEN the tooltip is shown after a reload at the default setting, THE APP
+- [x] #6 WHEN the tooltip is shown after a reload at the default setting, THE APP
       SHALL NOT show a column for `Djinni - EU Mythic Dungeons`.
 <!-- AC:END -->
 
@@ -84,9 +73,12 @@ that character in again and clear it.
 - [x] `luac -p` clean
 - [x] Check the cutoff maths against the real saved file, both boundaries
 - [x] `deploy.ps1` to the game folder
-- [ ] In-game `/reload` check (the ask above)
-- [ ] Adversarial and security pass
-- [ ] `RELEASE_NOTES.md` entry, since this ships with the unreleased 0.9.16
+- [x] In-game `/reload` check (the ask above)
+- [x] `RELEASE_NOTES.md` entry, since this ships with the unreleased 0.9.16
+- [ ] Adversarial and security pass. **Not run.** Accepted without one on
+      2026-08-25 because the change is one function and one slider, it parses
+      clean, its cutoff was checked against real data at both boundaries, and
+      Rob has seen it work in the client. Worth an hour if it ever misbehaves.
 
 ## Comments
 
