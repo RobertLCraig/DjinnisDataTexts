@@ -13,7 +13,11 @@ files. **An unreleased 0.9.16 now sits in the tree**: the Delve tracker recognis
 **A shipped defect was found by reading on 2026-08-24 and is now card 0010**: the SimC export
 on the Item Level module never reaches the SimulationCraft addon and the string it copies
 instead is not the format Raidbots parses.
-_Last updated: 2026-08-24 (SimC export defect read out of the code and carded as 0010)_
+**A second shipped defect was reported from the game on 2026-08-25 and is card 0011**: Saved
+Instances kept every character it had ever seen forever, including one stored under a realm
+name the game invented, so a character that does not exist had its own tooltip column. Fixed
+in the tree, deployed, not yet run in a client.
+_Last updated: 2026-08-25 (phantom alt column fixed and carded as 0011)_
 
 ## Goal & success criteria
 
@@ -270,6 +274,16 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   `head=,id=N,bonus_id=...` form, so Raidbots cannot read it. Found by reading, not by running.
   **This is the second fault static checks would never surface**, alongside the wrong saved key
   fixed in 0.9.14: the code runs, throws nothing, and produces output nobody had validated.
+- **Card 0011 is fixed in the tree and awaiting a look in game.** `ns.db.altLockouts` grew
+  one entry per character ever logged in and nothing ever removed one, so an entry saved on
+  2026-04-16 under the key `Djinni - EU Mythic Dungeons` (the game returned a community name
+  from `GetRealmName()`, cause unknown and unreproduced) rendered as a permanent extra tooltip
+  column carrying last season's keys. The wider fault behind it: only the current character's
+  weekly data was ever wiped at reset, so every stored alt showed last week's keys as current.
+  `PruneStaleAltData()` in `Modules/SavedInstances.lua` now drops any stored character whose
+  `lastSeen` predates the weekly reset, keeping one that still holds an unexpired extended raid
+  lockout and pruning nothing at all if the reset time cannot be read. **This is the third fault
+  of that same class**: no error, no failing parse, wrong data on screen for months.
 - Beyond that, read "none open" narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
@@ -282,25 +296,31 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
-1. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
+1. **0011 in `human-review/`: hover Saved Instances after a `/reload`.** Already deployed, so
+   it costs one command. It also carries a choice on how far the weekly prune should go, which
+   changes what the code does, so its adversarial pass is held until Rob answers.
+2. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
    then enter a Lair and an ordinary delve and check the four label and template criteria. It
-   is the only unverified code in the tree and it gates the 0.9.16 release.
-2. **Load the shipped code in the game client too**, in the same sitting. Card 0001 sits in
+   gates the 0.9.16 release, and it can be done in the same sitting as 0011.
+3. **Load the shipped code in the game client too**, in the same sitting. Card 0001 sits in
    `human-review/` with its test script unticked: work the Modules panel, and while in there
    exercise the three areas the 12.1.0 pass changed, which is workspace card 0008 on the
    `C:\Dev\WoWAddons` board: Professions tooltips, Pet Info's Safari Hat row, and the SimC
    export on Item Level.
-3. **0010 fix the SimC export**, and it is the only card here that is a live shipped defect
+4. **0010 fix the SimC export**, and it is the only card here that is a live shipped defect
    rather than tidying or verification. The slash-key half is a one-word change and restores
    the whole feature for anyone who has SimulationCraft installed. The format half needs a
    real `/simc` export captured first, so do the two halves in that order.
-4. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
+5. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
    Needs one answer from Rob on non-goals; everything else is derivable.
 
 ## Blockers / open questions
 
-Two cards sit in [docs/board/human-review/](board/human-review/):
+Three cards sit in [docs/board/human-review/](board/human-review/):
 
+- **0011: the phantom Saved Instances column.** Cheapest of the three and the newest. One
+  `/reload` to confirm the fix, plus one choice about how aggressive the weekly prune should
+  be. The choice is the blocking half; the check can be done any time.
 - **0002: how to answer the CurseForge comment.** A decision card, options and a
   recommendation inside it. Genuinely blocking, and the only time-sensitive item here: it is
   a public comment awaiting a reply, and it gates the scope decisions on cards 0003 and 0004.
@@ -360,8 +380,8 @@ Blizzard's own Lua usage.
 
 ## Branch status
 
-On `master`, tagged `v0.9.15`, with the unreleased 0.9.16 Lair work committed on top and not
-yet pushed. No branch was cut for it: it is one module plus one migration step, which is the
+On `master`, tagged `v0.9.15`, with the unreleased 0.9.16 Lair work and the card 0011 alt
+prune committed on top and not yet pushed. No branch was cut for it: it is one module plus one migration step, which is the
 size of change this project lands directly on `master`.
 `claude/wow-12.1.0-patch-update` fast-forwarded in on 2026-08-14 carrying the 12.1.0 pass and
 the exclusion-list consolidation, closing a ten-commit gap in which nothing since v0.9.12 had

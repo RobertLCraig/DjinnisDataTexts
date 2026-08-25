@@ -259,6 +259,29 @@ local function GetCurrentWeekStart()
     return 0
 end
 
+-- Drop any stored alt whose data predates the current weekly reset. Last week's keys
+-- and lockouts are gone in game, so showing them as current is a lie, and it is also
+-- what keeps a character saved under a bad realm name alive forever. An alt that still
+-- matters rewrites its own entry the next time it logs in. Extended raid lockouts
+-- survive the reset, so an alt still holding one is kept.
+local function PruneStaleAltData()
+    if not ns.db or not ns.db.altLockouts then return end
+    local weekStart = GetCurrentWeekStart()
+    if weekStart <= 0 then return end   -- reset time unknown: prune nothing
+
+    local now = time()
+    for key, alt in pairs(ns.db.altLockouts) do
+        local lastSeen = (type(alt) == "table" and alt.lastSeen) or 0
+        if lastSeen < weekStart then
+            local keep = false
+            for _, lo in ipairs((type(alt) == "table" and alt.lockouts) or {}) do
+                if lo.extended and lastSeen + (lo.reset or 0) > now then keep = true end
+            end
+            if not keep then ns.db.altLockouts[key] = nil end
+        end
+    end
+end
+
 -- Load tracked delve runs from SavedVariables for this character
 local function LoadDelveHistory()
     wipe(delveTrackedRuns)
@@ -494,6 +517,8 @@ end
 function SavedInst:SaveCurrentCharData()
     if not ns.db then return end
     if not ns.db.altLockouts then ns.db.altLockouts = {} end
+
+    PruneStaleAltData()
 
     local playerName  = UnitName("player")
     local playerRealm = GetRealmName()
