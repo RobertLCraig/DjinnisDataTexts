@@ -27,7 +27,7 @@ itself, so it goes from `human-review/` straight to `done/`.
 the card's acceptance and still hand a stranger somebody else's data, so a review that only asks
 whether the code is right has done half the job. It also asks how the code is attacked.
 
-Three questions, and the answers go **on the card**, as a dated `## Direction` entry, before it leaves
+Three questions, and the answers go **on the card**, as a dated `## Comments` entry, before it leaves
 `ai-review/`:
 
 1. **Where is it weakest**, said the way somebody attacking it would use it, not as a category name.
@@ -58,12 +58,14 @@ and not what.
 | `needs:` | prerequisite cards, as numbers | orders the lane, and shows what is stuck behind what |
 | `waiting_on:` | who or what is being waited for, with a recheck date | surfaces as drift when the date arrives; keeps the unattended loop off the card |
 | `not_for_the_loop:` | why this card is a person's | keeps the **unattended** loop off it, and nothing else |
+| `no_outward_effect:` | why an outward-effect flag on this card is a false positive | silences that one flag, and grants nothing |
 
 ```yaml
 ---
 needs: 0057, 0082
 waiting_on: the broker quote - recheck 2026-09-01
 not_for_the_loop: edits the scheduled task that would be running it
+no_outward_effect: "published" here is a template version's state, not a deploy
 ---
 ```
 
@@ -80,6 +82,14 @@ like "answer 0025 first". A board that renders `needs:` shows the part that is *
 treating `done/`, `discarded/` (answered by dropping it) and `ai-review/` (built, with only its
 acceptance pending) as settled, so a card whose blockers have all landed stops showing as blocked
 without anybody editing it.
+
+**A card that has been answered is settled too, in whatever lane it is sitting in.** Answering moves
+a card back to `todo/`, so an answered decision sits in a work lane for as long as the work takes,
+and a lane test alone read it as an open blocker for ever: on one board, 17 answered cards in `todo/`
+were freezing 8 others, and the unattended loop will not start a card whose `needs:` is unresolved.
+The prerequisite decays on the thing it was actually waiting for, which for a decision is the answer
+and not the folder. It says nothing about the answered card itself, which is still open work, still
+in the queue and still counted.
 
 **Declare a blocker, not an influence.** If the card can be built now and a later answer merely
 refines it, that belongs in `## Plan` with the interim stated ("build to a named constant, the swap
@@ -107,6 +117,29 @@ people while it was wrong.
 The value is the reason, in the reader's terms: `not_for_the_loop: publishes the site to Hostinger`.
 A card that edits the very script that would be running it carries the key for a different reason,
 and that is fine. The key means "not the unattended loop"; the value says why.
+
+### A confirmed false positive is recorded, not argued with
+
+The board flags a card whose `## Acceptance` uses one of six words (deploy, DNS, publish, push to
+live, send, browser) and carries no `not_for_the_loop:`. That flag is a **candidate and not a
+verdict**, because whether work reaches outside the repository turns on meaning, and a fair share of
+its hits are the word rather than the effect: a template **version** being *published* is a database
+row's lifecycle state, accepting a certificate **without** a *deploy* is the opposite of deploying,
+*publishing* our own metadata page is serving our own route, and anybody *sending* a delete to a
+route is an HTTP verb in a test.
+
+When you have read one and it is a word rather than an effect, say so on the card:
+
+```yaml
+no_outward_effect: "published" is a template version's lifecycle state, not a deploy
+```
+
+Presence is the declaration and the value is the reason, exactly as with `not_for_the_loop:`. **It is
+not that key and must not be used as it.** `no_outward_effect:` silences one writing flag and grants
+nothing; the loop reads `not_for_the_loop:` and only that, so a card carrying this one is exactly as
+available to an unattended session as it was before. Reaching for `not_for_the_loop:` to quieten a
+false positive is the thing this exists to prevent: it strands a buildable card in the person's
+queue for a word.
 
 **A card that needs a person also needs a starting point**, so its `## Plan` matters more than most.
 See `## Plan` is written for a stranger, below. A card nobody knows how to start is a card that does
@@ -184,7 +217,7 @@ and says on the card what it applied and where the practice came from.** Which H
 validation failure returns, whether an id or a slug goes in a URL, how a table should be indexed,
 what a date format should be: these have correct answers that a search settles in minutes, and
 surfacing them as a decision is an agent asking a person to do its reading. **Say what you applied.**
-A choice made silently is one nobody can overturn, so it goes in `## Direction` or `## Plan` with the
+A choice made silently is one nobody can overturn, so it goes in `## Comments` or `## Plan` with the
 source, as a statement rather than a question.
 
 **When it is genuinely both, split it.** Research the standard part, apply it, and put only the
@@ -324,9 +357,9 @@ research pass plus a connector, in a version that already contains the assessmen
 second is more precise and tells the reader less.
 
 **Put the answer in the recommendation, ready to paste.** End `## Recommendation` with the exact
-line to copy into `## Decided`, dated, written as the reader would write it. Answering is then a
-copy rather than a composition, which is most of the difference between a card answered today and
-one answered next month.
+line to post to `## Comments`, dated and marked `**Decided:**`, written as the reader would write
+it. Answering is then a copy rather than a composition, which is most of the difference between a
+card answered today and one answered next month.
 
 These five govern the whole card, not only the ask. `## Why`, the options and the tasks are read by
 the same person in the same sitting.
@@ -365,8 +398,9 @@ no acceptance criteria is. Making the gap loud is the only enforcement there is.
 
 Recording an answer is the review, so the card leaves `human-review/` on the way out and lands back
 in `todo/`. Not `done/`: an answer is almost always the start of work rather than the end of it, and
-an agent picking it up can move it on if there is nothing to do. Direction is not an answer and
-moves nothing, because steering a card is something you do to work that is still yours to steer.
+an agent picking it up can move it on if there is nothing to do. A comment that is not marked as the
+answer moves nothing, because steering a card is something you do to work that is still yours to
+steer.
 
 ## `## Plan` is written for a stranger
 
@@ -428,9 +462,10 @@ declares its kind, because a declared kind is one more thing that can disagree w
 contents.
 
 **Decision:** `# title`, `## Why`, an optional `## Links`, `## Options` (a **numbered** list, at least
-two, each with its cost), `## Recommendation`, `## Decided`. The recommendation is the point: a
+two, each with its cost), `## Recommendation`, `## Comments`. The recommendation is the point: a
 decision surfaced without one hands over the whole problem, while one that recommends has done the
-reading and leaves only the judgement.
+reading and leaves only the judgement. Its exit condition is an entry in the thread marked
+`**Decided:**`.
 
 **Feature:** `# title`, `## Why`, an optional `## Links`, `## Not this card`, `## Acceptance`,
 `## Tasks`, and an optional `## Plan` that is deleted when the card reaches `done/`. `## Not this
@@ -470,6 +505,29 @@ a test appear in a run log.
 yet observable and the card is not ready. That is the cheapest signal available that a criterion is
 really a wish.
 
+### A card written after the work says so, in its first comment
+
+Work Rob asks for directly arrives with no card. The card gets written afterwards, and every box on
+it is ticked the moment it exists, because the code that satisfies them was already on disk. That
+card looks exactly like one whose criteria were agreed in advance and then met. It is not one. It is
+a description wearing a checklist, and a reviewer reading the ticks learns nothing.
+
+So the first entry in `## Comments` says it plainly, dated, before any other:
+
+```
+**2026-08-25** WRITTEN AFTER THE WORK. The criteria were read back off the finished
+code, so the ticks record what it does and prove nothing about what was asked for.
+Attack the code, not the boxes.
+```
+
+**No frontmatter key for this**, deliberately. A key is a thing every board, both jobs and the
+renderer would have to learn, and this needs to reach one reader once. The three permitted keys all
+change what a machine does; this changes what a person trusts.
+
+**The fix is upstream and it is cheap**: when Rob asks for something directly, write the criteria
+first, even as three rough lines in the chat, and the card is then honest by construction. Writing
+them afterwards is the fallback, not the practice.
+
 **What is allowed to carry no test, and it must say so:** `proves: manual` for anything only a
 person at a screen can settle (a browser check, a screenshot, "it looks right"), and `proves: none`
 where nothing here can test it, with the reason on the same line. Both are honest and both are
@@ -479,14 +537,31 @@ reads as tested and is not.
 A project with no suite the loop can find promotes as it always did, and the log says so in those
 words. This rule adds a check where a suite exists; it does not invent one where none does.
 
-## Direction and Decided
+## Comments: one thread, and an answer is an entry in it
 
-`## Direction` is steering: how to approach something, a spike worth running first, a constraint
-the agent should know. `## Decided` is the answer to a decision card, and filling it is that card's
-exit condition. Both are append-only dated entries, added and never edited. An answer recorded as
-direction neither reads as a ruling nor moves the card, which was found by watching it happen.
+`## Comments` is the card's thread, the same as comments on a JIRA card or a scrum ticket: steering,
+a spike worth running first, a constraint the agent should know, a review finding, an answer. One
+dated entry per post, appended and never edited.
 
-**`## Direction` may be pruned, but only intentionally, and needing to is a defect report about
+```markdown
+## Comments
+
+**2026-08-24** Spike the parser before committing to a shape.
+**2026-08-25** **Decided:** Option 2, and the cost is mine to carry.
+```
+
+**An entry beginning `**Decided:**` is the answer**, which is a decision card's exit condition and
+what moves it out of `human-review/`. That mark is the whole of the distinction. There used to be
+two sections, `## Direction` and `## Decided`, and the split cost a card whichever way it was got
+wrong: an answer written as direction did not move the card, and steering written as a decision
+closed one nobody had answered. Both were append-only dated logs read by the same code, so the only
+thing the split ever did was give a writer something to get wrong.
+
+**`## Direction` and `## Decided` are still read.** Every card written under the old split keeps
+working: both headings flow into the one thread, and an entry under `## Decided` is an answer by
+where it was written. Nothing is rewritten. New entries go under `## Comments`.
+
+**The thread may be pruned, but only intentionally, and needing to is a defect report about
 whatever filled it.** The target state is one where pruning is never needed. A card that has to be
 pruned is a card something has been writing to without having anything new to say: one real card
 reached 4,764 lines across 100 dated entries, most of them recording that it was still blocked on
