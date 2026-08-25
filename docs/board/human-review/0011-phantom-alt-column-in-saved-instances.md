@@ -1,4 +1,4 @@
-# A character that does not exist has its own column in Saved Instances
+# A character on a dead tournament realm has its own column in Saved Instances
 
 ## What I need from you
 
@@ -39,22 +39,26 @@ It is real and it is in the saved file. The entry is:
 
     ["Djinni - EU Mythic Dungeons"]
 
-"EU Mythic Dungeons" is not a realm. The game handed `GetRealmName()` that
-string once, on 2026-04-16, and `SaveCurrentCharData()` stored it as a brand new
-character under that key. Why the game returned it is not known and cannot be
-worked out from here.
+`EU Mythic Dungeons` is a genuine realm: one of the temporary tournament realms
+Blizzard stands up for the Mythic Dungeon International and takes down again
+afterwards (<https://raider.io/tournaments/mdi>). Rob played there on
+2026-04-16, the addon recorded that character exactly as it should, and then the
+realm went away. The character did not.
 
-That is only half of it. Nothing in the addon has ever deleted a stored
-character, so the bad entry could not go away on its own, and neither could
-anyone else's stale week. The alt columns were showing last week's keys as if
-they were this week's for every character not logged in recently. Nobody decided
-that; the weekly-wipe code was written for the current character only and the
-stored alts were never given the same treatment.
+So nothing misread anything. The fault is that the addon has never deleted a
+stored character, so a character on a realm that no longer exists is remembered
+forever, and so is anybody else's stale week. The alt columns were showing last
+week's keys as if they were this week's for every character not logged in
+recently. Nobody decided that; the weekly-wipe code was written for the current
+character only and the stored alts were never given the same treatment.
+
+A temporary realm is just the loudest case of it, because there is no way to log
+that character in again and clear it.
 
 ## Not this card
 
-- Finding out why `GetRealmName()` returned a community name. No reproduction,
-  no evidence in the addon, and the prune makes it self-healing.
+- Detecting tournament realms specifically. There is no API for it, and the
+  weekly rule already clears them without needing to know what they are.
 - Adding a manual "forget this character" button. The weekly rule removes the
   need unless choice 2 above goes the other way.
 - The alt filter dropdown itself. If choice 2 lands on "keep it as built", those
@@ -89,3 +93,10 @@ stored alts were never given the same treatment.
 **2026-08-25** Built. Not yet run in a game client, so nothing here is confirmed
 behaviour. The adversarial pass is still owed and is deliberately held until ask
 2 is answered, because the answer changes what the code does.
+
+**2026-08-25** Rob identified `EU Mythic Dungeons` as an MDI tournament realm,
+not a bad realm string. The `## Why` section above was rewritten; commit
+`520cde5` still carries the wrong explanation in its message and is superseded
+by this card. The fix itself is unchanged and is now better supported: a
+character on a realm that has been taken down can never log in again, so a rule
+that waits for it to log in and refresh itself would never fire.

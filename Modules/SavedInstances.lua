@@ -260,10 +260,14 @@ local function GetCurrentWeekStart()
 end
 
 -- Drop any stored alt whose data predates the current weekly reset. Last week's keys
--- and lockouts are gone in game, so showing them as current is a lie, and it is also
--- what keeps a character saved under a bad realm name alive forever. An alt that still
+-- and lockouts are gone in game, so showing them as current is a lie. An alt that still
 -- matters rewrites its own entry the next time it logs in. Extended raid lockouts
 -- survive the reset, so an alt still holding one is kept.
+--
+-- This must not wait for a login to correct itself. A character can live on a temporary
+-- MDI tournament realm ("EU Mythic Dungeons"), and once Blizzard takes that realm down
+-- there is no way to log in and clear the entry, so it would show its dead season's keys
+-- as a tooltip column forever. Found that way on 2026-08-25.
 local function PruneStaleAltData()
     if not ns.db or not ns.db.altLockouts then return end
     local weekStart = GetCurrentWeekStart()

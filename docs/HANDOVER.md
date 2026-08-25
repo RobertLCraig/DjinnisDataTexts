@@ -14,9 +14,9 @@ files. **An unreleased 0.9.16 now sits in the tree**: the Delve tracker recognis
 on the Item Level module never reaches the SimulationCraft addon and the string it copies
 instead is not the format Raidbots parses.
 **A second shipped defect was reported from the game on 2026-08-25 and is card 0011**: Saved
-Instances kept every character it had ever seen forever, including one stored under a realm
-name the game invented, so a character that does not exist had its own tooltip column. Fixed
-in the tree, deployed, not yet run in a client.
+Instances kept every character it had ever seen forever, including one on an MDI tournament
+realm that Blizzard has since taken down, so a character nobody can log in to again had its
+own tooltip column. Fixed in the tree, deployed, not yet run in a client.
 _Last updated: 2026-08-25 (phantom alt column fixed and carded as 0011)_
 
 ## Goal & success criteria
@@ -274,16 +274,19 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   `head=,id=N,bonus_id=...` form, so Raidbots cannot read it. Found by reading, not by running.
   **This is the second fault static checks would never surface**, alongside the wrong saved key
   fixed in 0.9.14: the code runs, throws nothing, and produces output nobody had validated.
-- **Card 0011 is fixed in the tree and awaiting a look in game.** `ns.db.altLockouts` grew
-  one entry per character ever logged in and nothing ever removed one, so an entry saved on
-  2026-04-16 under the key `Djinni - EU Mythic Dungeons` (the game returned a community name
-  from `GetRealmName()`, cause unknown and unreproduced) rendered as a permanent extra tooltip
-  column carrying last season's keys. The wider fault behind it: only the current character's
-  weekly data was ever wiped at reset, so every stored alt showed last week's keys as current.
-  `PruneStaleAltData()` in `Modules/SavedInstances.lua` now drops any stored character whose
-  `lastSeen` predates the weekly reset, keeping one that still holds an unexpired extended raid
-  lockout and pruning nothing at all if the reset time cannot be read. **This is the third fault
-  of that same class**: no error, no failing parse, wrong data on screen for months.
+- **Card 0011 is fixed in the tree and awaiting a look in game.** `ns.db.altLockouts` grew one
+  entry per character ever logged in and nothing ever removed one, so an entry saved on
+  2026-04-16 under the key `Djinni - EU Mythic Dungeons` rendered as a permanent extra tooltip
+  column carrying last season's keys. **`EU Mythic Dungeons` is a real realm, not a bad string**:
+  a temporary MDI tournament realm that Blizzard has since taken down, which is why nothing
+  self-corrected. A character on a dead realm can never log in to refresh its own entry, so any
+  rule that waits for a login would never fire. The wider fault behind it: only the current
+  character's weekly data was ever wiped at reset, so every stored alt showed last week's keys
+  as current. `PruneStaleAltData()` in `Modules/SavedInstances.lua` now drops any stored
+  character whose `lastSeen` predates the weekly reset, keeping one that still holds an
+  unexpired extended raid lockout and pruning nothing at all if the reset time cannot be read.
+  **This is the third fault of that same class**: no error, no failing parse, wrong data on
+  screen for months. Note that commit `520cde5` names a cause the card has since corrected.
 - Beyond that, read "none open" narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
