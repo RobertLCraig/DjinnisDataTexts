@@ -96,6 +96,7 @@ local DEFAULTS = {
     altHoverClass   = true,
     altHoverSpec    = true,
     altHoverRole    = true,
+    altPruneWeeks   = 3,            -- forget a stored alt after N weekly resets; 0 = never
     altFilter       = "all",        -- all, maxlevel, hasraids, mplus30/60/90/180, manual
     altManualList   = {},           -- { ["Name - Realm"] = true } - used when altFilter == "manual"
     clickActions    = {
@@ -259,24 +260,35 @@ local function GetCurrentWeekStart()
     return 0
 end
 
--- Drop any stored alt whose data predates the current weekly reset. Last week's keys
--- and lockouts are gone in game, so showing them as current is a lie. An alt that still
--- matters rewrites its own entry the next time it logs in. Extended raid lockouts
--- survive the reset, so an alt still holding one is kept.
+-- Forget a stored alt that has not been played for `altPruneWeeks` weekly resets.
+-- Nothing here ever removed a stored character, so every alt ever logged in kept its
+-- tooltip column and its last known keys, however old.
 --
--- This must not wait for a login to correct itself. A character can live on a temporary
--- MDI tournament realm ("EU Mythic Dungeons"), and once Blizzard takes that realm down
--- there is no way to log in and clear the entry, so it would show its dead season's keys
--- as a tooltip column forever. Found that way on 2026-08-25.
+-- The prune cannot wait for a login to correct itself. A character can live on a
+-- temporary MDI tournament realm ("EU Mythic Dungeons"), and once Blizzard takes that
+-- realm down there is no way to log in and clear the entry, so it would show its dead
+-- season's keys as a tooltip column forever. Found that way on 2026-08-25.
+--
+-- Counted in resets rather than rolling days, so "3 weeks" means three resets and does
+-- not drift with the hour of day the addon happens to run. An alt still holding an
+-- unexpired extended raid lockout is kept whatever the setting, because that lockout is
+-- real: extending one is how it survives a reset in the first place.
 local function PruneStaleAltData()
     if not ns.db or not ns.db.altLockouts then return end
+
+    local weeks = SavedInst:GetDB().altPruneWeeks or DEFAULTS.altPruneWeeks
+    if weeks <= 0 then return end       -- 0 = never forget an alt
+
     local weekStart = GetCurrentWeekStart()
     if weekStart <= 0 then return end   -- reset time unknown: prune nothing
 
-    local now = time()
+    -- weeks = 1 is "not seen since the last reset"; each further week is one reset older
+    local cutoff = weekStart - (weeks - 1) * 7 * 86400
+    local now    = time()
+
     for key, alt in pairs(ns.db.altLockouts) do
         local lastSeen = (type(alt) == "table" and alt.lastSeen) or 0
-        if lastSeen < weekStart then
+        if lastSeen < cutoff then
             local keep = false
             for _, lo in ipairs((type(alt) == "table" and alt.lockouts) or {}) do
                 if lo.extended and lastSeen + (lo.reset or 0) > now then keep = true end
@@ -2393,6 +2405,13 @@ function SavedInst:BuildSettingsPanel(panel)
     y = W.AddSlider(body, y, "Column name length (0 = full name)", 0, 12, 1,
         function() return db().altNameLength end,
         function(v) db().altNameLength = v; refreshTT() end, r)
+    y = W.AddSlider(body, y, "Forget an alt after this many weeks (0 = never)", 0, 26, 1,
+        function() return db().altPruneWeeks end,
+        function(v) db().altPruneWeeks = v; refreshTT() end, r)
+    y = W.AddNote(body, y,
+        "Counted in weekly resets. An alt you have not played for this long is dropped from "
+        .. "the columns and from the list below. Set 0 to keep every character forever, "
+        .. "including any on a tournament realm that no longer exists.")
 
     local HOVER_ANCHOR_VALUES = {
         ANCHOR_TOP         = "Above",

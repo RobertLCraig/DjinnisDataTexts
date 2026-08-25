@@ -282,11 +282,12 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
   self-corrected. A character on a dead realm can never log in to refresh its own entry, so any
   rule that waits for a login would never fire. The wider fault behind it: only the current
   character's weekly data was ever wiped at reset, so every stored alt showed last week's keys
-  as current. `PruneStaleAltData()` in `Modules/SavedInstances.lua` now drops any stored
-  character whose `lastSeen` predates the weekly reset, keeping one that still holds an
-  unexpired extended raid lockout and pruning nothing at all if the reset time cannot be read.
-  **This is the third fault of that same class**: no error, no failing parse, wrong data on
-  screen for months. Note that commit `520cde5` names a cause the card has since corrected.
+  as current. `PruneStaleAltData()` in `Modules/SavedInstances.lua` now forgets any stored
+  character not seen within `altPruneWeeks` weekly resets, a new 0 to 26 slider defaulting to
+  **3** at Rob's request (0 = never). It keeps a character still holding an unexpired extended
+  raid lockout whatever the setting, and prunes nothing at all if the reset time cannot be
+  read. **This is the third fault of that same class**: no error, no failing parse, wrong data
+  on screen for months. Note that commit `520cde5` names a cause the card has since corrected.
 - Beyond that, read "none open" narrowly. There is no automated
   verification of behaviour at all: what has been checked is that all 45 Lua files parse under
   5.1, every `.toc` entry resolves, and nothing calls a global that exists only in a
@@ -300,8 +301,8 @@ The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate 
 At the head:
 
 1. **0011 in `human-review/`: hover Saved Instances after a `/reload`.** Already deployed, so
-   it costs one command. It also carries a choice on how far the weekly prune should go, which
-   changes what the code does, so its adversarial pass is held until Rob answers.
+   it costs one command. Its open question is answered (the prune window is a setting, default
+   3 weeks), so what remains is the in-game look and then its adversarial pass.
 2. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
    then enter a Lair and an ordinary delve and check the four label and template criteria. It
    gates the 0.9.16 release, and it can be done in the same sitting as 0011.
@@ -321,9 +322,9 @@ At the head:
 
 Three cards sit in [docs/board/human-review/](board/human-review/):
 
-- **0011: the phantom Saved Instances column.** Cheapest of the three and the newest. One
-  `/reload` to confirm the fix, plus one choice about how aggressive the weekly prune should
-  be. The choice is the blocking half; the check can be done any time.
+- **0011: the phantom Saved Instances column.** Cheapest of the three and the newest, and no
+  longer blocking anything: one `/reload` to confirm the fix and a look at the new prune-window
+  slider. Nothing waits on it.
 - **0002: how to answer the CurseForge comment.** A decision card, options and a
   recommendation inside it. Genuinely blocking, and the only time-sensitive item here: it is
   a public comment awaiting a reply, and it gates the scope decisions on cards 0003 and 0004.
@@ -375,6 +376,7 @@ Blizzard's own Lua usage.
 | [docs/board/README.md](board/README.md) | The board convention. Owned by the `/handover` skill; never edit the local copy. |
 | [docs/build/PLAN-module-toggles.md](build/PLAN-module-toggles.md) | Full design for card 0001. Read before starting it. |
 | [docs/build/task.md](build/task.md) | Historical phase tracker, phases 1 to 9. Superseded by the board; kept for history. |
+| [docs/build/check-alt-prune.lua](build/check-alt-prune.lua) | One-off: runs card 0011's prune cutoff over a real SavedVariables file. Not a test suite; `docs/` never ships. |
 | [docs/ARTWORK_PROMPTS.md](ARTWORK_PROMPTS.md) | Image-generation prompts for logo and banner art. |
 | [README.md](../README.md) | User-facing module documentation with screenshots. |
 | [CURSEFORGE.md](../CURSEFORGE.md) | Addon page copy. |

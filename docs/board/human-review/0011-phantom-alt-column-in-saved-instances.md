@@ -2,32 +2,25 @@
 
 ## What I need from you
 
-**One check and one choice.**
+**One check, in game.**
 
-1. Run `/reload` in game, hover Saved Instances, and confirm the fourth column
-   (the second "Djinni") is gone.
-2. Old alts now disappear from the tooltip **and** from the alt tick-list in
-   settings once a week goes by without playing them. Keep that, or keep the
-   name and drop only the data? I would keep it as built.
+1. `/reload`, then hover Saved Instances. Pass is all three of:
+   - the last column, the second "Djinni", is gone
+   - the characters you have played in the last three weeks are all still there
+   - no Lua error
 
----
+Already deployed to the game folder, so `/reload` is the whole job. Fail is a
+character you played recently going missing, or the column still being there.
+Say which in this card and I will revert; it is one commit.
 
-**On 1.** The addon has already been deployed to the game folder, so `/reload`
-is all it takes. Pass is the column gone and no Lua error. Fail is the column
-still there, or an alt you played this week going missing: say which in this
-card and I will revert, it is one commit.
+Then check the new slider suits you: **Settings, Saved Instances, Alt Lockouts,
+"Forget an alt after this many weeks"**. It is set to your 3. Set it to 0 to
+keep every character forever, including the tournament-realm one.
 
-**On 2.** The tooltip can show a column per character. The addon remembers each
-one in its saved settings file. The rule I added is "forget any character not
-played since the weekly reset", because that character's keys and raid lockouts
-have already reset in game, so showing them is a lie either way.
-
-The cost of that rule: the "show alts active in the last 30 / 60 / 90 / 180
-days" dropdown now has nothing left to filter, because nothing older than a week
-survives. Those settings become dead options. The other version keeps the name
-and level and wipes only the weekly numbers, which keeps the dropdown alive but
-leaves every character you have ever logged in sitting in the settings list
-forever.
+Off the back of it, one thing worth knowing rather than deciding: the "show
+alts active in the last 30 / 60 / 90 / 180 days" dropdown can now outlive its
+own data. At 3 weeks nothing older than 21 days survives to be filtered, so the
+90 and 180 day options do nothing. Not urgent, and not this card.
 
 ## Why
 
@@ -58,23 +51,28 @@ that character in again and clear it.
 ## Not this card
 
 - Detecting tournament realms specifically. There is no API for it, and the
-  weekly rule already clears them without needing to know what they are.
-- Adding a manual "forget this character" button. The weekly rule removes the
-  need unless choice 2 above goes the other way.
-- The alt filter dropdown itself. If choice 2 lands on "keep it as built", those
-  four options are dead and want their own card.
+  prune clears them without needing to know what they are.
+- Adding a manual "forget this character" button. The slider covers it.
+- Fixing the "alts active in the last 30 / 60 / 90 / 180 days" dropdown, whose
+  longer options can now outlast the prune window. Its own card if it matters.
+- Wiping an alt's weekly numbers separately from forgetting the alt. That is a
+  second rule for the tooltip to show "played, but nothing this week", and
+  nobody has asked for it.
 - Any other module. The bug is `Modules/SavedInstances.lua` alone.
 
 ## Acceptance
 <!-- AC:BEGIN -->
 - [ ] #1 WHEN the Saved Instances data refreshes, THE APP SHALL delete any stored
-      character whose `lastSeen` predates the current weekly reset.
-- [ ] #2 IF a stored character still holds an extended raid lockout that has not
-      run out, THEN THE APP SHALL keep that character.
-- [ ] #3 IF the weekly reset time cannot be read from the game, THEN THE APP
+      character not seen within `altPruneWeeks` weekly resets.
+- [ ] #2 IF `altPruneWeeks` is 0, THEN THE APP SHALL delete no stored character.
+- [ ] #3 IF a stored character still holds an extended raid lockout that has not
+      run out, THEN THE APP SHALL keep that character whatever the setting.
+- [ ] #4 IF the weekly reset time cannot be read from the game, THEN THE APP
       SHALL delete nothing.
-- [ ] #4 WHEN the tooltip is shown after a reload, THE APP SHALL NOT show a
-      column for `Djinni - EU Mythic Dungeons`.
+- [ ] #5 WHEN the settings panel is opened, THE APP SHALL offer `altPruneWeeks`
+      as a 0 to 26 slider under Alt Lockouts, defaulting to 3.
+- [ ] #6 WHEN the tooltip is shown after a reload at the default setting, THE APP
+      SHALL NOT show a column for `Djinni - EU Mythic Dungeons`.
 <!-- AC:END -->
 
 ## Tasks
@@ -82,10 +80,12 @@ that character in again and clear it.
 - [x] Confirm the phantom in the live saved-variables file
 - [x] Add `PruneStaleAltData()` to `Modules/SavedInstances.lua`
 - [x] Call it from `SaveCurrentCharData()`, which runs on every data refresh
+- [x] Add the `altPruneWeeks` default and its settings slider
 - [x] `luac -p` clean
+- [x] Check the cutoff maths against the real saved file, both boundaries
 - [x] `deploy.ps1` to the game folder
-- [ ] In-game `/reload` check (ask 1 above)
-- [ ] Adversarial and security pass, once ask 2 is answered
+- [ ] In-game `/reload` check (the ask above)
+- [ ] Adversarial and security pass
 - [ ] `RELEASE_NOTES.md` entry, since this ships with the unreleased 0.9.16
 
 ## Comments
@@ -100,3 +100,19 @@ not a bad realm string. The `## Why` section above was rewritten; commit
 by this card. The fix itself is unchanged and is now better supported: a
 character on a realm that has been taken down can never log in again, so a rule
 that waits for it to log in and refresh itself would never fire.
+
+**2026-08-25** Rob asked for the prune window to be a setting and said he would
+want 3 weeks, so `altPruneWeeks` is now a 0 to 26 slider defaulting to 3. The
+old behaviour is the same code at 1.
+
+Checked against Rob's real saved file with
+`lua docs/build/check-alt-prune.lua <SavedVariables.lua> 1787660908 86400`,
+which runs the same cutoff maths outside the game. Twenty stored characters. At
+1 week it drops 13, at 3 weeks it drops 12, and at 26 weeks it drops none. The
+one that survives the difference is `Treecat - Aggra (Português)`, last played
+2026-08-10, which is the behaviour the setting exists for. The phantom is
+dropped at both. Boundary asserts pass: 1 week resolves to this week's reset and
+3 weeks to two resets before it.
+
+That script is a one-off check, not a test suite, and `pkgmeta.yaml` keeps
+`docs/` out of every build so it cannot ship.
