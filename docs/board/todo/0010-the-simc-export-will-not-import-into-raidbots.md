@@ -61,12 +61,11 @@ those as commented extras. Equipped gear plus a correct header is the whole scop
 
 ## Tasks
 - [x] Find the real slash key and fix the guard at `Modules/ItemLevel.lua:391`
-- [ ] Capture a genuine `/simc` export from that addon and save it under `docs/spec/` as the
-      reference the fallback is written against
-- [ ] Rewrite the fallback header to match that reference: comment lines, quoted name, and the
+- [x] Capture a genuine `/simc` export and save it as `docs/spec/simc-export-example.txt`
+- [x] Rewrite the fallback header to match that reference: comment lines, quoted name, and the
       missing `region`, `role` and `professions` keys
-- [ ] Add `talents=` from `C_Traits.GenerateImportString`
-- [ ] Rewrite the gear loop to split the item link into id, bonus ids, gem ids and enchant id, and
+- [x] Add `talents=` from `C_Traits.GenerateImportString`
+- [x] Rewrite the gear loop to split the item link into id, bonus ids, gem ids and enchant id, and
       emit the keyed form
 - [ ] Paste both outputs into Raidbots and record what each one did in `## Direction`
 
@@ -112,3 +111,33 @@ Empty input is the right argument. `HandleChatCommand` at `core.lua:167` splits 
 **What has been checked: `luac -p Modules/ItemLevel.lua` parses under Lua 5.1, and nothing else.**
 Criterion #1 still needs the right-click in a live client. Criteria #2 to #6 are untouched by this
 change and the fallback is still wrong.
+
+**2026-08-26** The fallback is rewritten, against a real export Rob captured rather than from
+memory. It is saved as `docs/spec/simc-export-example.txt` and `pkgmeta.yaml` already ignores
+`docs`, so it does not ship.
+
+The gear line builder is a port of the Simulationcraft addon's own
+`GetItemStringFromItemLink`, keeping its offset names so the two can be diffed when a patch moves
+the item string again. It emits `id`, `enchant_id`, `gem_id`, `bonus_id`, `drop_level`,
+`content_tuning`, `crafted_stats`, `redirected_base_stats`, `gem_bonus_id` and `crafting_quality`.
+Its 11.1.7 titan-disc belt case is left out on purpose: four hardcoded item ids that matter to one
+belt. The header now carries the four comment lines, the quoted name, and `region`, `server`,
+`role`, `professions` and `spec`, plus `talents=` from `C_Traits.GenerateImportString`.
+
+**There is now a runnable check**, which is new for this repository:
+
+    lua docs/spec/test-simc-item-line.lua
+
+Eight cases, each a hand-built item string asserted against the exact line the real addon emitted
+for that item. It loads only the block between the `[simc-parser:begin]` and `[simc-parser:end]`
+markers in `ItemLevel.lua`, which is pure Lua and needs no WoW state. **It was mutation-checked**:
+changing `SIMC_OFFSET_BONUS_ID` from 13 to 12 fails six of the eight, so it is a check rather than a
+sentence. All eight pass on the committed code, and `luac -p` parses the whole file.
+
+**Three known ceilings, all marked `ponytail:` in the source.** Profession and spec names are read
+localised, where the real addon looks them up by id, so a non-English client emits translated
+tokens. `role=` uses a caster-spec set rather than the addon's full per-spec table, so healers
+report `attack`. And `omnium_talents=`, the 12.1 trait system line, is not emitted at all.
+
+**Still unrun in a game client.** Nothing above proves the header fields are right, only the gear
+lines. Criteria #1 to #6 are all still open.

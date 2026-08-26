@@ -384,7 +384,164 @@ end
 
 ---------------------------------------------------------------------------
 -- SimulationCraft string generation
+--
+-- When the Simulationcraft addon is installed we hand it the whole job. What
+-- follows is the fallback for people who do not have it, and it is written
+-- against a real /simc export kept at docs/spec/simc-export-example.txt.
+-- DO NOT change this format from memory: diff against that file. Writing it
+-- from memory is what made the old version unimportable.
 ---------------------------------------------------------------------------
+
+local SIMC_SLOT_NAMES = {
+    [INVSLOT_HEAD]     = "head",
+    [INVSLOT_NECK]     = "neck",
+    [INVSLOT_SHOULDER] = "shoulder",
+    [INVSLOT_BACK]     = "back",
+    [INVSLOT_CHEST]    = "chest",
+    [INVSLOT_WRIST]    = "wrist",
+    [INVSLOT_HAND]     = "hands",
+    [INVSLOT_WAIST]    = "waist",
+    [INVSLOT_LEGS]     = "legs",
+    [INVSLOT_FEET]     = "feet",
+    [INVSLOT_FINGER1]  = "finger1",
+    [INVSLOT_FINGER2]  = "finger2",
+    [INVSLOT_TRINKET1] = "trinket1",
+    [INVSLOT_TRINKET2] = "trinket2",
+    [INVSLOT_MAINHAND] = "main_hand",
+    [INVSLOT_OFFHAND]  = "off_hand",
+}
+
+local SIMC_REGIONS = { "us", "kr", "eu", "tw", "cn" }
+
+-- SimC wants role=spell for casters and role=attack for everyone else. The real
+-- addon carries a full per-spec table; this is the caster DPS set, which is the
+-- only part that changes the answer.
+-- ponytail: healers report attack, exactly as the addon's own fallback branch
+-- does. Give them their own row here if anyone ever sims one.
+local SIMC_SPELL_SPECS = {
+    [62]  = true, [63]  = true, [64]  = true,   -- Arcane, Fire, Frost mage
+    [102] = true,                                -- Balance
+    [258] = true,                                -- Shadow
+    [262] = true,                                -- Elemental
+    [265] = true, [266] = true, [267] = true,   -- Affliction, Demonology, Destruction
+    [1467] = true, [1473] = true,                -- Devastation, Augmentation
+}
+
+-- [simc-parser:begin] Everything to the matching end marker is pure Lua over
+-- strsplit and needs no WoW state, which is what lets
+-- docs/spec/test-simc-item-line.lua load and assert against it. If you move
+-- these markers, move them in that file too; it errors loudly if they are gone.
+
+-- Item string field offsets and modifier type ids, named as the Simulationcraft
+-- addon names them (its core.lua, lines 37-61) so the two can be diffed. Layout:
+-- item:id:enchant:gem1:gem2:gem3:gem4:suffix:unique:level:spec:flags:context:
+--      numBonusIDs:bonus1..N:numModifiers:type1:value1..:numGemBonuses:gemBonus1..
+local SIMC_OFFSET_ITEM_ID  = 1
+local SIMC_OFFSET_ENCHANT  = 2
+local SIMC_OFFSET_GEM_1    = 3
+local SIMC_OFFSET_GEM_4    = 6
+local SIMC_OFFSET_BONUS_ID = 13
+local SIMC_MOD_DROP_LEVEL     = 9
+local SIMC_MOD_CONTENT_TUNING = 28
+local SIMC_MOD_CRAFT_STATS_1  = 29
+local SIMC_MOD_CRAFT_STATS_2  = 30
+local SIMC_MOD_REDIRECTED     = 64
+
+-- SimC's own tokenizer: lowercase, spaces to underscores, punctuation dropped.
+-- Bytes above 127 are kept so a non-English realm name survives rather than
+-- being emptied out.
+local function SimCToken(str)
+    str = (str or ""):lower():gsub(" ", "_")
+    return (str:gsub("[^%w_%%%+%.\128-\255]", ""))
+end
+
+-- Splits an item link's item string into a numeric array, empty fields as 0.
+local function SimCItemSplit(itemLink)
+    local itemString = itemLink:match("item:([%-?%d:]+)")
+    if not itemString then return nil end
+
+    local split = {}
+    for _, v in ipairs({ strsplit(":", itemString) }) do
+        split[#split + 1] = (v == "" ) and 0 or (tonumber(v) or 0)
+    end
+    return split
+end
+
+-- One gear line: "head=,id=250024,enchant_id=7961,gem_id=240895,bonus_id=13338/13440".
+-- Ported from the Simulationcraft addon's GetItemStringFromItemLink. Its 11.1.7
+-- titan-disc belt special case is deliberately left out: four hardcoded item ids
+-- that only matter to one belt.
+local function SimCItemLine(slotName, itemLink)
+    local split = SimCItemSplit(itemLink)
+    if not split then return nil end
+
+    local opts = { ",id=" .. split[SIMC_OFFSET_ITEM_ID] }
+
+    if split[SIMC_OFFSET_ENCHANT] > 0 then
+        opts[#opts + 1] = "enchant_id=" .. split[SIMC_OFFSET_ENCHANT]
+    end
+
+    local gems = {}
+    for offset = SIMC_OFFSET_GEM_1, SIMC_OFFSET_GEM_4 do
+        gems[#gems + 1] = split[offset] or 0
+    end
+    while #gems > 0 and gems[#gems] == 0 do
+        table.remove(gems)
+    end
+    if #gems > 0 then
+        opts[#opts + 1] = "gem_id=" .. table.concat(gems, "/")
+    end
+
+    local numBonuses = split[SIMC_OFFSET_BONUS_ID] or 0
+    if numBonuses > 0 then
+        local bonuses = {}
+        for i = 1, numBonuses do
+            bonuses[i] = split[SIMC_OFFSET_BONUS_ID + i]
+        end
+        opts[#opts + 1] = "bonus_id=" .. table.concat(bonuses, "/")
+    end
+
+    -- After the bonus ids comes a count of type/value pairs, then the pairs.
+    local pairOffset = SIMC_OFFSET_BONUS_ID + numBonuses + 1
+    local numPairs = split[pairOffset] or 0
+    local craftedStats = {}
+    for i = 1, numPairs do
+        local at = pairOffset + 1 + (2 * (i - 1))
+        local modType, modValue = split[at], split[at + 1]
+        if modType == SIMC_MOD_DROP_LEVEL then
+            opts[#opts + 1] = "drop_level=" .. modValue
+        elseif modType == SIMC_MOD_CONTENT_TUNING then
+            opts[#opts + 1] = "content_tuning=" .. modValue
+        elseif modType == SIMC_MOD_CRAFT_STATS_1 or modType == SIMC_MOD_CRAFT_STATS_2 then
+            craftedStats[#craftedStats + 1] = modValue
+        elseif modType == SIMC_MOD_REDIRECTED then
+            opts[#opts + 1] = "redirected_base_stats=" .. modValue
+        end
+    end
+    if #craftedStats > 0 then
+        opts[#opts + 1] = "crafted_stats=" .. table.concat(craftedStats, "/")
+    end
+
+    -- Then, two fields further on, a count of gem bonus ids and the ids.
+    local gemBonusOffset = pairOffset + (2 * numPairs) + 2
+    local numGemBonuses = split[gemBonusOffset] or 0
+    if numGemBonuses > 0 then
+        local gemBonuses = {}
+        for i = 1, numGemBonuses do
+            gemBonuses[i] = split[gemBonusOffset + i]
+        end
+        opts[#opts + 1] = "gem_bonus_id=" .. table.concat(gemBonuses, "/")
+    end
+
+    local quality = C_TradeSkillUI and C_TradeSkillUI.GetItemCraftedQualityByItemInfo
+        and C_TradeSkillUI.GetItemCraftedQualityByItemInfo(itemLink)
+    if quality then
+        opts[#opts + 1] = "crafting_quality=" .. quality
+    end
+
+    return slotName .. "=" .. table.concat(opts, ",")
+end
+-- [simc-parser:end]
 
 function ItemLevel:CopySimCString()
     -- Hand off to the Simulationcraft addon when it is present. It registers /simc
@@ -398,55 +555,102 @@ function ItemLevel:CopySimCString()
         return
     end
 
-    -- Fallback: generate a basic /simc-style string ourselves
-    local lines = {}
+    -- Fallback, for people without that addon. Order and spelling below follow
+    -- docs/spec/simc-export-example.txt line for line.
+    local playerName = UnitName("player")
     local _, classFile = UnitClass("player")
-    local _, raceName = UnitRace("player")
-    local specID = C_SpecializationInfo.GetSpecialization and C_SpecializationInfo.GetSpecialization()
-    local specName = specID and select(2, C_SpecializationInfo.GetSpecializationInfo(specID)) or "Unknown"
-    local level = UnitLevel("player")
-    local realmName = GetRealmName():gsub("%s", "")
+    local _, raceToken = UnitRace("player")
+    local realm = GetRealmName() or "unknown"
+    local region = (GetCurrentRegionName and GetCurrentRegionName())
+        or SIMC_REGIONS[GetCurrentRegion and GetCurrentRegion() or 0] or "us"
 
-    table.insert(lines, string.format("%s=%s", (classFile or "unknown"):lower(), UnitName("player")))
-    table.insert(lines, string.format("level=%d", level))
-    table.insert(lines, string.format("race=%s", (raceName or "unknown"):lower():gsub(" ", "_")))
-    table.insert(lines, string.format("spec=%s", (specName or "unknown"):lower():gsub(" ", "_")))
-    table.insert(lines, string.format("server=%s", realmName))
+    -- SimC spells the Undead race "undead", and splits every other CamelCase race
+    -- token into words before tokenizing, so NightElf becomes night_elf.
+    local race = (raceToken == "Scourge") and "undead"
+        or SimCToken((raceToken or "unknown"):gsub("(%l)(%u)", "%1 %2"))
 
-    -- Gear
-    local slotNames = {
-        [INVSLOT_HEAD]     = "head",
-        [INVSLOT_NECK]     = "neck",
-        [INVSLOT_SHOULDER] = "shoulder",
-        [INVSLOT_BACK]     = "back",
-        [INVSLOT_CHEST]    = "chest",
-        [INVSLOT_WRIST]    = "wrist",
-        [INVSLOT_HAND]     = "hands",
-        [INVSLOT_WAIST]    = "waist",
-        [INVSLOT_LEGS]     = "legs",
-        [INVSLOT_FEET]     = "feet",
-        [INVSLOT_FINGER1]  = "finger1",
-        [INVSLOT_FINGER2]  = "finger2",
-        [INVSLOT_TRINKET1] = "trinket1",
-        [INVSLOT_TRINKET2] = "trinket2",
-        [INVSLOT_MAINHAND] = "main_hand",
-        [INVSLOT_OFFHAND]  = "off_hand",
+    local specIndex = C_SpecializationInfo.GetSpecialization()
+    local specID, specName, blizzRole
+    if specIndex then
+        specID, specName, _, _, _, blizzRole = C_SpecializationInfo.GetSpecializationInfo(specIndex)
+    end
+    local role = SIMC_SPELL_SPECS[specID] and "spell"
+        or (blizzRole == "TANK" and "tank" or "attack")
+
+    -- The reference header reads "# WoW 12.1.0.69497, TOC 120100", which is
+    -- GetBuildInfo's version and build joined by a dot, then the interface number.
+    local wowVersion, wowBuild, _, tocVersion = GetBuildInfo()
+
+    local lines = {
+        ("# %s - %s - %s - %s/%s"):format(
+            playerName, specName or "Unknown", date("%Y-%m-%d %H:%M"), region, realm),
+        "# Djinni's Data Texts " .. (C_AddOns.GetAddOnMetadata("DjinnisDataTexts", "Version") or "?"),
+        "# Generated without the Simulationcraft addon. Install it for a fuller export.",
+        ("# WoW %s.%s, TOC %s"):format(wowVersion, wowBuild, tocVersion),
+        "",
+        ("%s=\"%s\""):format(SimCToken(classFile or "unknown"), playerName),
+        "level=" .. UnitLevel("player"),
+        "race=" .. race,
+        "region=" .. SimCToken(region),
+        "server=" .. SimCToken(realm),
+        "role=" .. role,
     }
 
+    -- professions=engineering=100/skinning=100. Primaries only, and the whole line
+    -- is omitted when the character has neither, which is what SimC does.
+    -- GetProfessions returns six slots and can leave the first nil with the second
+    -- set, so the two are read by name rather than iterated over a holey table.
+    -- ponytail: the profession and spec names come back localised, so a non-English
+    -- client emits translated tokens here. The real addon looks them up by id
+    -- instead. Carry those tables over if anyone reports it.
+    local profs = {}
+    local held = {}
+    local prof1, prof2 = GetProfessions()
+    if prof1 then held[#held + 1] = prof1 end
+    if prof2 then held[#held + 1] = prof2 end
+    for _, index in ipairs(held) do
+        local profName, _, rank = GetProfessionInfo(index)
+        profs[#profs + 1] = SimCToken(profName) .. "=" .. rank
+    end
+    if #profs > 0 then
+        lines[#lines + 1] = "professions=" .. table.concat(profs, "/")
+    end
+
+    lines[#lines + 1] = "spec=" .. SimCToken(specName or "unknown")
+    lines[#lines + 1] = ""
+
+    -- talents= is the loadout export string, and it is the single thing Raidbots
+    -- most needs. The client can have no data for it yet just after login, so say
+    -- what happened rather than emitting a bare "talents=".
+    local configID = C_ClassTalents and C_ClassTalents.GetActiveConfigID
+        and C_ClassTalents.GetActiveConfigID()
+    local loadout = configID and C_Traits and C_Traits.GenerateImportString
+        and C_Traits.GenerateImportString(configID)
+    if loadout and loadout ~= "" then
+        lines[#lines + 1] = "talents=" .. loadout
+    else
+        lines[#lines + 1] = "# No talent data from the client yet. Reopen this in a moment."
+    end
+    lines[#lines + 1] = ""
+
     for _, slot in ipairs(GEAR_SLOTS) do
-        local itemLink = GetInventoryItemLink("player", slot)
-        if itemLink and slotNames[slot] then
-            -- Extract the item string from the link
-            local itemString = itemLink:match("|H(item:[^|]+)|h")
-            if itemString then
-                table.insert(lines, string.format("%s=%s", slotNames[slot], itemString))
-            end
+        local slotName = SIMC_SLOT_NAMES[slot]
+        local itemLink = slotName and GetInventoryItemLink("player", slot)
+        local line = itemLink and SimCItemLine(slotName, itemLink)
+        if line then
+            -- The name and item level are only the "# Branches of the Bloom (289)"
+            -- comment above each gear line. SafeGetSlotInfo already carries this
+            -- file's version guards, so use it rather than a second bare call.
+            -- It returns "Unknown" and 0 rather than nil, so there is nothing to
+            -- guard against here.
+            local itemName, _, ilvl = SafeGetSlotInfo(slot, itemLink)
+            lines[#lines + 1] = ("# %s (%d)"):format(itemName, ilvl)
+            lines[#lines + 1] = line
         end
     end
 
     -- Copy to clipboard via an edit box
-    local text = table.concat(lines, "\n")
-    DDT:CopyToClipboard(text, "SimC String")
+    DDT:CopyToClipboard(table.concat(lines, "\n"), "SimC String")
 end
 
 ---------------------------------------------------------------------------

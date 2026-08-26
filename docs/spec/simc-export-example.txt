@@ -1,0 +1,108 @@
+# A REAL /simc export, captured 2026-08-26 from the Simulationcraft addon 12.1.0-03
+# on WoW 12.1.0.69497. This file is the specification that ItemLevel.lua's fallback
+# SimC string is written against. Do not change that format from memory: diff it
+# against this. Kept out of the shipped zip by the `docs` entry in pkgmeta.yaml.
+#
+# What the fallback reproduces: the four header comment lines, the player block,
+# talents=, and one keyed line per equipped item.
+# What it deliberately does not reproduce, all of it optional or commented out in
+# SimC's own output: omnium_talents=, the saved-loadout comments, "Gear from Bags",
+# "Additional Character Info", and the trailing checksum.
+# ---------------------------------------------------------------------------
+
+# Djinni - Balance - 2026-08-26 15:55 - EU/Bloodfeather
+# SimC Addon 12.1.0-03
+# WoW 12.1.0.69497, TOC 120100
+# Requires SimulationCraft 1000-01 or newer
+
+druid="Djinni"
+level=90
+race=harronir
+region=eu
+server=bloodfeather
+role=spell
+professions=engineering=100/skinning=100
+spec=balance
+# loot_spec=balance
+
+talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWoMbNjxMDMmlxMzMLgZMLzsMzCzM2YZmlxMzM2wwAMW2mZwY2GBmAAAAswMzMD2MwYAAYmBGA
+
+# Saved Loadout: S1 Raid - Heroic - Vanguard
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmZMmZgxsMmZmZBMjZZmlZWYmxGLzsMmZmxGGGgxy2MDGz2AYAAAAYhZmZGsZgxAAwMDMA
+# Saved Loadout: Raid - Heroic - Vanguard
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmZMmZgxsMzMzMgHAzyMLzsYmZsxyMLjZmZshhBYssNzgxsNAGAAAAWYmZmBbGDjBAgZG4DA
+# Saved Loadout: Raid - EC - Convoke
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmZMmZAmFmZmZhhhZZmtZYmZswyMLzMGzshhBYssNzgxsNAGAAAAWMzMzMYzYGjBAgZGYA
+# Saved Loadout: Raid - Keeper - Incarn
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmZMmZAmFmZmZhhhZZmlhZMjNWmZZmZGmFMMADwy2YDjZmlBAAAAbmZmZGsZMjxMAmZAgBA
+# Saved Loadout: M+ - Keeper
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmhxMDMmlZmZmZhBMLzsMWmZmZ2YZmlxMDWwAgBYZbshxMzyAAAAgNzMPwMD2MmxYAYmBAGA
+# Saved Loadout: Raid - KotG - Convoke
+# talents=CYGADBD3hSPCL9Y9gz68WcKvMAAAAAAAAAAAAAAAAAWAzmhxMDMmlxMzMLwDALzsNjZMjNWmxMzMmZDDAGgltxGGzMLDAAAA2MzMzMYzYGjZAMzAADA
+
+omnium_talents=136824:1/136818:1/136817:1/136823:1/136822:1
+
+# Branches of the Luminous Bloom (289)
+head=,id=250024,enchant_id=7961,gem_id=240895,bonus_id=13338/13440/6652/13575/12806/13534
+# Barbed Ymirheim Choker (289)
+neck=,id=50228,gem_id=240894,bonus_id=13440/6652/13668/12699/12806
+# Snakeskin Spaulders (308)
+shoulder=,id=273774,bonus_id=13440/6652/13662/12699/12842,content_tuning=1279
+# Preyhunter's Refined Shawl (292)
+back=,id=275522,bonus_id=12833/6652/13662,content_tuning=5236
+# Trunk of the Luminous Bloom (289)
+chest=,id=250027,enchant_id=7987,bonus_id=6652/13440/13336/13575/12806
+# Restless Spirit Shackles (295)
+wrist=,id=268240,bonus_id=6652/13696/13662/13333/12834
+# Grips of Electrified Defense (311)
+hands=,id=159337,bonus_id=13440/6652/13662/12699/12843,content_tuning=1279
+# Venom-Cursed Lynx's Buckle (292)
+waist=,id=277781,bonus_id=12833/6652/13696/13662
+# Miststalker's Cuisses (302)
+legs=,id=272243,bonus_id=6652/13662/12836,content_tuning=6015
+# Miststalker's Striders (298)
+feet=,id=272240,enchant_id=8018,bonus_id=6652/13662/12835,content_tuning=6015
+# Occlusion of Void (289)
+finger1=,id=251217,enchant_id=7967,gem_id=240895,bonus_id=13440/6652/13668/12699/12806
+# Vile Alchemist's Band (305)
+finger2=,id=268249,bonus_id=6652/13668/13333/12841
+# Effigy of Ula'tek's Faithful (308)
+trinket1=,id=274493,bonus_id=42/12838,content_tuning=6015
+# Vile Vial of Volatile Venom (311)
+trinket2=,id=273796,bonus_id=12843/13440/6652/12699,content_tuning=1279
+# Fallen Speaker's Staff (302)
+main_hand=,id=251156,enchant_id=8008,bonus_id=12836/13439/6652/12701
+
+### Gear from Bags
+#
+# Miststalker's Cowl (308)
+# head=,id=272242,bonus_id=6652/13696/13662/12842,content_tuning=6015
+#
+# Amani Heartstring Pendant (263)
+# neck=,id=265739,gem_id=240894,bonus_id=6652/13668/12790,content_tuning=4240
+#
+# Sethraliss' Defiled Relic (311)
+# trinket1=,id=158368,bonus_id=12843/13440/6652/12699,content_tuning=1279
+#
+# Andoros, Fist of the Dragon King (285)
+# main_hand=,id=171638,enchant_id=8039,bonus_id=8902/7756/12701/13653,content_tuning=806
+#
+# Rukhran's Solar Reliquary (276)
+# off_hand=,id=258472,bonus_id=13440/6652/12699/12798,content_tuning=1279
+#
+# (the captured export listed about forty bag items here; five are kept as a
+#  format sample, the rest were trimmed because they say nothing new)
+
+### Additional Character Info
+#
+# catalyst_currencies=2813:8/3269:8/3116:8/3378:8/3465:2
+#
+# upgrade_currencies=c:1792:4297/c:3442:232/c:3445:120/c:3443:290/c:3446:137/i:256608:9/i:268552:7/i:274476:4/i:232875:20
+#
+# slot_high_watermarks=0:308:308/1:295:295/2:308:308/3:302:302/4:295:295/5:302:302/6:298:298/7:295:305/8:311:311/9:305:305/10:311:311/11:292:295/12:302:305/13:305:305/14:259:259/15:0:246/16:276:276
+#
+# upgrade_achievements=19326/19397/19398/19577/19578/19579/40107/40115/40118/40942/40943/40944/40945/41886/41887/41888/41892/42767/42768/42769/42770/61809/62410
+#
+# bonus_roll_currencies=3418:0/3511:0
+
+# Checksum: abda67a1
