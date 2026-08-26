@@ -52,3 +52,8 @@ than a generic thanks.
 Cards 0003 and 0004 hold the scope decisions for the two modules and are waiting on this.
 
 ## Decided
+
+## Comments
+<!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
+
+**2026-08-26** **Decided:** Rob 2026-08-26: 'Have already publicly replied.' So the reply this card was holding is posted and none of the three drafts is going to be used. THE CARD CANNOT CLOSE CLEANLY ON THAT ALONE, and the gap is worth naming rather than ticking past: a public reply is a commitment the roadmap now has to honour, and nothing on this board records WHAT was promised. Before this reaches done, read the comment thread on the DDT CurseForge page and write one line here saying which of the three positions the posted reply actually took - a version number for toggles or not, and whether Achievements and Quest Log got a commitment or a soft noted. If it named 0.10.0, card 0001 now has a public deadline attached to it and should say so on its own face.
