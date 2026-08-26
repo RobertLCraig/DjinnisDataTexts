@@ -39,8 +39,13 @@
 - **The Item Level module's SimC export now hands off to the Simulationcraft addon.** It was
   looking for that addon's `/simc` command under a name nothing registers, so the handoff
   missed on every machine, even where Simulationcraft was installed and working, and you
-  always got Data Texts' own simpler export instead. That fallback export is still not in a
-  format Raidbots accepts; fixing it is a separate job and is not done yet.
+  always got Data Texts' own simpler export instead.
+- **And that own export is now in a format Raidbots accepts**, for anyone who does not have
+  the Simulationcraft addon. It used to paste each item as a raw link and carried no talents
+  at all, so the sites either refused it or imported a character with no talents, which is
+  worse than an error. It now writes the same keyed gear lines the real addon writes, with
+  enchants, gems, bonus ids and crafted stats, plus your talent loadout, region, realm, role
+  and professions.
 
 ### Added
 
