@@ -25,6 +25,15 @@ would not have seen: refreshes are spread one module per frame, and the expensiv
 (tooltip building, deep scans) is hover-gated. Worth saying, because it is the difference
 between "the addon is wasteful" and "the addon polls more than it needs to".
 
+## Links
+
+**Relates to**
+- `0001` - the toggle work the user asked for. It is built and shipped, which is what makes
+  naming a version in the reply a statement of fact rather than a hope.
+- `0003` - the Achievements module scope. It cannot be scoped until this card says whether
+  the module was promised publicly at all.
+- `0004` - the Quest Log module scope, waiting on this card for the same reason as 0003.
+
 ## Options
 1. **Name a version, commit to both modules.** Say toggles land in 0.10.0 and that
    Achievements and Quest Log are on the roadmap. Cost: strongest goodwill, and it is the

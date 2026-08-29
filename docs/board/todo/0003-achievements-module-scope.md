@@ -13,6 +13,16 @@ Scope has to be decided before this is buildable, because "an Achievements modul
 anything from a points counter to a progress browser, and the tooltip work scales with it.
 Blocked on 0002, which decides whether the module is publicly promised at all.
 
+## Links
+
+**Blocked by**
+- `0002` - the CurseForge reply decides whether this module was promised publicly, and how
+  much was promised sets how big the scope below is allowed to be.
+
+**Relates to**
+- `0004` - the Quest Log module from the same user request, scoped on its own card and
+  blocked on the same reply.
+
 ## Options
 1. **Points and recent.** Label shows total achievement points; tooltip lists the most
    recent completions with dates, plus click to open the achievement frame. Cost: small,
@@ -28,6 +38,11 @@ Blocked on 0002, which decides whether the module is publicly promised at all.
    wrong shape for a DataText. Not recommended, listed so it is ruled out on the record.
 
 ## Recommendation
+**Why this one is yours: it turns on a cost you carry.** Option 1 is about a day, option 2 is
+days plus the ongoing support of a much larger tooltip, and option 3 is larger again. Nothing
+in this repository says how much of your time this module is worth, and no amount of reading
+settles it.
+
 Option 2, if 0002 lands as a commitment to build it. Option 1 is cheap enough to be
 tempting but would not move anybody off Broker Everything, which is the stated reason the
 request exists. Option 2 should be split into its own feature card with acceptance criteria

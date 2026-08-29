@@ -44,10 +44,13 @@ is showing it. Users who run a handful of modules are paying for all of them. At
 one has resorted to commenting modules out of the `.toc` by hand and re-doing it after
 every update.
 
-The full design is already worked out and the scope is locked:
-[docs/build/PLAN-module-toggles.md](../../build/PLAN-module-toggles.md). Read it before
-starting; it records why brokers must be deferred (LDB has no unregister, and a module
-cannot know it is disabled at file-load time because saved variables do not exist yet).
+## Links
+
+**Relates to**
+- `0003` - the Achievements module the same CurseForge user asked for. It is a new
+  DataText, so it is out of scope here and scoped on its own card.
+- `0004` - the Quest Log module from the same request, out of scope here for the same
+  reason as 0003.
 
 ## Not this card
 - Live enable/disable without a reload. Changes apply on `/reload`, as the plan locked.
@@ -115,6 +118,16 @@ cannot know it is disabled at file-load time because saved variables do not exis
       refreshing; set another to Events only and confirm hover still shows live
       data; re-enable and confirm it returns. This is the acceptance evidence
       that cannot be produced outside the game client.
+
+## Plan
+**Where to stand.** `C:\Dev\WoWAddons\DjinnisDataTexts`, on `master`. The build is shipped in
+v0.9.13 and v0.9.14, so nothing here is unbuilt; what a session picks this card up for is a
+failed check above.
+
+**The full design is already worked out and the scope is locked:**
+[docs/build/PLAN-module-toggles.md](../../build/PLAN-module-toggles.md). Read it before
+changing anything; it records why brokers must be deferred (LDB has no unregister, and a
+module cannot know it is disabled at file-load time because saved variables do not exist yet).
 
 ## Verification so far
 

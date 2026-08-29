@@ -14,6 +14,18 @@ the scan pattern and its cost are known.
 between a quest counter and a full quest browser is where all the effort sits. Blocked on
 0002.
 
+## Links
+
+**Blocked by**
+- `0002` - the CurseForge reply decides whether this module was promised publicly, and how
+  much was promised sets how big the scope below is allowed to be.
+
+**Relates to**
+- `0001` - the per-module toggle work exists because a user objected to modules refreshing
+  when nothing is showing them, which is the cost option 2 below would add to.
+- `0003` - the Achievements module from the same user request, scoped on its own card and
+  blocked on the same reply.
+
 ## Options
 1. **Counter and turn-ins.** Label shows quests held out of the cap and how many are ready
    to hand in; tooltip lists the ready ones, click to open the quest log. Cost: small, and
@@ -28,6 +40,11 @@ between a quest counter and a full quest browser is where all the effort sits. B
    a module; the tooltip is the reason people use DDT.
 
 ## Recommendation
+**Why this one is yours: it turns on a cost you carry.** Option 1 reuses a scan that already
+exists, option 2 is substantial and adds the largest tooltip in the addon plus a refresh path
+that has to be watched. Nothing in this repository says how much of your time and ongoing
+support this module is worth, and no amount of reading settles it.
+
 Option 1 first, shipped on its own, with option 2 as a follow-up if the module gets used.
 Quest data changes constantly and the scan is not free, so a large always-grouped tooltip is
 the version most likely to cause performance complaints, which is a poor trade given card

@@ -1,3 +1,6 @@
+---
+not_for_the_loop: criterion #6 is a paste into raidbots.com in a browser, and every other open criterion needs a right-click in a running game client
+---
 # The SimC export will not import into Raidbots
 
 ## Why
