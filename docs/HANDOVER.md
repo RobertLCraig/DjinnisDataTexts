@@ -23,69 +23,24 @@ own tooltip column. **Fixed, checked in the client by Rob, and `done/`.**
 2026-08-25 whether to publish with two of the three changes never run in a game, and chose to
 check them first. **The release is one command away and the only thing standing in front of it
 is the in-game check on cards 0008 and 0010.** Do not cut the tag until those are ticked.
-_Last updated: 2026-08-25 (0011 done; 0.9.16 packaged and held for the 0008 and 0010 checks)_
+_Last updated: 2026-08-29 (card 0006: PRD and DATA-MODEL written; this doc now links them)_
 
 ## Goal & success criteria
 
-**No PRD exists. This section is an interim home and a real gap** (card 0006 owes
-`docs/PRD.md`). The goal and criteria below are inferred from `README.md`, `CURSEFORGE.md`
-and the phase history in [docs/build/task.md](build/task.md), not from a stated spec. The
-non-goals in particular are unknown and need Rob.
+**Owned by [docs/PRD.md](PRD.md).** One addon replacing a pile of single-purpose LDB brokers:
+one tooltip style, one settings home, any LDB display, no Lua errors and no taint.
 
-Goal: one addon that replaces a pile of single-purpose LDB brokers, giving every DataText
-the same rich tooltip style, the same configurability, and one settings home. It absorbs and
-replaces the author's earlier DjinnisGuildFriends addon, migrating its saved variables on
-first load.
-
-Success criteria, as they appear to be operating in practice:
-- Every module carries a configurable label template, tooltip width and scale, sort order
-  and click actions, all from the Blizzard Settings UI.
-- Tooltips look and behave the same across every module (dark backdrop, gold headers,
-  class-coloured names, grey hint bar).
-- Works with any LDB display (ElvUI, Titan Panel, Bazooka, ChocolateBar), so nothing may
-  depend on a particular display addon's API.
-- No Lua errors and no taint. Several past releases were entirely about combat-lockdown
-  guards and secret-taint fixes, so this is a live constraint rather than a background one.
+**The PRD's non-goals section is still an open gap and needs Rob.** Everything else in it was
+reconstructed from the repository; the non-goals could not be, and were marked rather than
+invented.
 
 ## Canonical data shape
 
-**Owner is `Core.lua` until `docs/DATA-MODEL.md` exists** (card 0006). One saved variable,
-declared in the `.toc`:
+**Owned by [docs/DATA-MODEL.md](DATA-MODEL.md).** One flat, account-wide saved variable,
+`DjinnisDataTextsDB`, merged from per-module defaults at load and versioned by a schema stamp.
 
-```
-DjinnisDataTextsDB = {
-    global = { ... },          -- cross-module settings: fonts, number formatting,
-                               -- gold display, custom URLs, tag separator
-    [moduleKey] = { ... },     -- one table per module, keyed by its registration key
-    _migratedFromDGF = bool,   -- set once, after DjinnisGuildFriends settings are pulled in
-    _schemaVersion   = int,    -- migration stamp; fresh DB starts at 0
-}
-```
-
-- Flat, no profiles. Per-character data is not separated; the DB is account-wide.
-- A module contributes its own defaults through `ns:RegisterModule(key, mod, defaults)`
-  ([Core.lua:194](../Core.lua#L194)), which stores them at `ns.defaults[key]`. At
-  `ADDON_LOADED`, `MergeDefaults` copies anything missing from `ns.defaults` into the saved
-  DB, so new settings appear on upgrade without a migration.
-- **Additive defaults need no migration; changed defaults do.** `SCHEMA_VERSION`
-  ([Core.lua:442](../Core.lua#L442)) plus `RunSchemaMigrations` handle the second case. Bump
-  the constant whenever a step is added. It is at **2**: v1 raised saved tooltip widths that
-  still equalled a known old default, and v2 (2026-08-20) moves the Delve tracker's label
-  template off `Delve: <progress>` now that Lairs exist. Both steps share one shape, rewrite a
-  saved value only when it still equals the known old default, so a user who customised the
-  setting keeps their value and a fresh install is a no-op. Copy that shape for step three.
-- **Divergence to be aware of:** module keys are lowercase (`bagvalue`, `savedinstances`,
-  `petinfo`) except `ActiveActivity`, registered CamelCase. Its saved table is therefore
-  `DjinnisDataTextsDB.ActiveActivity`. Do not tidy this without a migration step; renaming
-  the key orphans every existing user's settings for that module. **This divergence had
-  already caused a live bug**: `GetDB()` read `ns.db.activeactivity`, which is not the key
-  `MergeDefaults` creates, so it always missed and returned the shared `DEFAULTS` table.
-  Reads therefore ignored saved values and writes landed on the defaults table in memory.
-  Fixed in 0.9.14. If a fourth module is ever registered CamelCase, check its `GetDB()`
-  first; the whole-codebase check is to compare each file's `RegisterModule("…")` key
-  against the `ns.db.<key>` it reads.
-- Broker names are a separate namespace from module keys: `DDT-<Name>`, and they are what
-  the display addon persists in *its* config. Renaming a broker breaks users' bars.
+Read that doc before touching saved settings. Its "Known divergences" section is the part
+that bites.
 
 ## Architecture / stack
 
@@ -323,8 +278,10 @@ At the head:
 5. **0010's other half: the export format.** The slash-key half is committed, so what is left
    is that Data Texts' own fallback string is not what Raidbots parses. It needs a real
    `/simc` export captured from the Simulationcraft addon first, to compare against.
-6. **0006 write PRD.md and DATA-MODEL.md.** Closes the two loudest gaps in this handover.
-   Needs one answer from Rob on non-goals; everything else is derivable.
+6. **0006 is written and in review.** [docs/PRD.md](PRD.md) and
+   [docs/DATA-MODEL.md](DATA-MODEL.md) now exist and this handover links them instead of
+   carrying their text. What is left of that card is one answer from Rob: **the PRD's
+   non-goals**, which is the only thing in it that could not be derived from the repository.
 
 ## Blockers / open questions
 
@@ -369,7 +326,7 @@ confirmed when it has not been run.
 |------|------|
 | `/handover resume` | Start of the next session. Reads this doc and the board, then starts the head card. |
 | `/checkpoint` | After a chunk of work, to update the docs and commit. |
-| `/scaffold-docs` | When starting card 0006; it owns creating PRD / DATA-MODEL / DECISIONS. |
+| `/scaffold-docs` | If `docs/DECISIONS.md` is ever opened as a card. It owns the doc-set templates; PRD and DATA-MODEL are already written. |
 | `/code-review` | Before releasing card 0001. It touches ~23 module files plus the core load path, which is exactly the shape of change that benefits. |
 | ProgressBoard (`C:\Dev\ProgressBoard`) | To see this board alongside every other project's, ordered by what is waiting on Rob. |
 
@@ -381,6 +338,8 @@ Blizzard's own Lua usage.
 
 | Doc | Purpose |
 |-----|---------|
+| [docs/PRD.md](PRD.md) | Purpose, goals, success criteria, scope, requirements, constraints. Non-goals are an open gap. |
+| [docs/DATA-MODEL.md](DATA-MODEL.md) | The `DjinnisDataTextsDB` shape, the defaults merge, and the schema-migration mechanism. |
 | [CLAUDE.md](../CLAUDE.md) | Orient tripwire and project conventions. Auto-loaded. |
 | [docs/board/README.md](board/README.md) | The board convention. Owned by the `/handover` skill; never edit the local copy. |
 | [docs/build/PLAN-module-toggles.md](build/PLAN-module-toggles.md) | Full design for card 0001. Read before starting it. |
@@ -390,7 +349,7 @@ Blizzard's own Lua usage.
 | [README.md](../README.md) | User-facing module documentation with screenshots. |
 | [CURSEFORGE.md](../CURSEFORGE.md) | Addon page copy. |
 | [CHANGELOG.md](../CHANGELOG.md) / [RELEASE_NOTES.md](../RELEASE_NOTES.md) | Release history and the pending release's notes. |
-| `docs/PRD.md`, `docs/DATA-MODEL.md`, `docs/DECISIONS.md` | **Missing.** Card 0006 owes the first two; no card yet for DECISIONS. |
+| `docs/DECISIONS.md` | **Missing.** Card 0006 wrote the other two and explicitly excluded this one; no card owns it yet. |
 
 ## Branch status
 
