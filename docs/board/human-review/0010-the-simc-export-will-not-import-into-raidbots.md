@@ -141,3 +141,8 @@ report `attack`. And `omnium_talents=`, the 12.1 trait system line, is not emitt
 
 **Still unrun in a game client.** Nothing above proves the header fields are right, only the gear
 lines. Criteria #1 to #6 are all still open.
+
+## Comments
+<!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
+
+**2026-08-29** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 6 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
