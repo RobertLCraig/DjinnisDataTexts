@@ -18,12 +18,18 @@ Instances kept every character it had ever seen forever, including one on an MDI
 realm that Blizzard has since taken down, so a character nobody can log in to again had its
 own tooltip column. **Fixed, checked in the client by Rob, and `done/`.**
 
+**A third defect was reported from the game on 2026-09-04 and is card 0012**: a 12.1 secret club
+name crashed the club sort and took the entire options panel down with it, because `SetupOptions`
+never returned. Fixed in both club sorts, deployed, and the in-game check is still owed.
+**`type(x) == "string"` does not detect a secret**, so every guard in this addon written that way
+lets one through.
+
 **0.9.16 is packaged and deliberately held.** `RELEASE_NOTES.md` carries all three changes,
 `release.ps1 -DryRun` is clean at 54 files, and the tag has not been cut. Rob was asked on
 2026-08-25 whether to publish with two of the three changes never run in a game, and chose to
 check them first. **The release is one command away and the only thing standing in front of it
 is the in-game check on cards 0008 and 0010.** Do not cut the tag until those are ticked.
-_Last updated: 2026-08-29 (card 0006: PRD and DATA-MODEL written; this doc now links them)_
+_Last updated: 2026-09-04 (card 0012: the 12.1 secret club name that killed the options panel)_
 
 ## Goal & success criteria
 
@@ -261,6 +267,9 @@ No `DECISIONS.md` yet, so the ones a fresh session must not reverse are recorded
 The queue is [docs/board/todo/](board/todo/), one card per file. Do not restate it here.
 At the head:
 
+0. **0012 in `ai-review/`: open the Communities settings panel in the client.** It is deployed
+   already, so `/reload` is enough, and it jumps the queue because until it is checked the whole
+   options panel is only believed to work. It also owes an adversarial pass.
 1. **0008 in `ai-review/`: verify the Lair work in the game client.** `deploy.ps1`, `/reload`,
    then enter a Lair and an ordinary delve and check the four label and template criteria.
    **This and item 2 are the only things holding the packaged 0.9.16 release.**
@@ -345,6 +354,7 @@ Blizzard's own Lua usage.
 | [docs/build/PLAN-module-toggles.md](build/PLAN-module-toggles.md) | Full design for card 0001. Read before starting it. |
 | [docs/build/task.md](build/task.md) | Historical phase tracker, phases 1 to 9. Superseded by the board; kept for history. |
 | [docs/build/check-alt-prune.lua](build/check-alt-prune.lua) | One-off: runs card 0011's prune cutoff over a real SavedVariables file. Not a test suite; `docs/` never ships. |
+| [docs/build/check-club-sort.lua](build/check-club-sort.lua) | Regression: `lua docs/build/check-club-sort.lua` from the addon root. Lifts the real function out of `Modules/Communities.lua` between the `[club-sort]` markers, so reverting card 0012's fix fails it. |
 | [docs/ARTWORK_PROMPTS.md](ARTWORK_PROMPTS.md) | Image-generation prompts for logo and banner art. |
 | [README.md](../README.md) | User-facing module documentation with screenshots. |
 | [CURSEFORGE.md](../CURSEFORGE.md) | Addon page copy. |

@@ -58,6 +58,35 @@ local rowPool = {}
 local TOOLTIP_PADDING = ns.TOOLTIP_PADDING
 
 ---------------------------------------------------------------------------
+-- Club ordering
+---------------------------------------------------------------------------
+-- [club-sort] extracted verbatim by docs/build/check-club-sort.lua
+--- Order a list of clubs by name, tolerating 12.1 secret names.
+--- 12.1 can return clubInfo.name as a secret string: type() still reports
+--- "string", but comparing two of them throws and killed the settings panel
+--- (2026-09-04). Probe each name once; if even one is unreadable the whole
+--- list falls back to clubId order, because a comparator that mixes the two
+--- orderings is inconsistent and table.sort then errors on that instead.
+--- @param list table      list of entries to sort in place
+--- @param GetInfo function entry -> the ClubInfo table holding name/clubId
+local function SortClubsByName(list, GetInfo)
+    local readable = true
+    for _, entry in ipairs(list) do
+        local name = GetInfo(entry).name
+        if not pcall(function() return name < name end) then
+            readable = false
+            break
+        end
+    end
+    table.sort(list, function(a, b)
+        local ia, ib = GetInfo(a), GetInfo(b)
+        if readable then return ia.name < ib.name end
+        return (ia.clubId or 0) < (ib.clubId or 0)
+    end)
+end
+-- [/club-sort]
+
+---------------------------------------------------------------------------
 -- LDB Data Object
 ---------------------------------------------------------------------------
 
@@ -490,9 +519,7 @@ function CommunitiesBroker:PopulateTooltip()
     for clubId, data in pairs(self.clubsCache) do
         table.insert(sortedClubs, data)
     end
-    table.sort(sortedClubs, function(a, b)
-        return (a.info.name or "") < (b.info.name or "")
-    end)
+    SortClubsByName(sortedClubs, function(entry) return entry.info end)
 
     local function RenderMember(member)
         rowIdx = rowIdx + 1
@@ -855,7 +882,7 @@ function CommunitiesBroker:BuildSettingsPanel(panel)
                 table.insert(communityClubs, clubInfo)
             end
         end
-        table.sort(communityClubs, function(a, b) return (a.name or "") < (b.name or "") end)
+        SortClubsByName(communityClubs, function(entry) return entry end)
 
         if #communityClubs == 0 then
             local noClubs = body:CreateFontString(nil, "OVERLAY", "GameFontDisable")
