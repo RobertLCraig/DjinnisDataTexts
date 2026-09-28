@@ -3,6 +3,30 @@ not_for_the_loop: criterion #6 is a paste into raidbots.com in a browser, and ev
 ---
 # The SimC export will not import into Raidbots
 
+## What I need from you
+
+**Does right-clicking the item level DataText now give an export that Raidbots accepts, both with the SimulationCraft addon on and with it off?**
+
+The fixed code is already in your game folder: a dry run on 2026-09-29 found all 54 files the same
+as source. This check is also what holds up the 0.9.16 release, together with card 0008.
+
+1. With the SimulationCraft addon enabled, `/reload`, hover the item level DataText and right-click
+   it. **Expected:** SimulationCraft's own export window opens (criterion #1).
+2. Disable SimulationCraft in the AddOns list, `/reload`, and right-click again. **Expected:** this
+   addon's copy box opens. The text starts with `#` comment lines naming your character, spec and
+   date. It has a `talents=` line. Gear lines read like `head=,id=212066,bonus_id=...`, never
+   `item:...` (criteria #2 to #5).
+3. Paste the text from step 2 into <https://www.raidbots.com/simbot/droptimizer>. **Expected:** it is
+   accepted and shows your spec, talents and equipped items (criterion #6).
+
+**Pass:** all three steps match. Say so here and the card moves on.
+**Fail:** say which step failed, and paste Raidbots' error or the wrong field. The card goes back to
+`todo/` for that criterion only. A healer showing `role=attack` is a known limit and not a fail.
+
+**Why it needs you:** every step needs a running game client or a browser, and no agent has either.
+
+Paste-ready: `**2026-09-29** **Decided:** steps 1 to 3 all passed.`
+
 ## Why
 Right-clicking the item level DataText is meant to hand you a character export you paste into
 Raidbots or SimulationCraft to find out what your gear is worth. **The string it copies is rejected
