@@ -4,10 +4,7 @@
 
 **Four steps in the game, with BugSack or the error frame open.**
 
-**Not deployed yet.** The build is on branch `claude/0007`, not `master`, because another
-session was committing to `master` at the time. First, in `C:\Dev\WoWAddons\DjinnisDataTexts`:
-`git merge claude/0007`. Then from `C:\Dev\WoWAddons`: `.\bin\deploy.ps1 -WhatIf -Only
-DjinnisDataTexts`, read the plan, run it without `-WhatIf`, and `/reload`.
+**Deployed 2026-09-29.** Merged to `master` (`b8d6197`) and in the game folder. Just `/reload`.
 
 1. `/ddt`, then Time / Date, then open the **Extra Time Zones** section.
    Expect: four zones, the first three filled in as New York, London and Sydney, all unticked.

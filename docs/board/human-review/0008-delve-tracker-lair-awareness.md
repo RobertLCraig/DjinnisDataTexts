@@ -5,10 +5,7 @@
 **Walk these four steps in the game and tick or report each.** This is one of the two checks
 holding the 0.9.16 release.
 
-**Not deployed yet.** The review's fix is on branch `claude/0008`, not `master`, because another
-session was committing to `master` at the time. First, in `C:\Dev\WoWAddons\DjinnisDataTexts`:
-`git merge claude/0008`. Then from `C:\Dev\WoWAddons`: `.\bin\deploy.ps1 -WhatIf -Only
-DjinnisDataTexts`, read the plan, run it again without `-WhatIf`, and `/reload`.
+**Deployed 2026-09-29.** Merged to `master` (`b8d6197`) and in the game folder. Just `/reload`.
 
 1. **Outside any delve**, hover the Active Activity DataText with Delve shown.
    Expect: the idle text as before (the word "Lair" appears nowhere), tooltip header
