@@ -53,6 +53,12 @@
   It counts weekly resets and defaults to 3. Set it to 0 to keep every character forever,
   which is the old behaviour. A character still holding an extended raid lockout is kept
   whatever you set, because that lockout is genuinely still yours.
+- **Extra time zones on the Time / Date tooltip.** Up to four more clocks, each with your own
+  label, for keeping track of friends or a raid team in another region. Set the zone's
+  standard offset from UTC and pick a daylight saving rule (United States and Canada, Europe
+  and the UK, south-east Australia, or none), and the summer hour switches on and off on the
+  right dates by itself. A small "+1d" shows when that zone is already on tomorrow. Turn them
+  on under Time / Date, Extra Time Zones; New York, London and Sydney are filled in ready.
 
 ### Changed
 
