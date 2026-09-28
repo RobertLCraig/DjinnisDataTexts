@@ -171,3 +171,24 @@ opened.
 client. Nothing in this card touches Lua, the `.toc` or either PowerShell script, so no addon
 behaviour changed and there is nothing to check in a client. The check that matters is the
 `board:convention` count above, and it is 0.
+
+**2026-09-29** ADVERSARIAL REVIEW (unattended, agent). Verdict: pass, moved to `done/`. No code,
+so no security pass and no in-game step.
+
+Attacked, and held:
+- **#5, nothing deleted.** Read every removed line in `6ed1cae` across all six cards it touched:
+  the only deletions are the four-line `PLAN-module-toggles.md` paragraph on 0001, and it
+  reappears whole under that card's new `## Plan`. No `## Direction` or `## Decided` block was
+  touched; no card in `done/` or `discarded/` was opened.
+- **#3 and #4.** Spot-read 0003 and 0004: each `Blocked by` line names `0002`, matching
+  `needs: 0002`, with a reason after the dash.
+- **#1 and #2.** 0003 and 0004 now open their recommendation by naming the cost Rob carries,
+  one of the four permitted reasons. No decision card leads `## Why` with a solution.
+- **#6.** Re-ran `board:convention --path=$PWD --cards` today. It reports **2 of 10** failing, and
+  neither is this card's regression: `0012 unexplained link: djinnisguildfriends#0001` is on a
+  card written on 2026-09-04, after this rewrite finished at 0; `0010 unexplained link: 0008`
+  was introduced by commit `4d329e9` today, from a separate attended session still working
+  that card. The 0012 flag is cleared in 0012's own review. The 0010 flag is left to the
+  session holding 0010, to avoid two writers on one file: it needs "card 0008" in its opening
+  paragraph explained under `## Links` (0008 is the Lair label check, the other in-game check
+  holding 0.9.16).
