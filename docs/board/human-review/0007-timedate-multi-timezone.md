@@ -1,5 +1,28 @@
 # TimeDate multi-timezone support
 
+## What I need from you
+
+**Four steps in the game, with BugSack or the error frame open.** `/reload` first, once this
+build is deployed (the card's latest comment says whether it is).
+
+1. `/ddt`, then Time / Date, then open the **Extra Time Zones** section.
+   Expect: four zones, the first three filled in as New York, London and Sydney, all unticked.
+2. Tick **Show zone 1**, 2 and 3. Hover the Time / Date DataText.
+   Expect: three new rows under Local Time. Today (late September) London should be 1 hour
+   ahead of UTC, New York 4 hours behind, Sydney 10 ahead. Compare with any world clock.
+3. On zone 4, leave the label blank, drag the offset to `5.50`, rule "None". Tick Show zone 4.
+   Expect: a row labelled `UTC+5:30` showing India's time.
+4. If any zone is already on tomorrow or still on yesterday compared with you, its time has a
+   small grey `+1d` or `-1d` after it.
+
+**Pass:** all four, the times match a world clock, no Lua error.
+
+**Fail:** a wrong hour, or any error. Paste it into `## Comments` and move the card to `todo/`.
+
+**Why it needs you:** the tooltip and the settings panel only exist in a game client. The
+daylight saving maths itself is already proved offline (below), so a wrong hour in step 2 means
+a wiring fault, not a rules fault.
+
 ## Why
 The Time / Date tooltip shows server time and your own local time, and nothing else. If you
 play with friends or a raid team in another region, you work out their clock in your head,
