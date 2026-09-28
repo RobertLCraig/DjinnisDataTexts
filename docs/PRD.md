@@ -99,7 +99,7 @@ The per-module feature detail lives in [README.md](../README.md) and
 
 ## Non-goals
 
-**UNKNOWN — confirm with Rob. This is the loudest gap in this document.**
+**UNKNOWN: confirm with Rob. This is the loudest gap in this document.**
 
 No non-goals have ever been stated for DDT. The section is deliberately left unfilled rather
 than invented, because a made-up non-goal is worse than an absent one: it would be quoted back
@@ -172,9 +172,11 @@ Quest Log module (card 0004), both waiting behind the CurseForge reply on card 0
   constraint behind deferred broker creation and reload-gated toggles.
 - **Module files run before saved variables exist**, so nothing can know at file-load time
   whether it is disabled.
-- **12.1 traps, both written up in the workspace `docs/DECISIONS.md`:** secret values may not
-  be compared, concatenated or used as a table key, and `RegisterEvent` can be refused
-  silently in a way `pcall` does not detect.
+- **12.1 traps, all three written up in the workspace `docs/DECISIONS.md`:** secret values may
+  not be compared, concatenated or used as a table key (and `type()` cannot see one); where an
+  API is secret-restricted, ask the matching `C_Secrets.Should*BeSecret` predicate first and
+  test the result with `issecretvalue`; and `RegisterEvent` can be refused silently in a way
+  `pcall` does not detect.
 - **Broker names are a public interface.** The display addon persists `DDT-<Name>` in *its*
   config, so renaming a broker breaks users' bars.
 - **Module saved keys are a public interface** for the same reason: renaming one orphans every

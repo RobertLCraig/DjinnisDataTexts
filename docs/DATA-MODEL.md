@@ -4,7 +4,7 @@ _Last updated: 2026-08-29_
 
 The single source of truth for this project's data shape. `Core.lua` implements it; this
 document describes it. Anywhere the code and this doc disagree, the code is right and this doc
-is the bug — but see [Known divergences](#known-divergences) for the places where the code is
+is the bug. But see [Known divergences](#known-divergences) for the places where the code is
 knowingly inconsistent with itself.
 
 There is exactly one saved variable, declared in `DjinnisDataTexts.toc`:
@@ -37,7 +37,7 @@ Three of those tables come from three different places, and the difference matte
 |-------|-----------|-------------------------------|
 | `global`, `[moduleKey]` | `MergeDefaults` from `ns.defaults` at `ADDON_LOADED` | Yes, per key |
 | `modules` | On demand by `ModuleState()` ([Core.lua:247](../Core.lua#L247)) | **No, deliberately** |
-| `altLockouts`, `delveHistory` | On demand by `Modules/SavedInstances.lua` | No — nothing declares them as defaults |
+| `altLockouts`, `delveHistory` | On demand by `Modules/SavedInstances.lua` | No: nothing declares them as defaults |
 
 ### `global`
 
@@ -108,7 +108,7 @@ renaming one orphans every existing user's settings for that module. The broker 
 | `communities` | `Modules/Communities.lua` | `.communities` | `DDT-Communities` |
 | `coordinates` | `Modules/Coordinates.lua` | `.coordinates` | `DDT-Coordinates` |
 | `currency` | `Modules/Currency.lua` | `.currency` | `DDT-Currency` |
-| `delve` | `Modules/Delve.lua` | `.delve` | none — sub-tracker, feeds `ActiveActivity` |
+| `delve` | `Modules/Delve.lua` | `.delve` | none: sub-tracker, feeds `ActiveActivity` |
 | `experience` | `Modules/Experience.lua` | `.experience` | `DDT-Experience` |
 | `friends` | `Modules/Friends.lua` | `.friends` | `DDT-Friends` |
 | `guild` | `Modules/Guild.lua` | `.guild` | `DDT-Guild` |
@@ -119,14 +119,14 @@ renaming one orphans every existing user's settings for that module. The broker 
 | `movementspeed` | `Modules/MovementSpeed.lua` | `.movementspeed` | `DDT-MovementSpeed` |
 | `petinfo` | `Modules/PetInfo.lua` | `.petinfo` | `DDT-PetInfo` |
 | `playedtime` | `Modules/PlayedTime.lua` | `.playedtime` | `DDT-PlayedTime` |
-| `preytracker` | `Modules/PreyTracker.lua` | `.preytracker` | none — sub-tracker, feeds `ActiveActivity` |
+| `preytracker` | `Modules/PreyTracker.lua` | `.preytracker` | none: sub-tracker, feeds `ActiveActivity` |
 | `professions` | `Modules/Professions/Core.lua` | `.professions` | many, `DDT-Prof-<Name>`, created in `Init` |
 | `savedinstances` | `Modules/SavedInstances.lua` | `.savedinstances` | `DDT-SavedInstances` |
 | `specswitch` | `Modules/SpecSwitch.lua` | `.specswitch` | `DDT-SpecSwitch` |
 | `systemperformance` | `Modules/SystemPerformance.lua` | `.systemperformance` | `DDT-SystemPerformance` |
 | `timedate` | `Modules/TimeDate.lua` | `.timedate` | `DDT-TimeDate` |
 | `volumecontrol` | `Modules/VolumeControl.lua` | `.volumecontrol` | `DDT-VolumeControl` |
-| `majesticbeast` | `Modules/MajesticBeast.lua` | `.majesticbeast` | **retired** — file is commented out of the `.toc`, so it never registers |
+| `majesticbeast` | `Modules/MajesticBeast.lua` | `.majesticbeast` | **retired**: file is commented out of the `.toc`, so it never registers |
 
 `majesticbeast` is listed because its saved table still exists in the databases of anyone who
 ran an older build, and `Modules/Professions/Core.lua` still reads it as a migration source.
@@ -137,7 +137,7 @@ Nothing writes it any more.
 Per-character data lives in tables keyed by a character key inside the one account-wide
 database.
 
-**`altLockouts[key]`** — written by `SavedInst:SaveCurrentCharData()`, one entry per character
+**`altLockouts[key]`**: written by `SavedInst:SaveCurrentCharData()`, one entry per character
 that has logged in with DDT installed. Key format: `"Name - Realm"` (spaces around the dash).
 
 | Field | Type | Notes |
@@ -147,7 +147,7 @@ that has logged in with DDT installed. Key format: `"Name - Realm"` (spaces arou
 | `level` | number | |
 | `specName`, `role` | string | `role` is `TANK` / `HEALER` / `DAMAGER`, `""` if unknown |
 | `lastSeen` | number | Unix time of the last save. Drives the stale-alt prune. |
-| `lockouts` | array | `{ name, difficultyTag, progress, total, reset, isRaid, extended }` — a deliberately lightweight summary, no per-boss detail, to keep SavedVariables small |
+| `lockouts` | array | `{ name, difficultyTag, progress, total, reset, isRaid, extended }`, a deliberately lightweight summary, no per-boss detail, to keep SavedVariables small |
 | `hasRaids` | boolean | |
 | `mythicPlusRuns` | array | `{ name, level, completed }` |
 | `mythicPlusCount` | number | |
@@ -162,14 +162,14 @@ still holding an unexpired *extended* raid lockout is kept whatever the setting,
 is pruned at all if the reset time cannot be read. Counted in resets rather than rolling days,
 so the cutoff does not drift with the hour the addon happens to run.
 
-**`delveHistory[key]`** — `{ weekStart = number, runs = { { name, tier, timestamp }, ... } }`,
+**`delveHistory[key]`**: `{ weekStart = number, runs = { { name, tier, timestamp }, ... } }`,
 also keyed `"Name - Realm"`. Cleared for the character when `weekStart` falls behind the
 current weekly reset.
 
-**`currency._altGold[key]`** — `{ gold = number, class = string, lastSeen = number }`, keyed
-`"Name-Realm"` (**no spaces** — see [Known divergences](#known-divergences)).
+**`currency._altGold[key]`**: `{ gold = number, class = string, lastSeen = number }`, keyed
+`"Name-Realm"` (**no spaces**, see [Known divergences](#known-divergences)).
 
-**`professions.chars[key][profKey][expansion]`** — per-character, per-profession,
+**`professions.chars[key][profKey][expansion]`**: per-character, per-profession,
 per-expansion working data, created lazily. Key format `"Name-Realm"`. Per-profession
 *settings* live separately in `professions.perProf[profKey]`, also created lazily, because
 most characters have only two professions and pre-creating all eleven would pollute saved
@@ -217,7 +217,7 @@ The rule that falls out of this, and the one to remember:
 > **Adding a default needs no migration. Changing a default does.**
 
 A new key is absent from every existing database, so the merge supplies it on next login. An
-existing key already has a value, so the merge leaves it alone — including a value the user
+existing key already has a value, so the merge leaves it alone, including a value the user
 never chose, which is why a changed default needs a migration step to move anyone still
 sitting on the old one.
 
@@ -232,14 +232,14 @@ It is currently at **2**:
 
 | Version | Date | What it does |
 |---------|------|--------------|
-| 1 | — | Raises a saved `tooltipWidth` that still equals the old default to the new one, for `petinfo` (300 → 340), `playedtime` (280 → 340) and `movementspeed` (320 → 380) |
+| 1 | unrecorded | Raises a saved `tooltipWidth` that still equals the old default to the new one, for `petinfo` (300 → 340), `playedtime` (280 → 340) and `movementspeed` (320 → 380) |
 | 2 | 2026-08-20 | Moves `delve.labelTemplate` from `"Delve: <progress>"` to `"<kind>: <progress>"`, because 12.1.0's Lairs report as active delves and the hard-coded prefix mislabelled them |
 
 **Both steps share one shape, and step three should copy it:** rewrite a saved value *only*
 when it still equals the known old default. A user who customised the setting keeps their
 value; a fresh install carries the new default already, so the `== old` test is a no-op. The
 one accepted side effect is that a user who deliberately typed the old value is
-indistinguishable from one who never touched it and gets moved too — recoverable through the
+indistinguishable from one who never touched it and gets moved too, recoverable through the
 per-module Reset to Defaults button.
 
 ## Known divergences
@@ -248,7 +248,7 @@ Three, and none of them should be "tidied" without reading why first.
 
 1. **`ActiveActivity` is registered CamelCase; every other module key is lowercase.**
    Its saved table is therefore `DjinnisDataTextsDB.ActiveActivity`, not `.activeactivity`.
-   **This is a divergence, not the convention** — the convention is lowercase, and this one
+   **This is a divergence, not the convention**: the convention is lowercase, and this one
    module breaks it.
 
    Do not rename it without a migration step: the key names the saved table, so renaming it

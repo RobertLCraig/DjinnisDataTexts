@@ -1,5 +1,32 @@
 # Write docs/PRD.md and docs/DATA-MODEL.md
 
+## What I need from you
+
+**One answer: what will Data Texts deliberately never do?**
+
+The product document (`docs/PRD.md`) has a "Non-goals" section, the list a future session is not
+allowed to argue with. Nobody has ever written one for this addon, so it is marked as a gap.
+Everything else on this card is done and checked.
+
+**Pass:** you post one `**Decided:**` line below, either accepting the list as it stands or
+editing it. An agent then copies it into the PRD and closes the card.
+
+**Fail:** the list says something you would not stand behind. Strike that line and say why.
+
+**Why it needs you:** a non-goal is a statement of intent, and intent is not in the code. The
+five below are only what the repository already shows you have refused or cannot do.
+
+**Recommended answer, ready to paste into `## Comments`:**
+
+> **2026-MM-DD** **Decided:** Non-goals are: (1) no "only refresh what is on screen", because
+> LDB cannot tell us; (2) no live module toggling, a reload is fine; (3) no settings profiles,
+> one account-wide setup; (4) no module that duplicates a good dedicated addon I already use
+> (durability is covered by EnhanceQoL); (5) nothing in the download the addon does not need to
+> run; (6) no dependency on any one display addon's API.
+
+Number 6 is the only one not already written down as a refusal. It restates PRD goal 2 as a
+boundary, and you can drop it.
+
 ## Why
 The project doc set has no PRD, no DATA-MODEL and no DECISIONS log. The handover currently
 carries an interim goal and success criteria inline, which is explicitly a gap rather than
@@ -116,3 +143,34 @@ there is no `vendor/` at all: this is a pure-Lua WoW addon with no PHP, no build
 test suite, which `CLAUDE.md` states outright. Nothing in this card touches Lua, so there is
 nothing to check in a game client either. The verification for this card is a person reading
 the two documents.
+
+**2026-09-29** ADVERSARIAL REVIEW (unattended, agent). Verdict: all five criteria met, moved to
+`human-review/` for the one question only you can answer (above). No code, so no security pass
+and no in-game step.
+
+Attacked, and held:
+- **#2 and #3, DATA-MODEL against the code.** Every `ns:RegisterModule("...")` call in the tree
+  (27, including the retired `majesticbeast`) matches the key map row for row, and
+  `ActiveActivity` is the only CamelCase key; `GetDB()` in `Modules/ActiveActivity.lua:105` reads
+  `ns.db.ActiveActivity`, as the divergence says. `ns.defaults.global` matches the table field for
+  field. `SCHEMA_VERSION = 2`, `DEFAULT_POLL = 180`, `MergeDefaults` fills only nil keys, and
+  `ResetModuleDefaults` wipes every key before re-merging, so the claim that it clears
+  `currency._altGold` is true. The init order (DGF migration, then schema migrations, then merge)
+  is as written. Both character-key formats confirmed: `" - "` at `SavedInstances.lua:307, 541`,
+  `"-"` at `Currency.lua:195` and `Professions/Core.lua:2120`. The `altLockouts` field list
+  matches `SaveCurrentCharData` exactly.
+- **#4.** The handover's Goal and data-shape sections are one line and a link each.
+- **#5.** Re-ran a link check over every markdown file. Nothing broken in the new docs or the
+  handover. The only misses are the two in `docs/board/README.md` the builder already named
+  (skill-owned, not ours to edit) and five `%20`-encoded image links in `README.md` that a naive
+  checker flags but which resolve.
+
+Broke, and fixed in place:
+- **16 em dashes** across the two new docs, against this repo's `CLAUDE.md` rule "No em dashes".
+  Replaced with colons or commas; no meaning changed.
+- **The PRD's Constraints line said "both" 12.1 traps.** The workspace log has had a third since
+  2026-09-08 (ask `C_Secrets.Should*BeSecret` first, then test with `issecretvalue`), and the
+  0012 fix showed `type()` cannot see a secret. The line now names all three.
+
+Not a defect, noted: `Core.lua` line anchors in DATA-MODEL (`#L1591` etc.) will drift with any
+edit to `Core.lua`; they are within two lines today.
