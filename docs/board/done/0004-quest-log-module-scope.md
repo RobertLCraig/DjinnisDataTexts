@@ -21,6 +21,7 @@ between a quest counter and a full quest browser is where all the effort sits. B
   much was promised sets how big the scope below is allowed to be.
 
 **Relates to**
+- `0014` - the feature card this decision became; the build and its acceptance live there.
 - `0001` - the per-module toggle work exists because a user objected to modules refreshing
   when nothing is showing them, which is the cost option 2 below would add to.
 - `0003` - the Achievements module from the same user request, scoped on its own card and
@@ -56,3 +57,14 @@ Split into a feature card with acceptance criteria once scoped. Check what Broke
 Everything's quest module actually displays before committing to "parity".
 
 ## Decided
+
+**2026-09-29** **Decided:** Rob 2026-09-29: "medium", said of both this card and `0003`. **This
+card has no option called medium, so that is an interpretation**: read as option 2 (grouped log
+with click actions), taken whole, because on `0003` "medium" was the middle option and here
+option 3 was already rejected, which leaves option 2 as the step above the smallest. **Rob,
+if you meant option 1 (counter and turn-ins only), say so on `0014`** and it is cut down to
+criteria #1, #4 and #8 there. Built as feature card `0014` (Quest Log DataText module). Broker
+Everything's quest module was read first (GitHub `HizurosWoWAddOns/Broker_Everything`,
+`349fa55`, `modules/questlog.lua`); the comparison is on `0014`. Per Rob's rule that a
+right-click opens a menu and never acts, abandon goes through a row menu and then Blizzard's own
+confirmation dialog.

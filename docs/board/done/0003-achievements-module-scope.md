@@ -20,6 +20,7 @@ Blocked on 0002, which decides whether the module is publicly promised at all.
   much was promised sets how big the scope below is allowed to be.
 
 **Relates to**
+- `0013` - the feature card this decision became; the build and its acceptance live there.
 - `0004` - the Quest Log module from the same user request, scoped on its own card and
   blocked on the same reply.
 
@@ -52,3 +53,10 @@ Worth checking before scoping: what Broker Everything's achievement module actua
 so parity is measured rather than assumed.
 
 ## Decided
+
+**2026-09-29** **Decided:** Rob 2026-09-29: "medium", which is option 2 (points, recent, and
+tracked progress). Built as its own feature card, `0013` (Achievements DataText module), with
+acceptance criteria and the offline-checkable parts named. Broker Everything's achievement
+module was read before writing it (GitHub `HizurosWoWAddOns/Broker_Everything`, `349fa55`,
+`modules/achievements.lua`) and the comparison is on `0013`. This card is done; the work lives
+on `0013`.
