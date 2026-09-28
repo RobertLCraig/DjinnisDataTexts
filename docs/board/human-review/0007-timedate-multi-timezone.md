@@ -103,3 +103,36 @@ Assumed, and worth a look: the offset is set with the existing 0.25-hour slider,
 
 This adds a third unverified change to the held 0.9.16 release. If you would rather not ship it
 untested, move its `RELEASE_NOTES.md` entry out before cutting the tag.
+
+**2026-09-29** ADVERSARIAL REVIEW (unattended, agent). **Same session as the build**, so by the
+review rule this pass cannot send it to `done/`. Verdict: #2 to #5 proved offline, #1, #6 and
+#7 need a client; moved to `human-review/` for the four steps above.
+
+Attacked, and held:
+- **The check can fail.** Five mutations, each turning `docs/build/check-timezones.lua` red: US
+  start on the 1st instead of 2nd Sunday (2 fail), EU end at 02:00 instead of 01:00 UTC (2),
+  southern-hemisphere season test flipped to northern (4), a broken month shift in the calendar
+  maths (101), and the US/AU end instant computed in standard rather than daylight time (3).
+- **APIs.** `GetServerTime()` is documented (`SystemTimeDocumentation.lua:30`) as a plain number
+  with no secret or restriction flag. `time()` is only a fallback and Blizzard itself calls it
+  (`Blizzard_SharedXML/TimeUtil.lua:21`). `date("*t")` is already used by this module.
+- **Saved data.** A new default table needs no schema migration (DATA-MODEL: adding a default
+  needs none). `MergeDefaults` builds fresh tables, so slots never alias `DEFAULTS`. A label the
+  user blanked stays blank, because the merge only fills nil. Reset to Defaults restores the
+  three pre-filled zones, switched off. The settings helper recreates a missing slot rather
+  than indexing nil.
+- **Year edges.** The rule year is taken from the UTC date. Every transition is months away from
+  1 January, so a zone already in the next year locally cannot pick the wrong year's rule.
+- **Today's expected values in step 2** were worked from the rules, not from memory of the
+  clocks: EU summer time ends 25 October 2026, US on 1 November, and south-east Australia's
+  starts 4 October, so on 29 September London is UTC+1, New York UTC-4, Sydney UTC+10.
+
+Weak, not fixed:
+- `+1d` compares the zone's date (from the server clock) with your PC's date. A PC clock that is
+  minutes out is only visible in the minutes either side of midnight. Not worth another source.
+
+Security (code card): **weakest point** is the user's own label string, drawn into their own
+tooltip; a stray `|` escape can only garble their own row. **Unchecked path:** none; the offset
+comes from a bounded slider (-12 to 14) and the rule from a fixed list, and an unknown rule
+falls back to a fixed offset (checked). **Leaks:** nothing; no network, no other character's
+data, no chat output.
