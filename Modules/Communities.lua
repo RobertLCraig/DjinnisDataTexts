@@ -86,6 +86,15 @@ local function SortClubsByName(list, GetInfo)
 end
 -- [/club-sort]
 
+--- True when a club name is an ordinary string, safe to concatenate, compare
+--- and use as a table key. A 12.1 secret name can still be handed to SetText
+--- (AllowedWhenTainted) but not to any of those, and type() cannot tell it
+--- apart. The probe is a comparison because that is the failure seen in a
+--- client (2026-09-04); the same probe SortClubsByName uses.
+local function IsReadableName(name)
+    return type(name) == "string" and (pcall(function() return name < name end))
+end
+
 ---------------------------------------------------------------------------
 -- LDB Data Object
 ---------------------------------------------------------------------------
@@ -233,6 +242,10 @@ function CommunitiesBroker:UpdateData()
                              and C_Secrets.ShouldUnitIdentityBeSecret("player")
             local rawMemberIds = not lockdown and C_Club.GetClubMembers(clubInfo.clubId) or nil
             local onlineMembers = {}
+            -- member.clubName becomes a group key in "community" grouping, so it
+            -- must never be a secret. Fall back to a label built from the id.
+            local safeClubName = IsReadableName(clubInfo.name) and clubInfo.name
+                                 or ("Community " .. tostring(clubInfo.clubId))
 
             if type(rawMemberIds) == "table" then
             pcall(function()
@@ -262,7 +275,7 @@ function CommunitiesBroker:UpdateData()
                         isRemoteChat = mInfo.isRemoteChat or false,
                         isSelf       = mInfo.isSelf,
                         clubId       = clubInfo.clubId,
-                        clubName     = clubInfo.name or "Unknown",
+                        clubName     = safeClubName,
                         clubType     = clubInfo.clubType,
                         role         = mInfo.role,
                         dungeonScore = mInfo.overallDungeonScore or 0,
@@ -605,11 +618,20 @@ function CommunitiesBroker:PopulateTooltip()
             if #members > 0 then
                 hasAnyMembers = true
                 yOffset = yOffset - 4
-                local clubName = clubData.info.name or "Unknown"
-                local hdr = self:GetOrCreateGroupHeader(sc, clubName)
+                -- Keyed by clubId, never by name: a secret name cannot be a table
+                -- key or be concatenated. A secret one is still shown, through
+                -- SetText alone, without the member count.
+                local rawName = clubData.info.name
+                local hdrKey = "club:" .. tostring(clubData.info.clubId)
+                local hdr = self:GetOrCreateGroupHeader(sc, hdrKey)
                 hdr:ClearAllPoints()
                 hdr:SetPoint("TOPLEFT", sc, "TOPLEFT", 0, yOffset)
-                hdr:SetText(DDT:ColorText(clubName .. " (" .. #members .. ")", 0.4, 0.78, 1))
+                if rawName == nil or IsReadableName(rawName) then
+                    hdr:SetText(DDT:ColorText((rawName or "Unknown") .. " (" .. #members .. ")", 0.4, 0.78, 1))
+                else
+                    hdr:SetTextColor(0.4, 0.78, 1)
+                    hdr:SetText(rawName)
+                end
                 hdr:Show()
                 yOffset = yOffset - 16
 
@@ -619,7 +641,7 @@ function CommunitiesBroker:PopulateTooltip()
                         local subMembers = subGroups[subName]
                         if subMembers and #subMembers > 0 then
                             yOffset = yOffset - 2
-                            local subHdr = DDT:GetOrCreateGroupHeader(sc, clubName .. "|" .. subName)
+                            local subHdr = DDT:GetOrCreateGroupHeader(sc, hdrKey .. "|" .. subName)
                             subHdr:ClearAllPoints()
                             subHdr:SetPoint("TOPLEFT", sc, "TOPLEFT", 16, yOffset)
                             subHdr:SetText(DDT:ColorText(subName .. " (" .. #subMembers .. ")", 0.8, 0.8, 0.6))
