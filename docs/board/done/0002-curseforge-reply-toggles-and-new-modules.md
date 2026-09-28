@@ -62,6 +62,14 @@ Cards 0003 and 0004 hold the scope decisions for the two modules and are waiting
 
 ## Decided
 
+**2026-09-29** **Decided:** Rob 2026-09-29: "Reply was already given to user." The reply is
+posted and none of the three drafts above was used. **The exact wording of the posted reply is
+not known to this board**: this session could not read the CurseForge comment thread, so which
+position it took (a version for toggles or not, a commitment or a soft "noted" on the two
+modules) is unrecorded. Card closed on Rob's word. Rob has since scoped both modules as
+"medium" (recorded on 0003 and 0004), so the roadmap no longer depends on reconstructing the
+reply.
+
 ## Comments
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
