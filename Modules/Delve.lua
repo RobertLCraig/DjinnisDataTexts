@@ -984,7 +984,7 @@ function Delve:PopulateTooltip()
 
         -- Session / delve / max-level summary lines
         if not companionInfo.isMaxLevel then
-            AddRow(string.format("|cffaaaaaaThis Delve:|r    |cffffffff+%s|r", fmt(xpTrack.delveGained)),
+            AddRow(string.format("|cffaaaaaaThis %s:|r    |cffffffff+%s|r", KindLabel(), fmt(xpTrack.delveGained)),
                 nil, { 0.85, 0.85, 0.85 })
             AddRow(string.format("|cffaaaaaaThis Session:|r  |cffffffff+%s|r", fmt(xpTrack.sessionGained)),
                 nil, { 0.85, 0.85, 0.85 })
