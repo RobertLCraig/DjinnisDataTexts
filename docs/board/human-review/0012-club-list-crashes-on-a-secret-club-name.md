@@ -2,8 +2,13 @@
 
 ## What I need from you
 
-**Three steps in the client, with BugSack or the error frame open.** Redeployed on
-2026-09-29 with a second fix (below), so `/reload` is enough.
+**Three steps in the client, with BugSack or the error frame open.**
+
+**The second fix (below) is not deployed yet.** It is on branch `claude/0012`, not `master`,
+because another session was committing to `master` at the time. First, in
+`C:\Dev\WoWAddons\DjinnisDataTexts`: `git merge claude/0012`. Then from `C:\Dev\WoWAddons`:
+`.\bin\deploy.ps1 -WhatIf -Only DjinnisDataTexts`, read the plan, run it without `-WhatIf`, and
+`/reload`.
 
 1. `/ddt`, then open the Communities settings panel.
    Expect: every settings panel builds, and the "Enabled Communities" list shows your clubs.
