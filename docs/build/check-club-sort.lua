@@ -19,7 +19,7 @@ f:close()
 local block = src:match("%-%- %[club%-sort%][^\n]*\n(.-)%-%- %[/club%-sort%]")
 assert(block, "no [club-sort] block in " .. SOURCE .. " -- was the fix removed?")
 
-local chunk = assert(load(block .. "\nreturn SortClubsByName", "club-sort"))
+local chunk = assert((loadstring or load)(block .. "\nreturn SortClubsByName", "club-sort"))
 local SortClubsByName = assert(chunk(), "[club-sort] block defines no SortClubsByName")
 
 local secretmt = {
