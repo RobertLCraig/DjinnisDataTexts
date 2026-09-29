@@ -56,6 +56,9 @@ Modules\LFGStatus.lua
 # Modules - Phase 9
 Modules\ItemLevel.lua
 
+# Modules - Phase 13
+Modules\Achievements.lua
+
 # Modules - Phase 10 (Active Activity tracker - aggregator must load first)
 Modules\ActiveActivity.lua
 Modules\PreyTracker.lua

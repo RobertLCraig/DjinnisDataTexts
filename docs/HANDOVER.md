@@ -355,6 +355,7 @@ Blizzard's own Lua usage.
 | [docs/build/task.md](build/task.md) | Historical phase tracker, phases 1 to 9. Superseded by the board; kept for history. |
 | [docs/build/check-alt-prune.lua](build/check-alt-prune.lua) | One-off: runs card 0011's prune cutoff over a real SavedVariables file. Not a test suite; `docs/` never ships. |
 | [docs/build/check-club-sort.lua](build/check-club-sort.lua) | Regression: `lua docs/build/check-club-sort.lua` from the addon root. Lifts the real function out of `Modules/Communities.lua` between the `[club-sort]` markers, so reverting card 0012's fix fails it. |
+| [docs/build/check-achievements.lua](build/check-achievements.lua) | Regression: `lua docs/build/check-achievements.lua` from the addon root. Lifts the `[ach-helpers]` block out of `Modules/Achievements.lua` (card 0013): label template, session delta, criteria rows. |
 | [docs/ARTWORK_PROMPTS.md](ARTWORK_PROMPTS.md) | Image-generation prompts for logo and banner art. |
 | [README.md](../README.md) | User-facing module documentation with screenshots. |
 | [CURSEFORGE.md](../CURSEFORGE.md) | Addon page copy. |

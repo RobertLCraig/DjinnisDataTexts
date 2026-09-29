@@ -21,7 +21,7 @@ Data Texts. Rob chose the medium scope on 2026-09-29 (card `0003`, option 2).
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the DataText is shown, THE APP SHALL show total achievement points in the label,
+- [x] #1 WHEN the DataText is shown, THE APP SHALL show total achievement points in the label,
       through a label template with at least `<points>` and `<session>` (points gained since
       login). proves: `docs/build/check-achievements.lua` (template expansion and session delta)
 - [ ] #2 WHEN the tooltip opens, THE APP SHALL list the most recently completed achievements,
@@ -43,10 +43,10 @@ Data Texts. Rob chose the medium scope on 2026-09-29 (card `0003`, option 2).
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Write `docs/build/check-achievements.lua` first, lifting pure helpers out of the module
+- [x] Write `docs/build/check-achievements.lua` first, lifting pure helpers out of the module
       between markers, as `docs/build/check-club-sort.lua` does.
-- [ ] `Modules/Achievements.lua`, registered as `achievements`, broker `DDT-Achievements`.
-- [ ] Add it to `DjinnisDataTexts.toc`, `README.md` and `RELEASE_NOTES.md`.
+- [x] `Modules/Achievements.lua`, registered as `achievements`, broker `DDT-Achievements`.
+- [x] Add it to `DjinnisDataTexts.toc`, `README.md` and `RELEASE_NOTES.md`.
 - [ ] In-game check.
 
 ## Plan
@@ -77,3 +77,41 @@ heavy criteria walk only on tooltip hover. Register each event singly and confir
 ## Comments
 
 **2026-09-29** Written from Rob's answer on `0003` ("medium", option 2). Not started.
+
+**2026-09-29** RESULT: partial
+TESTS: +1 new, all green (`docs/build/check-achievements.lua`, 19 checks, Lua 5.4 and 5.1)
+TOUCHED: Modules/Achievements.lua, docs/build/check-achievements.lua, DjinnisDataTexts.toc, README.md, RELEASE_NOTES.md, docs/HANDOVER.md, docs/board/in-progress/0013-achievements-module.md
+OUT-OF-SCOPE: none
+
+Built the module to the card. Only #1 is ticked, because it is the only criterion fully proved
+here. #2 to #7 are written but have never run in a game client, so they stay open for the
+in-game check. #3's row formatting is tested; its drawing is not.
+
+The check lifts the `[ach-helpers]` block and Core's real `ns.ExpandTag`. It was watched red
+first against stub helpers (13 of 19 failing on behaviour). It covers the label template, the
+session delta (the baseline is the first non-zero read, since the game can answer 0 before
+achievement data loads), criteria rows (flag bit 1 is `EVALUATION_TREE_FLAG_PROGRESS_BAR`; the
+game's `quantityString` wins over "q / r" when present; the bar clamps at full), and a secret
+criteria string passing through without concatenation.
+
+Assumed, not settled from the repository:
+- `GetLatestCompletedAchievements()` returns newest first and may return fewer than 10. The
+  count slider (1 to 10, default 5) only trims what the game gives. How many it returns is a
+  C-side answer the UI source does not show.
+- Right-click on the DataText defaults to the "menu" click action. Click actions are
+  configurable, so a user can reassign it; Rob's rule holds for the defaults. Row clicks are
+  fixed (left opens, right menus) and not configurable, since the card specifies them.
+- The tooltip stays up while any context menu is open (`Menu.GetManager():GetOpenMenu()`),
+  because a Blizzard context menu closes when its owner row hides.
+- Label points are a plain number, not run through the global number format. The tooltip uses
+  `BreakUpLargeNumbers`.
+
+The session instruction to run `.\vendor\bin\pest.bat` and `pint.bat` does not apply here: this
+is a Lua addon with no PHP, no `vendor/` and no Pest. The suite is the three regression scripts in
+`docs/build/` (achievements, club-sort, timezones), and all three pass under Lua 5.1.
+`check-alt-prune.lua` is a one-off that needs a real SavedVariables file and was not run.
+
+In-game check owed: `deploy.ps1`, `/reload`, add DDT-Achievements to a display, then walk #2
+to #7. Track two achievements, one with a counted criterion. Untrack and link in chat from the
+row menu. Earn something and watch `<session>`. Try Reset to Defaults, and the poll dropdown in
+the Modules panel.

@@ -72,6 +72,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
 | **Prey Tracker** | Tracks active Midnight prey hunts — current target, zone, difficulty, kill progress. Weekly completion history with prey names and earned currency. |
 | **Delve** | Live delve progress — tier, step criteria, companion level and XP, Sanctified Banner state, active modifiers. Diagnostic dump via `/ddtdelve`. |
+| **Achievements** | Achievement points in the label, with `<session>` for points earned since login. Tooltip lists your most recent achievements with their dates, and every tracked achievement with its criteria as progress bars or done / not done. Left-click a row to open it, right-click for open, untrack or link in chat. |
 | **Active Activity** | Unified aggregator that routes hover, clicks, and label updates to whichever sub-tracker (Delve, Prey Tracker, ...) is currently engaged. One broker instead of several empty ones when idle. |
 
 ![Saved Instances](docs/images/SavedInstances.png) ![Saved Instances (extended)](docs/images/SavedInstances2.png) ![Saved Instances (condensed)](docs/images/SavedInstances3.png)
