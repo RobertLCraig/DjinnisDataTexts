@@ -21,7 +21,7 @@ Data Texts. Rob chose the medium scope on 2026-09-29 (card `0003`, option 2).
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [ ] #1 WHEN the DataText is shown, THE APP SHALL show total achievement points in the label,
+- [x] #1 WHEN the DataText is shown, THE APP SHALL show total achievement points in the label,
       through a label template with at least `<points>` and `<session>` (points gained since
       login). proves: `docs/build/check-achievements.lua` (template expansion and session delta)
 - [ ] #2 WHEN the tooltip opens, THE APP SHALL list the most recently completed achievements,
@@ -43,10 +43,10 @@ Data Texts. Rob chose the medium scope on 2026-09-29 (card `0003`, option 2).
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Write `docs/build/check-achievements.lua` first, lifting pure helpers out of the module
+- [x] Write `docs/build/check-achievements.lua` first, lifting pure helpers out of the module
       between markers, as `docs/build/check-club-sort.lua` does.
-- [ ] `Modules/Achievements.lua`, registered as `achievements`, broker `DDT-Achievements`.
-- [ ] Add it to `DjinnisDataTexts.toc`, `README.md` and `RELEASE_NOTES.md`.
+- [x] `Modules/Achievements.lua`, registered as `achievements`, broker `DDT-Achievements`.
+- [x] Add it to `DjinnisDataTexts.toc`, `README.md` and `RELEASE_NOTES.md`.
 - [ ] In-game check.
 
 ## Plan
@@ -77,3 +77,41 @@ heavy criteria walk only on tooltip hover. Register each event singly and confir
 ## Comments
 
 **2026-09-29** Written from Rob's answer on `0003` ("medium", option 2). Not started.
+
+**2026-09-29** RESULT: partial
+TESTS: +22 new, all green (`lua docs/build/check-achievements.lua`, Lua 5.4 and 5.1)
+TOUCHED: Modules/Achievements.lua, docs/build/check-achievements.lua, DjinnisDataTexts.toc, README.md, RELEASE_NOTES.md, docs/HANDOVER.md (one Sibling docs row for the new check), docs/board/in-progress/0013-achievements-module.md
+OUT-OF-SCOPE: none
+
+Built the module and its check. Only #1 is ticked: it is the one criterion whose proof is the
+check alone. Every other criterion needs a live client, which no session here can run, so they
+stay open for the in-game check. The check was watched red first (20 of 22 failing against a stub
+`[ach-helpers]` block), then green. It lifts the real block and the real `ns.ExpandTag` from
+`Core.lua`, so it cannot pass around the module. **#3 is half proved**: the row formatting
+(`quantity / required`, bar fill, the 0x1 flag found among other bits, the divide-by-zero case)
+is tested; the bar drawing is not.
+
+What a person needs to check in game (`deploy.ps1 -Only`, `/reload`): the label, then
+`<points> (<session>)` after earning something; the recent list and its dates; a tracked
+achievement's bars and done lines; the grey "No achievements tracked." line; left-click on the
+DataText and on a row; right-click on both (menu only, no action); the settings panel, its poll
+dropdown in Modules, and Reset to Defaults. Watch for Lua errors on hover.
+
+Assumed, and not settled by the repository:
+- **Recent count is capped at 5 in settings.** The slider runs 1 to 5 because
+  `GetLatestCompletedAchievements` is believed to return five; nothing in `wow-ui-source`
+  states the count. Widen the slider if the game returns more.
+- **Newest first is the game's order**, not a sort of ours. Completion dates carry no time of
+  day, so a sort could not order two achievements from the same day anyway.
+- **"Untrack" appears only on tracked rows.** On a recently completed row it would do nothing.
+- **The session baseline waits for a non-zero read**, in case the total reads 0 before the game
+  has loaded it. An account with 0 points shows +0 until its first achievement.
+- **Row clicks are fixed**, not configurable: the card's click-action criterion (#7) names the
+  DataText's actions, and Rob's rule fixes what a row right-click does.
+- **The release notes entry lands in the held 0.9.16.** The card asked for it there; that
+  release is waiting on in-game checks for 0008 and 0010. If 0.9.16 should ship without this
+  module until it has been in a client, move the entry to the next version.
+
+The runner's `.\vendor\bin\pest.bat` and `pint.bat` do not exist here: this is a Lua addon with no
+PHP, no `vendor/` and no Composer file, in this worktree or in the source repository. The Lua
+checks are the suite. That is the project's shape, not a missing copy.

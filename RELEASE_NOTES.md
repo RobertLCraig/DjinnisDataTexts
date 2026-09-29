@@ -49,6 +49,13 @@
 
 ### Added
 
+- **A new Achievements DataText.** It shows your total achievement points, and a `<session>`
+  label tag shows the points you earned since you logged in. The tooltip lists your most
+  recently completed achievements with their dates (five by default), then every achievement
+  you are tracking with its criteria: a progress bar and a count for criteria you work
+  towards, done or not done for the rest. Left-click opens the achievement window;
+  right-click opens a menu. Click a tooltip row to jump to that achievement, or right-click it
+  to open it, stop tracking it, or link it in chat.
 - **A "Forget an alt after this many weeks" slider**, under Saved Instances, Alt Lockouts.
   It counts weekly resets and defaults to 3. Set it to 0 to keep every character forever,
   which is the old behaviour. A character still holding an extended raid lockout is kept

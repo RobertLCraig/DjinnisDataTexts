@@ -67,6 +67,7 @@ DDT absorbs and replaces DjinnisGuildFriends, automatically migrating existing s
 
 | Module | Description |
 |--------|-------------|
+| **Achievements** | Total achievement points, with points earned this session as a `<session>` label tag. Tooltip lists your most recently completed achievements with dates, and every tracked achievement with its criteria: progress bars for counted criteria, done or not done for the rest. Click a row to open that achievement; right-click for open, untrack and link in chat. |
 | **LFG Status** | Tracks LFG queue status (Dungeon/Raid Finder), premade group applications with role and status, and your listed group. Assigned role tracking shows which role you were accepted as. Live wait time and elapsed counters. Icon changes based on queue state. |
 | **Saved Instances** | Raid and dungeon lockouts with boss kill status, M+ weekly runs, delve tracking with instance names and tiers. Difficulty color coding, extended lockout markers. Condensed views available. Alt lockouts via SavedInstances addon DB. Great Vault access on right-click. Column hover highlighting for improved alt data readability. |
 | **Pet Info** | Pet journal unlock and battle capability status, collection stats (owned, level 25, rare quality, favorites). Click actions for revive, bandage, safari hat, treats, random summon. |
