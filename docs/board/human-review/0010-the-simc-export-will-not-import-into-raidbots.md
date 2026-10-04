@@ -173,3 +173,29 @@ lines. Criteria #1 to #6 are all still open.
 <!-- The card's thread, appended by ProgressBoard. Append-only: entries are added, never edited or removed. An entry beginning **Decided:** is an answer, and that is what a decision card exits on. -->
 
 **2026-08-29** The loop moved this card from todo/ to human-review/ WITHOUT trying it. All 6 of its open acceptance criteria say proves: manual, so there is nothing left an unattended session could close and starting one would change nothing. Each open criterion names what to look at and what a pass is: tick what passes and move the card on, or say what failed and move it back to todo/.
+
+### 2026-10-04 manager (m20261004153552-2be7)
+
+**outcome: rob**
+
+The code work looks done, and only a check in the running game and the Raidbots site can close the criteria.
+
+**what the session said**
+
+I checked `Modules/ItemLevel.lua`. All the fixes the card describes are there:
+
+- `ItemLevel:CopySimCString` now looks for `ACECONSOLE_SIMC`, which is the right name for the SimulationCraft handler.
+- The gear lines come from the parser between the `[simc-parser:begin]` and `[simc-parser:end]` markers. It writes keyed lines like `head=,id=...`, not raw `item:` links.
+- A `talents=` line now comes from `C_Traits.GenerateImportString`.
+
+No review findings disprove any criterion. None of the 6 is ticked, and all 6 need a person:
+
+1. Right-click the item level DataText with SimulationCraft on, then again with it off.
+2. Paste the second output into <https://www.raidbots.com/simbot/droptimizer>.
+
+The card's "What I need from you" section gives these steps and says what a pass looks like. Sending the card back to the builder would not change anything.
+
+WHY: The code work looks done, and only a check in the running game and the Raidbots site can close the criteria.
+
+OUTCOME: rob
+
