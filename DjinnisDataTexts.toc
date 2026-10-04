@@ -58,6 +58,7 @@ Modules\ItemLevel.lua
 
 # Modules - Phase 13
 Modules\Achievements.lua
+Modules\QuestLog.lua
 
 # Modules - Phase 10 (Active Activity tracker - aggregator must load first)
 Modules\ActiveActivity.lua
