@@ -117,3 +117,63 @@ Choices made here, not settled by the card:
 In-game check owed: `deploy.ps1`, `/reload`, add DDT-QuestLog to a display, then walk #2 to #8.
 Hand in one quest and accept two at once to see the label settle. Switch Group By to Zone.
 Track and untrack from the row menu, then Abandon a throwaway quest and press Cancel first.
+
+**2026-10-04** REVIEW (adversarial, separate agent)
+Verdict: no blocking finding; to `human-review/` because #2 to #8 need a game client. The in-game
+surface was not looked at: there is no client or browser here, so everything below is from source.
+
+Attacked: every Blizzard call against `wow-ui-source` 12.1.0 (69933). `GetNumQuestLogEntries`
+(second return is `numQuests`), `GetInfo` (Nilable, guarded), `GetQuestObjectives`
+(`MayReturnNothing`, guarded by `objectives or {}`), `ReadyForTurnIn`, `IsFailed`,
+`GetQuestWatchType`, `Add/RemoveQuestWatch`, `CanAbandonQuest`, `GetMaxNumQuestsCanAccept`,
+`Enum.QuestFrequency` (Daily 1, Weekly 2) and all five quest events exist as used.
+`QuestMapFrame_OpenToQuestDetails`, `QuestMapQuestOptions_AbandonQuest` and `OpenQuestLog` are in
+`Blizzard_UIPanels_Game` (Mainline, not load on demand), none from `Blizzard_Deprecated*`.
+`C_QuestLog.AbandonQuest` and `SetAbandonQuest` carry no restriction, and only the dialog's
+OnAccept (`GameDialogDefs.lua:732`) calls it. `C_Map.GetMapInfo` nil is handled. Settings widget
+calls match `Settings.lua` signatures; Reset to Defaults and the poll interval come from the
+generic module loop, so nothing extra was needed. Events: handler first, each registered singly
+and checked with `IsEventRegistered`. Menus: broker right-click and row right-click both open a
+menu and act on nothing; the row menu captures the quest ID in a closure, so a rebuild under an
+open menu cannot retarget it, and Blizzard's owner check is `IsVisible` on `OnUpdate`, so the
+Hide then Show in `GetRow` does not close it. Tooltip only, so Edit Mode does not apply.
+
+Mutations (temp copies, real module untouched): counting every quest as ready, listing hidden
+and task quests in zone mode, removing the throttle's pending guard, never clearing it, and
+swapping daily and weekly all went red. Three passed green:
+- concatenating a **header** title in `QLH.Group`: the only secret in the fixture was a quest
+  title, which `Group` never touches. **Fixed** (trivial, test only): the third header's title
+  in the fixture is now the secret, with an assertion that it passes through. That mutation now
+  goes red; the check is 44 passed, 0 failed.
+- comparing an objective text with a string (`o.text ~= ""`): Lua 5.4 never calls `__eq` for a
+  table against a string, so the table stand-in cannot catch an equality test on a secret. A
+  limit of the harness, not fixable here; noted so nobody reads the check as covering it.
+- reading the first return of `GetNumQuestLogEntries` for `<count>`: the wiring in `UpdateData`
+  sits outside the lifted block. #1 is ticked on template expansion only; the right number is
+  part of the in-game check.
+
+Smaller things for Rob to judge, not blocking:
+- `isBounty` quests are listed and counted. Blizzard's log hides them until complete
+  (`QuestMapFrame.lua`, `QuestLogQuests_ShouldShowQuestButton`). Rare in current content.
+- `BuildTooltipContent` concatenates `numQuests .. " / " .. maxQuests`. Neither return is
+  documented as secret, so it holds today.
+
+Security:
+1. Weakest: Abandon runs Blizzard's `QuestMapQuestOptions_AbandonQuest` from addon code, so the
+   `ABANDON_QUEST` popup is shown from a tainted call. The abandon itself is unprotected and still
+   needs the confirmation click, but a tainted StaticPopup is the classic way taint spreads to the
+   next dialog. A secret quest title passed to `root:CreateTitle` would also put a secret into
+   Blizzard's menu layout code, untested.
+2. Unchecked: nothing comes in from outside the client; the quest ID passed back to the game is
+   always a plain number (`Plain` drops a secret ID and the row is hidden). Truth tests on titles
+   (`if title`, `g.title or "Other"`) assume a secret string tests truthy without error, which
+   nothing here can prove.
+3. Leaks: nothing. No chat output, no links, nothing saved beyond settings; a refused event
+   prints only its own name.
+
+Ask: deploy with `-Only DjinnisDataTexts`, `/reload`, add DDT-QuestLog to a display and check the
+label matches the quest log's own count. Hover: headers, ready quests green, dailies and weeklies
+counted, then Group By Zone. Left-click a row (opens the quest), right-click a row (menu only),
+Track and Untrack, then Abandon a throwaway quest, press Cancel, then accept. After the abandon,
+open another Blizzard dialog and watch for `ADDON_ACTION_BLOCKED` or a taint message. Kill a mob
+with the tooltip pinned and the row menu open to see the menu stay up.

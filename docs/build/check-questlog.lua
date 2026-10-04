@@ -55,7 +55,7 @@ local log = {
     { questID = 3, title = "C",    mapID = 10, ready = false, frequency = 2 },
     { questID = 4, title = "Hidden", mapID = 10, isHidden = true },
     { questID = 5, title = "Bonus",  mapID = 10, isTask = true },
-    { isHeader = true,  title = "Other header" },
+    { isHeader = true,  title = secret },   -- a header title can be a secret too
     { questID = 6, title = "D",    mapID = nil, ready = false, frequency = 1 },
 }
 
@@ -68,6 +68,7 @@ if ok then
     eq(groups[1].quests[1].questID, 1, "log order kept inside a group")
     eq(groups[2].title, "Zone A", "second group")
     eq(#groups[2].quests, 1, "hidden and task quests are not listed")
+    eq(groups[3].title, secret, "a secret header title is passed through untouched")
     eq(groups[3].quests[1].questID, 6, "quest 6 under its header")
 end
 
