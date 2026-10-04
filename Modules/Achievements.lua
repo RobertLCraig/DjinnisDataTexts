@@ -151,8 +151,8 @@ Achievements.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 
--- CRITERIA_UPDATE fires often; it only redoes the label, which is one call.
--- The criteria walk happens in BuildTooltipContent, i.e. only while hovered.
+-- CRITERIA_UPDATE fires often. It redoes the label (one call), plus the full
+-- criteria walk in BuildTooltipContent, but only while the tooltip is shown.
 local EVENTS = {
     "PLAYER_ENTERING_WORLD",
     "ACHIEVEMENT_EARNED",
