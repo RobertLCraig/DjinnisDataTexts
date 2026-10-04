@@ -65,6 +65,12 @@ eq(r.value, "Not done", "plain criterion not done")
 r = H.CriterionRow("Odd", false, 0, 0, 1, "")
 eq(r.progress, nil, "a bar flag with nothing required is not a bar")
 eq(r.value, "Not done", "and reads as not done")
+-- Only bit 1 means a bar. Bit 2 is EVALUATION_TREE_FLAG_DO_NOT_DISPLAY
+-- (Blizzard_FrameXMLBase/Constants.lua), so flags 2 is not a bar and 3 is.
+r = H.CriterionRow("Hidden flag", false, 3, 10, 2, "")
+eq(r.progress, nil, "flag bit 2 alone is not a bar")
+r = H.CriterionRow("Both flags", false, 3, 10, 3, "")
+eq(r.value, "3 / 10", "flags 3 carries the bar bit")
 
 -- 4. A secret criteria string (12.1) is passed through, never concatenated.
 local secret = setmetatable({}, { __concat = function() error("attempt to concatenate a secret string value") end })

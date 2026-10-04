@@ -1,5 +1,27 @@
 # Achievements DataText module (medium scope)
 
+## What I need from you
+
+**Walk acceptance #2 to #7 in game.** No agent can run a client.
+
+1. `.\bin\deploy.ps1 -WhatIf -Only DjinnisDataTexts`, then without `-WhatIf`; `/reload`; add
+   DDT-Achievements to a display.
+2. Track two achievements, one with a counted criterion, and hover: recent list newest first with
+   dates, tracked list with bars and "q / r" or Done / Not done. Untrack both and hover again for
+   the grey "No achievements tracked." line.
+3. Left-click the DataText and a row; right-click both (menu only, no action); from a row menu use
+   Untrack and Link in chat. Earn something and watch `<session>`. Try Reset to Defaults and the
+   poll dropdown.
+
+**Pass:**
+- every step above behaves as the acceptance line says
+- no Lua error (BugSack or `/console scriptErrors 1`)
+
+**Fail:** note the step and the error text in `## Comments`; the card goes back to `todo/`.
+
+**Why it needs you:** the in-game surface is a step only a person can take. The code passed the
+adversarial review below.
+
 ## Why
 There is no Achievements DataText. To see your points, what you finished recently, or how far
 along a tracked achievement is, you open the full achievement window. A CurseForge user said
@@ -115,3 +137,31 @@ In-game check owed: `deploy.ps1`, `/reload`, add DDT-Achievements to a display, 
 to #7. Track two achievements, one with a counted criterion. Untrack and link in chat from the
 row menu. Earn something and watch `<session>`. Try Reset to Defaults, and the poll dropdown in
 the Modules panel.
+
+**2026-10-04** REVIEW (adversarial, separate agent)
+VERDICT: pass to human-review. No non-trivial finding; one test gap and one stale comment fixed in `90d7151`.
+
+Attacked, against `wow-ui-source` 12.1.0 (69933), not memory:
+- `GetAchievementInfo` order (id, name, points, completed, month, day, year): the recent and tracked reads match `Blizzard_AchievementUI/Mainline`.
+- `GetAchievementCriteriaInfo` order (string, type, completed, quantity, reqQuantity, charName, flags, assetID, quantityString): matches Mainline line 1952 and the objective tracker.
+- `C_ContentTracking.GetTrackedIDs(type)` and `StopTracking(type, id, stopType)`, `Enum.ContentTrackingType.Achievement` (2) and `Enum.ContentTrackingStopType.Manual` (2): match the generated docs and Blizzard's own untrack calls.
+- `ToggleAchievementFrame` and `ShowAchievementFrameForAchievement` live in `Blizzard_AchievementUI_Bootstrap.lua`, which is not load-on-demand and loads the UI itself. `GetAchievementLink`, `ChatFrameUtil.InsertLink` (returns false with no edit box, so the `OpenChat` fallback is right), `FormatShortDate(day, month, year)`, `BreakUpLargeNumbers` and `Menu.GetManager():GetOpenMenu()` all exist outside `Blizzard_Deprecated*`.
+- All five events exist in the generated docs; registered singly after `SetScript`, each confirmed with `IsEventRegistered`.
+- Settings widget calls match the `Settings.lua` signatures; Reset to Defaults and the poll dropdown come from the shared panel.
+- Right-click: the DataText defaults to the menu, and rows open a menu and never act. Rob's rule holds for the defaults.
+- Secrets: no achievement API carries a secret annotation and there is no `C_Secrets` predicate for achievements, so `pts .. " pts"` and `"+" .. gained` on plain numbers hold. Criterion text is never concatenated.
+
+Mutation run on a temp copy (arg 1): no clamp, empty quantityString winning and a zero baseline all went red. Broke:
+- Treating any non-zero criteria flag as a bar passed all 19 checks; only flags 0 and 1 were fed. Fixed: flags 2 (`EVALUATION_TREE_FLAG_DO_NOT_DISPLAY`) and 3 added, the mutation now fails, 21 pass.
+- The line 154 comment said `CRITERIA_UPDATE` only redoes the label; it also rebuilds the tooltip while shown. Comment corrected.
+
+Left open, low, not fixed:
+- The check cannot see call-site wiring: swapping month and day, shifting the criteria returns, or passing 0 for `gained` in `UpdateData` all stay green. Those were verified by reading against source above, and are manual by design.
+- The fake secret only traps concatenation. `quantityString ~= ""` compares a game string; harmless unless 12.1 makes criteria strings secret, which nothing in the source says.
+- A rebuild runs on every `CRITERIA_UPDATE` while hovered, and every criterion is listed, completed ones included, with no cap (the objective tracker caps and hides completed ones). A tracked meta with dozens of criteria gives a long tooltip; it scrolls.
+- A tracked achievement with zero criteria shows its name and nothing under it; the objective tracker shows the description instead.
+- The broker menu's "Open achievement window" toggles, so it closes the window if it is already open.
+
+Security: (1) Weakest point: nothing reachable by another party. The only input is the user's own label template, run through `ns.ExpandTag` with a literal tag pattern inside pcall. (2) Unchecked: the event handler reads no payload, achievement ids come from the game, and the row menu captures its id when it opens. No network, and nothing read from SavedVariables beyond the module's own settings. (3) Leaks: nothing; a link in chat is the user's explicit choice, and errors stay in the local client.
+
+The in-game surface was not looked at: no client. Ask: walk #2 to #7 per `## What I need from you`.
