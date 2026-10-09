@@ -193,7 +193,7 @@ function CharInfo:Init()
     eventFrame:RegisterEvent("PLAYER_LEVEL_UP")
     eventFrame:RegisterEvent("PLAYER_AVG_ITEM_LEVEL_UPDATE")
     eventFrame:RegisterEvent("PLAYER_GUILD_UPDATE")
-    eventFrame:RegisterEvent("UNIT_TARGET")
+    eventFrame:RegisterUnitEvent("UNIT_TARGET", "player")
     eventFrame:RegisterEvent("UPDATE_MOUSEOVER_UNIT")
 end
 

@@ -260,7 +260,7 @@ local elapsed = 0
 
 function MoveSpeed:Init()
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    eventFrame:RegisterEvent("UNIT_AURA")
+    eventFrame:RegisterUnitEvent("UNIT_AURA", "player")
     eventFrame:SetScript("OnEvent", function(_, event, unit)
         if event == "UNIT_AURA" and unit ~= "player" then return end
         ScanSpeedBuffs()
@@ -299,12 +299,16 @@ local function ReadSpeed()
     end
     local ok, cs, rs, fs, ss = pcall(GetUnitSpeed, "player")
     if not ok then return false end
-    local ok2, rp, fp, sp = pcall(function()
-        return rs / BASE_SPEED * 100, fs / BASE_SPEED * 100, ss / BASE_SPEED * 100
-    end)
-    if not ok2 then return false end
+    -- Runs five times a second: test for secrets directly rather than build
+    -- a pcall closure each tick.
+    if issecretvalue and (issecretvalue(cs) or issecretvalue(rs) or issecretvalue(fs) or issecretvalue(ss)) then
+        return false
+    end
+    if type(rs) ~= "number" or type(fs) ~= "number" or type(ss) ~= "number" then return false end
     currentSpeed, runSpeed, flightSpeed, swimSpeed = cs, rs, fs, ss
-    runPercent, flyPercent, swimPercent = rp, fp, sp
+    runPercent = rs / BASE_SPEED * 100
+    flyPercent = fs / BASE_SPEED * 100
+    swimPercent = ss / BASE_SPEED * 100
     return true
 end
 
