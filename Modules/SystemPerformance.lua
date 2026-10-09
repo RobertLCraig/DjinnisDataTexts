@@ -272,10 +272,9 @@ local dataobj = ns:NewBroker("systemperformance", "DDT-SystemPerformance", {
         local action = DDT:ResolveClickAction(button, db.clickActions or {})
         if action == "gc" then
             collectgarbage("collect")
-            SysPerf:UpdateData()
+            SysPerf:UpdateData(true)
         elseif action == "refresh" then
-            UpdateAddOnMemoryUsage()
-            SysPerf:UpdateData()
+            SysPerf:UpdateData(true)
         elseif action == "gamemenu" then
             ToggleGameMenuFrame()
         elseif action == "reloadui" then
@@ -349,15 +348,16 @@ function SysPerf:UpdateLabel()
     dataobj.text = ExpandLabel(db.labelTemplate)
 end
 
--- Heavy update: memory + CPU scan (only when tooltip is visible or manually triggered)
-function SysPerf:UpdateData()
-    fps = GetFramerate()
-    latencyHome, latencyWorld = select(3, GetNetStats())
+-- UpdateAddOnMemoryUsage walks every addon's Lua heap. With many or large
+-- addons it takes long enough that the rest of this update trips "script ran
+-- too long" (seen 2026-10-09 with the tooltip pinned, so this ran every
+-- second). Memory is re-read at most this often; fps, latency and CPU stay live.
+local MEMORY_INTERVAL = 10
+local lastMemoryScan
 
-    local db = self:GetDB()
-
-    -- Addon memory
+local function ScanMemory()
     UpdateAddOnMemoryUsage()
+    lastMemoryScan = GetTime()
     memoryTotal = 0
     wipe(addonMemory)
 
@@ -369,6 +369,20 @@ function SysPerf:UpdateData()
             local name = C_AddOns.GetAddOnInfo(i)
             table.insert(addonMemory, { name = name, memory = mem })
         end
+    end
+end
+
+-- Heavy update: memory + CPU scan (only when tooltip is visible or manually
+-- triggered). forceMemory re-reads memory now: opening the tooltip and the
+-- click actions pass it; the once-a-second refresh does not.
+function SysPerf:UpdateData(forceMemory)
+    fps = GetFramerate()
+    latencyHome, latencyWorld = select(3, GetNetStats())
+
+    local db = self:GetDB()
+
+    if forceMemory or not lastMemoryScan or GetTime() - lastMemoryScan >= MEMORY_INTERVAL then
+        ScanMemory()
     end
 
     -- CPU profiling (C_AddOnProfiler)
@@ -631,7 +645,7 @@ function SysPerf:ShowTooltip(anchor)
     ns.AnchorTooltip(tooltipFrame, anchor, db.tooltipGrowDirection)
     tooltipFrame:SetScale(db.tooltipScale or 1.0)
 
-    self:UpdateData()
+    self:UpdateData(not tooltipFrame:IsShown())
     self:BuildTooltipContent()
     tooltipFrame:Show()
 end

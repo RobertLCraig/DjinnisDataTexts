@@ -31,6 +31,10 @@
 
 ### Fixed
 
+- **The System tooltip no longer throws "script ran too long".** While it was open it re-read
+  every addon's memory use once a second, which gets slow with many addons installed. Memory
+  now refreshes when the tooltip opens and then every 10 seconds; fps, latency and CPU stay live.
+
 - **Saved Instances no longer remembers characters forever.** Every character you had ever
   logged in kept its own tooltip column, carrying whatever keys and lockouts it had when you
   last played it, however long ago. One of them was on a Mythic Dungeon International
