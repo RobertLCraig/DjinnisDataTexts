@@ -269,6 +269,11 @@ end
 
 local eventFrame = CreateFrame("Frame")
 
+local currencyScanSoon = ns.Coalesce(1, function()
+    ScanCurrencies()
+    Currency:UpdateData()
+end)
+
 function Currency:Init()
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "PLAYER_ENTERING_WORLD" then
@@ -297,8 +302,8 @@ function Currency:Init()
             end
             self:UpdateData()
         elseif event == "CURRENCY_DISPLAY_UPDATE" then
-            ScanCurrencies()
-            self:UpdateData()
+            -- Fires once per currency while looting; one scan per burst.
+            currencyScanSoon()
         elseif event == "AUCTION_HOUSE_SHOW" then
             atAuctionHouse = true
             Currency:QueryOwnedAuctions()

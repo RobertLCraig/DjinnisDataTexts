@@ -1159,6 +1159,10 @@ function Delve:Init()
     -- Sanctified Banner state lives in a player aura on older delve variants, so
     -- watch aura changes for the legacy detection path.
     eventFrame:RegisterUnitEvent("UNIT_AURA", "player")
+    -- UpdateData rebuilds the whole delve state. Aura and reputation events
+    -- come in bursts (every buff in combat), so they share one run per 0.5 s,
+    -- and auras are ignored outside a delve, where the banner aura cannot exist.
+    local updateSoon = ns.Coalesce(0.5, function() self:UpdateData() end)
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UPDATE_UI_WIDGET" then
             local widgetInfo = ...
@@ -1176,8 +1180,10 @@ function Delve:Init()
             C_Timer.After(0.5, function() self:UpdateData() end)
             C_Timer.After(1.5, function() self:UpdateData() end)
             C_Timer.After(4.0, function() self:UpdateData() end)
+        elseif event == "UNIT_AURA" then
+            if inDelve then updateSoon() end
         else
-            self:UpdateData()
+            updateSoon()
         end
     end)
 

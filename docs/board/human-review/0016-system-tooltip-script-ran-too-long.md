@@ -33,3 +33,12 @@ at most every 10 seconds otherwise (`MEMORY_INTERVAL`).
 `SystemPerformance.lua` and `LFGStatus.lua` were copied to the game folder, not a full deploy
 (the 0013 and 0014 modules would come with it). Both commits are local; Rob has not OK'd a push.
 Check in game: no LFGStatus errors after queueing for a group; fps with the System tooltip open.
+
+**2026-10-09, agent, fps pass:** DDT holds 40-52 MB after a forced `collectgarbage`, so it is
+retained, not churn; what holds it is still unknown (next: `/reload`, gc click at once, read it).
+Separately cut per-event rebuilds: `ns.Coalesce` in Core.lua; Delve ignores `UNIT_AURA` outside a
+delve and batches the rest (0.5 s); Guild, Communities, Friends (2 s) and Currency (1 s) batch
+bursts; CharacterInfo reacts to target/mouseover only for a new shard, guards secret GUIDs and
+stops re-sending `iconCoords`; `ns.ExpandTag` skips tags absent from the template. Those 7 files
+were copied to the game folder. Check in game: guild/friends/currency/delve labels still update
+within a few seconds; no new errors.

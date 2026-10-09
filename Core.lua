@@ -802,6 +802,10 @@ end
 --- @param value any     The replacement value (tostring'd automatically)
 --- @return string
 function ns.ExpandTag(str, tag, value)
+    -- Most templates use few of the tags a module offers. Skipping absent ones
+    -- saves two closures and a gsub per tag on every label refresh.
+    local placeholder = "<" .. tag .. ">"
+    if not str:find(placeholder, 1, true) then return str end
     -- tostring on a "secret" (WoW protected value) succeeds, but gsub still
     -- refuses to use it as a replacement. Guard with pcall and fall back to
     -- "?" so the label degrades gracefully instead of spamming errors.
@@ -811,7 +815,27 @@ function ns.ExpandTag(str, tag, value)
         return (str:gsub("<" .. tag .. ">", function() return s end))
     end)
     if ok2 then return result end
-    return (str:gsub("<" .. tag .. ">", "?"))
+    return (str:gsub(placeholder, "?"))
+end
+
+--- Wrap fn so a burst of calls runs it once, `delay` seconds after the first.
+--- For roster, aura and currency events that fire many times a second: each
+--- run rebuilds whole lists, and running it per event was the bulk of DDT's
+--- CPU and garbage.
+--- @param delay number seconds
+--- @param fn function
+--- @return function
+function ns.Coalesce(delay, fn)
+    local pending = false
+    local function run()
+        pending = false
+        fn()
+    end
+    return function()
+        if pending then return end
+        pending = true
+        C_Timer.After(delay, run)
+    end
 end
 
 --- Replace <token> placeholders in a format string

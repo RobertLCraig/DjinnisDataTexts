@@ -136,8 +136,11 @@ function GuildBroker:OnPlayerEnteringWorld()
     end
 end
 
+-- GUILD_ROSTER_UPDATE fires in bursts and UpdateData reads every member,
+-- so a burst shares one rebuild.
+local guildUpdateSoon = ns.Coalesce(2, function() GuildBroker:UpdateData() end)
 function GuildBroker:OnGuildUpdate()
-    self:UpdateData()
+    guildUpdateSoon()
 end
 
 ---------------------------------------------------------------------------

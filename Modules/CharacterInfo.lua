@@ -35,6 +35,7 @@ local charFaction = ""
 
 -- Shard detection (best-effort via NPC GUID parsing)
 local shardID = nil
+local iconClassFile = nil -- class the LDB icon was last set for
 local shardCache = 0  -- GetTime() of last shard update
 
 ---------------------------------------------------------------------------
@@ -78,6 +79,8 @@ local CLICK_ACTIONS = {
 
 local function ParseShardFromGUID(guid)
     if not guid then return nil end
+    -- 12.1 may hand back a secret GUID; splitting or comparing it throws.
+    if issecretvalue and issecretvalue(guid) then return nil end
     -- Creature GUIDs: Creature-0-XXXX-YYYY-ZZZZ-NNNNNNNNN-SSSSSSSSS
     -- The 5th field (ZZZZ) is zone_uid which varies by shard
     local guidType = strsplit("-", guid)
@@ -172,7 +175,17 @@ CharInfo.dataobj = dataobj
 local eventFrame = CreateFrame("Frame")
 
 function CharInfo:Init()
-    eventFrame:SetScript("OnEvent", function(_, event)
+    eventFrame:SetScript("OnEvent", function(_, event, unit)
+        -- UNIT_TARGET fires for every unit in the group and mouseover fires
+        -- constantly; both only matter to the shard ID, so they redraw only
+        -- when the player's target or mouseover gives a new shard.
+        if event == "UNIT_TARGET" or event == "UPDATE_MOUSEOVER_UNIT" then
+            if event == "UNIT_TARGET" and unit ~= "player" then return end
+            if not CharInfo:GetDB().showShardID then return end
+            local before = shardID
+            TryUpdateShard()
+            if shardID == before then return end
+        end
         CharInfo:UpdateData()
     end)
 
@@ -217,8 +230,11 @@ function CharInfo:UpdateData()
     dataobj.text = ExpandLabel(db.labelTemplate)
 
     -- Update icon to class icon
+    -- A new iconCoords table is a "changed" value to LibDataBroker and makes
+    -- every display redraw, so set it only when the class changes.
     local coords = CLASS_ICON_TCOORDS[charClassFile]
-    if coords then
+    if coords and charClassFile ~= iconClassFile then
+        iconClassFile = charClassFile
         dataobj.icon = "Interface\\Glues\\CharacterCreate\\UI-CharacterCreate-Classes"
         dataobj.iconCoords = { coords[1], coords[2], coords[3], coords[4] }
     end

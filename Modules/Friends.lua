@@ -169,8 +169,11 @@ function FriendsBroker:OnPlayerEnteringWorld()
     end)
 end
 
+-- BN_FRIEND_INFO_CHANGED fires per friend and UpdateData reads every friend,
+-- so a burst shares one rebuild.
+local friendsUpdateSoon = ns.Coalesce(2, function() FriendsBroker:UpdateData() end)
 function FriendsBroker:OnFriendsUpdate()
-    self:UpdateData()
+    friendsUpdateSoon()
 end
 
 ---------------------------------------------------------------------------

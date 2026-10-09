@@ -158,8 +158,11 @@ function CommunitiesBroker:OnPlayerEnteringWorld()
     end)
 end
 
+-- Presence events fire for every member of every club, and UpdateData reads
+-- every member, so a burst shares one rebuild.
+local clubUpdateSoon = ns.Coalesce(2, function() CommunitiesBroker:UpdateData() end)
 function CommunitiesBroker:OnClubUpdate()
-    self:UpdateData()
+    clubUpdateSoon()
 end
 
 ---------------------------------------------------------------------------
