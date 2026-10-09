@@ -27,3 +27,9 @@ it in the same call took the blame. It now runs on open, on the gc and refresh c
 at most every 10 seconds otherwise (`MEMORY_INTERVAL`).
 
 ## Comments
+
+**2026-10-09, agent:** the same BugSack pass found `LFGStatus.lua:211` x2591, `ipairs` on a secret
+`C_LFGList.GetApplications()`. Fixed in 94b2b79 (skip when `issecretvalue`). Only
+`SystemPerformance.lua` and `LFGStatus.lua` were copied to the game folder, not a full deploy
+(the 0013 and 0014 modules would come with it). Both commits are local; Rob has not OK'd a push.
+Check in game: no LFGStatus errors after queueing for a group; fps with the System tooltip open.
