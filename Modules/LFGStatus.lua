@@ -200,7 +200,8 @@ local function CollectApplications()
     if not C_LFGList then return end
 
     local apps = C_LFGList.GetApplications()
-    if not apps then return end
+    -- 12.1 can hand back the whole list as a secret; ipairs on it throws.
+    if not apps or (issecretvalue and issecretvalue(apps)) then return end
 
     for _, resultID in ipairs(apps) do
         local id, status, _, appDuration, role = C_LFGList.GetApplicationInfo(resultID)
