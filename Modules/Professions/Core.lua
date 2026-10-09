@@ -2137,7 +2137,7 @@ function Professions:Init()
     eventFrame:RegisterEvent("SKILL_LINES_CHANGED")
     eventFrame:RegisterEvent("QUEST_TURNED_IN")
     eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
-    eventFrame:RegisterEvent("UNIT_AURA")
+    eventFrame:RegisterUnitEvent("UNIT_AURA", "player")
 
     -- Two-pass detection: GetProfessions() and C_SpellBook.IsSpellKnown()
     -- return incomplete data at login. 2s covers most cases; 5s catches

@@ -229,7 +229,7 @@ function BagVal:Init()
     end)
 
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
-    eventFrame:RegisterEvent("BAG_UPDATE")
+    -- BAG_UPDATE_DELAYED follows every burst of BAG_UPDATE, so it alone is enough.
     eventFrame:RegisterEvent("BAG_UPDATE_DELAYED")
 end
 

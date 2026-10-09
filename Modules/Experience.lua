@@ -265,6 +265,7 @@ Experience.dataobj = dataobj
 local eventFrame = CreateFrame("Frame")
 
 local questXPDirty = true  -- flag to re-scan quest XP only when needed
+local updateSoon = ns.Coalesce(0.5, function() Experience:UpdateData() end)
 
 function Experience:Init()
     sessionStartTime = GetTime()
@@ -279,7 +280,8 @@ function Experience:Init()
         elseif event == "QUEST_LOG_UPDATE" or event == "QUEST_TURNED_IN" or event == "PLAYER_ENTERING_WORLD" then
             questXPDirty = true
         end
-        Experience:UpdateData()
+        -- QUEST_LOG_UPDATE and UPDATE_FACTION fire in bursts while questing.
+        updateSoon()
     end)
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("PLAYER_XP_UPDATE")

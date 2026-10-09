@@ -662,6 +662,7 @@ end
 
 function PreyTracker:Init()
     local eventFrame = CreateFrame("Frame")
+    local labelSoon = ns.Coalesce(0.5, function() self:UpdateLabel() end)
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
     eventFrame:RegisterEvent("QUEST_LOG_UPDATE")
     eventFrame:RegisterEvent("QUEST_ACCEPTED")
@@ -679,7 +680,8 @@ function PreyTracker:Init()
                 self:UpdateData()
             end
         elseif event == "CURRENCY_DISPLAY_UPDATE" then
-            self:UpdateLabel()
+            -- Fires once per currency while looting; one label per burst.
+            labelSoon()
         elseif event == "QUEST_LOG_UPDATE" then
             local newActiveID = C_QuestLog.GetActivePreyQuest()
             if newActiveID ~= activeQuestID then

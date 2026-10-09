@@ -42,3 +42,12 @@ bursts; CharacterInfo reacts to target/mouseover only for a new shard, guards se
 stops re-sending `iconCoords`; `ns.ExpandTag` skips tags absent from the template. Those 7 files
 were copied to the game folder. Check in game: guild/friends/currency/delve labels still update
 within a few seconds; no new errors.
+
+**2026-10-09, agent, second pass:** batched PetInfo (2 s), Experience (0.5 s), PreyTracker currency
+label (0.5 s), Mail inbox (0.2 s), ItemLevel gear swaps (0.3 s) and LFGStatus events (0.3 s);
+LFGStatus's 1 s queue tick now only redraws and re-collects every 10 s; BagValue listens to
+`BAG_UPDATE_DELAYED` only; Professions `UNIT_AURA` is player-only. Copied to the game folder.
+Not done, smaller: `DDT:GetOrCreateGroupHeader` keeps one FontString per name forever (pool by
+position as Professions does); SystemPerformance `CollectCPU` builds a table per addon per second
+while shown; TimeDate/PlayedTime rebuild an unchanged label each second; Achievements and QuestLog
+(0013, 0014) need `ns.Coalesce` on `CRITERIA_UPDATE` and in `QLH.NewThrottle` before they deploy.

@@ -153,12 +153,15 @@ Mail.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 
+local scanSoon = ns.Coalesce(0.2, function() Mail:ScanMailbox() end)
+
 function Mail:Init()
     eventFrame:SetScript("OnEvent", function(_, event, ...)
         if event == "UPDATE_PENDING_MAIL" or event == "PLAYER_ENTERING_WORLD" then
             Mail:UpdateData()
         elseif event == "MAIL_INBOX_UPDATE" then
-            Mail:ScanMailbox()
+            -- Fires per mail while bulk-opening (Postal, TSM); one scan per burst.
+            scanSoon()
         elseif event == "MAIL_SHOW" then
             mailboxOpen = true
             Mail:ScanMailbox()

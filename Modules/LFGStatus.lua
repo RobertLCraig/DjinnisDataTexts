@@ -378,17 +378,31 @@ function LFGStatus:Init()
     eventFrame:RegisterEvent("LFG_LIST_APPLICANT_LIST_UPDATED")
     eventFrame:RegisterEvent("ROLE_CHANGED_INFORM")
 
+    -- Queue and application events come in bursts; one collect per burst.
+    local updateSoon = ns.Coalesce(0.3, function() LFGStatus:UpdateData() end)
     eventFrame:SetScript("OnEvent", function()
-        LFGStatus:UpdateData()
+        updateSoon()
     end)
 
-    -- OnUpdate for live elapsed time when queued
+    -- OnUpdate for live elapsed time when queued. The elapsed time is worked
+    -- out from the cached queuedTime, so the tick only redraws; the queues are
+    -- re-collected by the events above, and every 10 s as a backstop.
+    local ticks = 0
     eventFrame:SetScript("OnUpdate", function(_, dt)
         elapsed = elapsed + dt
         if elapsed >= UPDATE_INTERVAL then
             elapsed = 0
-            if #activeQueues > 0 or (tooltipFrame and tooltipFrame:IsShown()) then
-                LFGStatus:UpdateData()
+            local shown = tooltipFrame and tooltipFrame:IsShown()
+            if #activeQueues > 0 or shown then
+                ticks = ticks + 1
+                if ticks >= 10 then
+                    ticks = 0
+                    LFGStatus:UpdateData()
+                else
+                    local db = LFGStatus:GetDB()
+                    dataobj.text = ExpandLabel(db.labelTemplate, db)
+                    if shown then LFGStatus:BuildTooltipContent() end
+                end
             end
         end
     end)

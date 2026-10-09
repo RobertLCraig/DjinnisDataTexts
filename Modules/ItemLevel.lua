@@ -353,6 +353,7 @@ ItemLevel.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 local pendingItemInfoUpdate = nil  -- debounce timer for GET_ITEM_INFO_RECEIVED
+local updateSoon = ns.Coalesce(0.3, function() ItemLevel:UpdateData() end)
 
 function ItemLevel:Init()
     eventFrame:SetScript("OnEvent", function(_, event, ...)
@@ -367,7 +368,8 @@ function ItemLevel:Init()
                 end)
             end
         else
-            ItemLevel:UpdateData()
+            -- PLAYER_EQUIPMENT_CHANGED fires once per slot on a gear-set swap.
+            updateSoon()
         end
     end)
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")

@@ -150,8 +150,11 @@ function PetInfo:Init()
         end
     end
 
+    -- UpdateData walks the whole pet journal, and COMPANION_UPDATE also fires
+    -- when players nearby mount, so a burst shares one walk.
+    local updateSoon = ns.Coalesce(2, function() PetInfo:UpdateData() end)
     eventFrame:SetScript("OnEvent", function(_, event)
-        PetInfo:UpdateData()
+        updateSoon()
     end)
 
     eventFrame:RegisterEvent("PLAYER_ENTERING_WORLD")
