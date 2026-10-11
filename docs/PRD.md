@@ -11,7 +11,7 @@ _Last updated: 2026-08-29_
 > history in [docs/build/task.md](build/task.md) and the code itself, not from a spec Rob
 > wrote up front. It records what the addon **is** and what it demonstrably **optimises for**.
 > Where a section could not be grounded in the repository it says so loudly rather than
-> guessing; see [Non-goals](#non-goals) and [Open questions](#open-questions).
+> guessing; see [Open questions](#open-questions). The [Non-goals](#non-goals) are Rob's own.
 
 ## Purpose
 
@@ -99,31 +99,22 @@ The per-module feature detail lives in [README.md](../README.md) and
 
 ## Non-goals
 
-**UNKNOWN: confirm with Rob. This is the loudest gap in this document.**
+Decided by Rob on 2026-10-11 (card 0006). These are the five refusals the repository already
+recorded. A future session does not reopen them.
 
-No non-goals have ever been stated for DDT. The section is deliberately left unfilled rather
-than invented, because a made-up non-goal is worse than an absent one: it would be quoted back
-as a decision nobody made, and the whole value of the section is that it is the part of a PRD
-a future session is not allowed to argue with. Card 0006 flagged this as the one thing in the
-PRD that could not be lifted from existing files.
+1. **No "only refresh what is on screen".** LDB exposes no visibility signal; that state lives
+   inside the display addon with no universal API. The per-module poll interval is the
+   deliberate approximation. (Recorded under Decisions locked in [HANDOVER.md](HANDOVER.md).)
+2. **No live module toggling.** Toggles apply on `/reload`, because LDB has no unregister and a
+   broker cannot be withdrawn once created. A reload is fine.
+3. **No settings profiles.** One flat, account-wide setup, with no per-character or per-spec
+   profile layer. See [DATA-MODEL.md](DATA-MODEL.md).
+4. **No module that duplicates a good dedicated addon already in use.** A standalone durability
+   DataText is covered by EnhanceQoL ([docs/build/task.md](build/task.md), "Deprioritised").
+5. **Nothing in the download the addon does not need to run.** Docs, demo mode and retired
+   modules are excluded from every build.
 
-What the repository *does* evidence, which is not the same thing as a stated non-goal list:
-
-- **"Only refresh what is displayed" is not implementable and will not be attempted.** LDB
-  exposes no visibility signal; that state lives inside the display addon with no universal
-  API. The per-module poll interval is the deliberate approximation.
-  (Recorded under Decisions locked in [HANDOVER.md](HANDOVER.md).)
-- **Live module toggling is not offered.** Toggles apply on `/reload`, because LDB has no
-  unregister and a broker cannot be withdrawn once created.
-- **No settings profiles.** The saved database is flat and account-wide, with no per-character
-  or per-spec profile layer. See [DATA-MODEL.md](DATA-MODEL.md).
-- **A standalone durability DataText was deprioritised** as already covered by EnhanceQoL
-  ([docs/build/task.md](build/task.md), "Deprioritised").
-- **Nothing ships that the addon does not need to run in the game.** Docs, demo mode and
-  retired modules are excluded from every build.
-
-Two open scope questions are cards, not non-goals: an Achievements module (card 0003) and a
-Quest Log module (card 0004), both waiting behind the CurseForge reply on card 0002.
+Achievements (card 0003) and Quest Log (card 0004) were scope questions, not non-goals.
 
 ## Requirements
 
@@ -188,8 +179,7 @@ Quest Log module (card 0004), both waiting behind the CurseForge reply on card 0
 
 ## Open questions
 
-- [ ] **Non-goals.** The section above is an explicit gap. Needs Rob to say what DDT
-      deliberately will not do. This is card 0006's one unanswerable item.
+- [x] **Non-goals.** Decided by Rob 2026-10-11, card 0006.
 - [ ] **The alpha modules.** Volume Control, Audio Output and the whole Professions framework
       are labelled *(alpha)* in both user-facing docs. Nothing records what would take them
       out of alpha, or whether they are meant to.

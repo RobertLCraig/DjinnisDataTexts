@@ -2,30 +2,7 @@
 
 ## What I need from you
 
-**One answer: what will Data Texts deliberately never do?**
-
-The product document (`docs/PRD.md`) has a "Non-goals" section, the list a future session is not
-allowed to argue with. Nobody has ever written one for this addon, so it is marked as a gap.
-Everything else on this card is done and checked.
-
-**Pass:** you post one `**Decided:**` line below, either accepting the list as it stands or
-editing it. An agent then copies it into the PRD and closes the card.
-
-**Fail:** the list says something you would not stand behind. Strike that line and say why.
-
-**Why it needs you:** a non-goal is a statement of intent, and intent is not in the code. The
-five below are only what the repository already shows you have refused or cannot do.
-
-**Recommended answer, ready to paste into `## Comments`:**
-
-> **2026-MM-DD** **Decided:** Non-goals are: (1) no "only refresh what is on screen", because
-> LDB cannot tell us; (2) no live module toggling, a reload is fine; (3) no settings profiles,
-> one account-wide setup; (4) no module that duplicates a good dedicated addon I already use
-> (durability is covered by EnhanceQoL); (5) nothing in the download the addon does not need to
-> run; (6) no dependency on any one display addon's API.
-
-Number 6 is the only one not already written down as a refusal. It restates PRD goal 2 as a
-boundary, and you can drop it.
+**Nothing.** Rob decided the non-goals on 2026-10-11 and they are in `docs/PRD.md`.
 
 ## Why
 The project doc set has no PRD, no DATA-MODEL and no DECISIONS log. The handover currently
@@ -69,7 +46,7 @@ the part of a PRD that does the most work. That needs Rob.
 <!-- AC:END -->
 
 ## Tasks
-- [ ] Draft PRD.md from README, CURSEFORGE and task.md. Ask Rob for the non-goals.
+- [x] Draft PRD.md from README, CURSEFORGE and task.md. Ask Rob for the non-goals.
       *(PRD drafted; the ask is still unmade, this session had no one to ask.)*
 - [x] Draft DATA-MODEL.md from Core.lua: `ns.defaults`, `MergeDefaults`, `RegisterModule`,
       `RunSchemaMigrations` and `SCHEMA_VERSION`.
@@ -174,3 +151,7 @@ Broke, and fixed in place:
 
 Not a defect, noted: `Core.lua` line anchors in DATA-MODEL (`#L1591` etc.) will drift with any
 edit to `Core.lua`; they are within two lines today.
+
+**2026-10-11** **Decided:** Non-goals are the five refusals the repository already records: (1) no "only refresh what is on screen", because LDB cannot tell us; (2) no live module toggling, a reload is fine; (3) no settings profiles, one account-wide setup; (4) no module that duplicates a good dedicated addon already in use (durability is covered by EnhanceQoL); (5) nothing in the download the addon does not need to run. Number 6 (no dependency on one display addon's API) is dropped as a non-goal; it stays PRD goal 2.
+
+**2026-10-11** Clear-down (attended, agent). Wrote the five into `docs/PRD.md` Non-goals, removed the UNKNOWN marker and ticked the matching Open question. Moved to `done/`.
