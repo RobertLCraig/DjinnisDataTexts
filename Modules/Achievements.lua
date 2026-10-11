@@ -151,8 +151,9 @@ Achievements.dataobj = dataobj
 
 local eventFrame = CreateFrame("Frame")
 
--- CRITERIA_UPDATE fires often. It redoes the label (one call), plus the full
--- criteria walk in BuildTooltipContent, but only while the tooltip is shown.
+-- CRITERIA_UPDATE fires in bursts. Each update redoes the label, plus the full
+-- criteria walk in BuildTooltipContent while the tooltip is shown, so events
+-- are coalesced: a burst runs UpdateData once, 0.5 s after its first event.
 local EVENTS = {
     "PLAYER_ENTERING_WORLD",
     "ACHIEVEMENT_EARNED",
@@ -164,9 +165,9 @@ local EVENTS = {
 function Achievements:Init()
     -- Handler first, then each event singly and confirmed: a refused
     -- RegisterEvent raises no Lua error (workspace decision, 2026-08-21).
-    eventFrame:SetScript("OnEvent", function()
+    eventFrame:SetScript("OnEvent", ns.Coalesce(0.5, function()
         Achievements:UpdateData()
-    end)
+    end))
     for _, event in ipairs(EVENTS) do
         eventFrame:RegisterEvent(event)
         if not eventFrame:IsEventRegistered(event) then
