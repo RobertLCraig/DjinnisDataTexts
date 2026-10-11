@@ -8,11 +8,34 @@
    Expect: the memory list fills on open and refreshes about every 10 seconds; fps, latency and
    CPU still change every second.
 
-**Pass:** no "script ran too long" from `SystemPerformance.lua` in that minute.
+2. Queue for a group finder activity. Expect: no `LFGStatus.lua` error (#3).
+3. Watch the Guild, Friends, Currency and Delve labels for a few minutes. Expect: they still
+   update within a few seconds of a change, no new errors (#4).
+4. Note the frame rate with the System tooltip open after a `/reload`. Expect: near your usual
+   120+, not the 40 fps of 2026-10-09; if not, write down the top CPU addons the tooltip lists (#5).
+
+**Pass:** no "script ran too long" from `SystemPerformance.lua` in that minute, and steps 2 to 4
+as expected.
 
 **Fail:** paste the error into `## Comments` and move the card to `todo/`.
 
 **Why it needs you:** the time limit only exists in a live client.
+
+## Acceptance
+<!-- AC:BEGIN -->
+- [x] #1 WHILE the System tooltip is shown, THE APP SHALL call `UpdateAddOnMemoryUsage` only on open,
+      on the gc and refresh click actions, and at most every 10 seconds otherwise.
+      (proved by code read: `MEMORY_INTERVAL` gate in `Modules/SystemPerformance.lua`)
+- [ ] #2 WHEN the System tooltip is left open for a minute, THE APP SHALL raise no "script ran too
+      long" from `SystemPerformance.lua`. proves: manual
+- [ ] #3 WHEN the player queues for a group, THE APP SHALL raise no `LFGStatus.lua` error on a
+      secret `C_LFGList.GetApplications()` (94b2b79). proves: manual
+- [ ] #4 WHEN guild, friends, currency or delve data changes, THE APP SHALL update those labels
+      within a few seconds despite the coalesced events, with no new error. proves: manual
+- [ ] #5 WHEN the System tooltip is open after a `/reload`, THE frame rate SHALL be near the usual
+      120+, not the 40 fps reported on 2026-10-09 (AchievementTodo 0001); if it is not, the
+      tooltip's top CPU addons name the cause. proves: manual
+<!-- AC:END -->
 
 ## Ask
 
@@ -51,3 +74,5 @@ Not done, smaller: `DDT:GetOrCreateGroupHeader` keeps one FontString per name fo
 position as Professions does); SystemPerformance `CollectCPU` builds a table per addon per second
 while shown; TimeDate/PlayedTime rebuild an unchanged label each second; Achievements and QuestLog
 (0013, 0014) need `ns.Coalesce` on `CRITERIA_UPDATE` and in `QLH.NewThrottle` before they deploy.
+
+**2026-10-11** Clear-down (attended, agent). The card had no Acceptance block, so the product list could not see its looks. Added one from the checks the comments above already ask for: #1 ticked on a code read, #2 to #5 open as `proves: manual`. #5 is the open "40 fps, normally 120+" note moved here from DjinnisAchievementTodo 0001, since the System tooltip is how it gets traced. Per the board README rule "A look waits on the product", moved to `ai-review/`: no adversarial review has run on this card. Everything here is deployed (today's DataTexts dry run: 57 unchanged).

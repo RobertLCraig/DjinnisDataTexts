@@ -63,23 +63,23 @@ every update.
 ## Acceptance
 <!-- AC:BEGIN -->
 - [ ] #1 WHEN a module is disabled and the UI is reloaded, THE APP SHALL NOT register that
-      module's LDB broker, so it disappears from the display addon's picker entirely.
-- [ ] #2 WHEN a module is disabled, THE APP SHALL NOT call its `Init` or `UpdateData`,
-      so it performs no periodic work.
-- [ ] #3 WHEN a module's poll interval is set to "Events only", THE APP SHALL exclude it
+      module's LDB broker, so it disappears from the display addon's picker entirely. proves: manual
+- [x] #2 WHEN a module is disabled, THE APP SHALL NOT call its `Init` or `UpdateData`,
+      so it performs no periodic work. (proved offline: the 30-check harness under Verification so far, not committed)
+- [x] #3 WHEN a module's poll interval is set to "Events only", THE APP SHALL exclude it
       from the periodic scheduler while leaving its event registrations and its
-      on-hover tooltip data intact.
-- [ ] #4 WHEN a user upgrades from a version without this feature, THE APP SHALL treat
-      every module as enabled at the default 180s interval, so nothing disappears.
-- [ ] #5 WHEN a module's or the global "Reset to Defaults" is used, THE APP SHALL leave
-      enable state and poll intervals untouched.
+      on-hover tooltip data intact. (proved offline: the 30-check harness under Verification so far, not committed)
+- [x] #4 WHEN a user upgrades from a version without this feature, THE APP SHALL treat
+      every module as enabled at the default 180s interval, so nothing disappears. (proved offline: the 30-check harness under Verification so far, not committed)
+- [x] #5 WHEN a module's or the global "Reset to Defaults" is used, THE APP SHALL leave
+      enable state and poll intervals untouched. (proved offline: the 30-check harness under Verification so far, not committed)
 - [ ] #6 WHEN a disabled module is re-enabled and the UI reloaded, THE APP SHALL restore
-      its broker and its previously saved settings.
-- [ ] #7 WHEN the periodic scheduler runs, THE APP SHALL refresh at most one due module
-      per tick rather than queueing every module in one burst.
+      its broker and its previously saved settings. proves: manual
+- [x] #7 WHEN the periodic scheduler runs, THE APP SHALL refresh at most one due module
+      per tick rather than queueing every module in one burst. (proved offline: the 30-check harness under Verification so far, not committed)
 - [ ] #8 IF a feeder module (PreyTracker, Delve) or the ActiveActivity aggregator is
       disabled while the other is enabled, THEN THE APP SHALL degrade quietly and raise
-      no Lua error.
+      no Lua error. proves: manual
 <!-- AC:END -->
 
 ## Tasks
@@ -176,3 +176,7 @@ remains and is check 3 above.
 Also worth recording against the "verification so far" note: this card shipped. v0.9.13 and
 v0.9.14 are on CurseForge, so the unverified settings panel is in other people's game folders
 rather than only this one. That raises the value of the three checks rather than lowering it.
+
+## Comments
+
+**2026-10-11** Clear-down (attended, agent). Ticked #2, #3, #4, #5 and #7: the 30-check harness recorded under Verification so far proved them offline, and a re-read of `Core.lua` today agrees (Init and the broker queue are gated on `ns:IsModuleEnabled`, the 1 s driver refreshes one due module, `GetModulePoll` returns nil for Events only). #1, #6 and #8 are the in-game looks in `## What I need from you`, now marked `proves: manual`. Per the board README rule "A look waits on the product", moved to `ai-review/` with those looks left open: the 2026-08-15 review was followed by three fixes nobody re-reviewed.

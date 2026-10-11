@@ -54,14 +54,14 @@ Checked against `C:\Dev\WoWAddons\wow-ui-source` at `12.1.0 (69382)`, diffed fro
 ## Acceptance
 <!-- AC:BEGIN -->
 - [ ] #1 WHEN the player is inside a Lair, THE APP SHALL show "Lair" rather than "Delve" in
-      the DataText label and in the tooltip header.
+      the DataText label and in the tooltip header. proves: manual
 - [ ] #2 WHEN the player is inside an ordinary delve, THE APP SHALL show "Delve" exactly as
-      it did before 12.1.0.
-- [ ] #3 WHEN a user's saved label template still equals the old default
-      `Delve: <progress>`, THE APP SHALL rewrite it once to `<kind>: <progress>` on load.
-- [ ] #4 IF a user typed their own label template, THEN THE APP SHALL leave it untouched.
-- [ ] #5 WHEN the addon loads on a client without `C_DelvesUI.IsInLair`, THE APP SHALL fall
-      back to "Delve" and raise no Lua error.
+      it did before 12.1.0. proves: manual
+- [x] #3 WHEN a user's saved label template still equals the old default
+      `Delve: <progress>`, THE APP SHALL rewrite it once to `<kind>: <progress>` on load. (proved offline: the 2026-09-29 review harness over the real RunSchemaMigrations, five cases, mutation-checked, not committed)
+- [x] #4 IF a user typed their own label template, THEN THE APP SHALL leave it untouched. (proved offline: the 2026-09-29 review harness over the real RunSchemaMigrations, five cases, mutation-checked, not committed)
+- [x] #5 WHEN the addon loads on a client without `C_DelvesUI.IsInLair`, THE APP SHALL fall
+      back to "Delve" and raise no Lua error. (proved by code read: a pcall-guarded C_DelvesUI.IsInLair falls back to "Delve"; unreachable on a 120100 client)
 <!-- AC:END -->
 
 ## Tasks
@@ -118,3 +118,4 @@ Not this card, noted: `Delve:Init` registers eleven events in a row without the
 `IsEventRegistered` check the workspace 2026-08-21 decision asks for. It predates this card and
 none of those events is known to be protected, so no card opened.
 
+**2026-10-11** Clear-down (attended, agent). Ticked #3 and #4 on the review's offline migration harness and #5 on the code read; step 4 of the look still confirms #3 and #4 in the client. #1 and #2 are the open looks, marked `proves: manual`. The independent review passed, so per the board README rule "A look waits on the product" this goes to `done/` with the looks open. Deployed: today's dry run shows the game folder matches source.

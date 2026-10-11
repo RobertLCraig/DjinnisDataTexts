@@ -9,8 +9,9 @@
 1. `/ddt`, then Time / Date, then open the **Extra Time Zones** section.
    Expect: four zones, the first three filled in as New York, London and Sydney, all unticked.
 2. Tick **Show zone 1**, 2 and 3. Hover the Time / Date DataText.
-   Expect: three new rows under Local Time. Today (late September) London should be 1 hour
-   ahead of UTC, New York 4 hours behind, Sydney 10 ahead. Compare with any world clock.
+   Expect: three new rows under Local Time. Between 4 and 25 October 2026 London is 1 hour
+   ahead of UTC, New York 4 hours behind, Sydney 11 ahead (its summer time began 4 October).
+   From 25 October London is UTC+0; from 1 November New York is UTC-5. Compare with any world clock.
 3. On zone 4, leave the label blank, drag the offset to `5.50`, rule "None". Tick Show zone 4.
    Expect: a row labelled `UTC+5:30` showing India's time.
 4. If any zone is already on tomorrow or still on yesterday compared with you, its time has a
@@ -47,7 +48,7 @@ is wrong for half of every year, and a hand-kept table of change dates goes stal
 
 ## Acceptance
 <!-- AC:BEGIN -->
-- [x] #1 WHEN an extra zone is enabled, THE APP SHALL show one tooltip row for it, below Local
+- [ ] #1 WHEN an extra zone is enabled, THE APP SHALL show one tooltip row for it, below Local
       Time, labelled with the user's label or, if blank, its UTC offset. proves: manual
 - [x] #2 WHEN the zone uses the US rule, THE APP SHALL add the summer hour from the 2nd Sunday of
       March 02:00 standard to the 1st Sunday of November 02:00 daylight, local to that zone.
@@ -59,9 +60,9 @@ is wrong for half of every year, and a hand-kept table of change dates goes stal
       including across the new year. proves: `docs/build/check-timezones.lua` (Sydney and Adelaide cases)
 - [x] #5 WHEN the zone uses no rule, THE APP SHALL apply its fixed offset, including half- and
       quarter-hour offsets. proves: `docs/build/check-timezones.lua` (fixed-offset cases)
-- [x] #6 WHEN the zone is on a different calendar day from the player, THE APP SHALL mark the row
+- [ ] #6 WHEN the zone is on a different calendar day from the player, THE APP SHALL mark the row
       "+1d" or "-1d". proves: manual (the day arithmetic itself is in the check's calendar sweep)
-- [x] #7 THE APP SHALL let the user set, per zone, on/off, label, standard offset and rule in the
+- [ ] #7 THE APP SHALL let the user set, per zone, on/off, label, standard offset and rule in the
       existing Time / Date settings panel, for up to four zones. proves: manual
 <!-- AC:END -->
 
@@ -137,3 +138,5 @@ tooltip; a stray `|` escape can only garble their own row. **Unchecked path:** n
 comes from a bounded slider (-12 to 14) and the rule from a fixed list, and an unknown rule
 falls back to a fixed offset (checked). **Leaks:** nothing; no network, no other character's
 data, no chat output.
+
+**2026-10-11** Clear-down (attended, agent). Fixed the look text in step 2: south-east Australian summer time began 4 October 2026, so Sydney is UTC+11 now, not UTC+10, and the London and New York changes on 25 October and 1 November are named. Unticked #1, #6 and #7: they say `proves: manual`, and the 2026-09-29 review said they need a client, so the ticks were wrong and would have hidden the look from the product list. #2 to #5 stay ticked (`docs/build/check-timezones.lua`, 106 passed today under Lua 5.1). Per the board README rule "A look waits on the product", moved to `ai-review/`: the only review so far was by the building session, which the review rule does not count.

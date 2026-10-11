@@ -78,9 +78,9 @@ those as commented extras. Equipped gear plus a correct header is the whole scop
       holding the current loadout export string. proves: manual
 - [ ] #4 WHEN the SimulationCraft addon is absent, THE COPIED STRING SHALL carry `level=`, `race=`,
       `spec=`, `region=`, `server=`, `role=` and `professions=` lines. proves: manual
-- [ ] #5 WHEN a gear slot is filled, THE COPIED STRING SHALL write it as `slot=,id=N` plus whichever
+- [x] #5 WHEN a gear slot is filled, THE COPIED STRING SHALL write it as `slot=,id=N` plus whichever
       of `bonus_id=`, `gem_id=`, `enchant_id=` and `crafted_stats=` that item carries, and SHALL NOT
-      write a raw `item:` link. proves: manual
+      write a raw `item:` link. proves: `docs/spec/test-simc-item-line.lua` (eight item strings asserted against the real addon's gear lines)
 - [ ] #6 WHEN the fallback string is pasted into the Raidbots Droptimizer import box, THE SITE SHALL
       accept it and show the right spec, talents and equipped items. proves: manual - a browser
       check, and the only proof that matters
@@ -199,3 +199,4 @@ WHY: The code work looks done, and only a check in the running game and the Raid
 
 OUTCOME: rob
 
+**2026-10-11** Clear-down (attended, agent). Ticked #5: `lua docs/spec/test-simc-item-line.lua` passes all eight cases today, and it was mutation-checked on 2026-08-26. #1 to #4 and #6 stay open as the looks in `## What I need from you`. Per the board README rule "A look waits on the product", moved to `ai-review/`: the 2026-10-04 pass was a manager pass, not an adversarial review. Deployed: today's dry run shows the game folder matches source.

@@ -88,7 +88,10 @@ for a rarer one.
       order the whole list by `clubId` rather than mixing the two orderings.
 - [x] #4 IF a club has no name at all, THE APP SHALL NOT throw.
 - [ ] #5 WHEN the settings panel is opened in the client, THE APP SHALL build
-      every panel, including Communities.
+      every panel, including Communities. proves: manual
+- [ ] #6 WHEN the Communities tooltip is grouped by Community, at the first or second level,
+      THE APP SHALL draw one header per club, keyed by club id, without throwing on a secret
+      club name. proves: manual (steps 2 and 3; the 2026-09-29 review's in-place fix)
 <!-- AC:END -->
 
 ## Tasks
@@ -158,3 +161,4 @@ Not this card: `DjinnisGuildFriends/CommunitiesBroker.lua:485-498` has the ident
 path (name as key, name joined into strings). It is a dormant addon in its own repository with
 its own card, `djinnisguildfriends#0001`; not touched here.
 
+**2026-10-11** Clear-down (attended, agent). Added #6 for the grouping fix the 2026-09-29 review made in place: steps 2 and 3 already check it, but no criterion named it, so the look would not have reached the product list. #5 marked `proves: manual`. #1 to #4 stay ticked (`docs/build/check-club-sort.lua`, 5 of 5 today). The independent review passed, so per the board README rule "A look waits on the product" this goes to `done/` with #5 and #6 open. Deployed: today's dry run shows the game folder matches source.

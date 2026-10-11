@@ -177,3 +177,5 @@ counted, then Group By Zone. Left-click a row (opens the quest), right-click a r
 Track and Untrack, then Abandon a throwaway quest, press Cancel, then accept. After the abandon,
 open another Blizzard dialog and watch for `ADDON_ACTION_BLOCKED` or a taint message. Kill a mob
 with the tooltip pinned and the row menu open to see the menu stay up.
+
+**2026-10-11** Clear-down (attended, agent). Deployed today with 0013 (`bin\deploy.ps1 -Only DjinnisDataTexts`). The 0016 note asked for `ns.Coalesce` in `QLH.NewThrottle` before deploy; it needs none: `QLH.NewThrottle` is already a pending-flag coalescer of the same shape, and the event handler calls only `poke()`. `docs/build/check-questlog.lua` passes 44 today. #1 ticked; #2 and #7 keep a manual half and stay open with #3 to #6 and #8. The independent 2026-10-04 review passed, so per the board README rule "A look waits on the product" this goes to `done/` with those looks open.
