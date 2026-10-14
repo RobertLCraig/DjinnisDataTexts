@@ -29,6 +29,8 @@
 
 ## Version: 0.9.16
 
+Updated for patch 12.1.5.
+
 ### Fixed
 
 - **The System tooltip no longer throws "script ran too long".** While it was open it re-read
