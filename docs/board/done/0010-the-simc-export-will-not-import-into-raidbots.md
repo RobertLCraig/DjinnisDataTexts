@@ -200,3 +200,72 @@ WHY: The code work looks done, and only a check in the running game and the Raid
 OUTCOME: rob
 
 **2026-10-11** Clear-down (attended, agent). Ticked #5: `lua docs/spec/test-simc-item-line.lua` passes all eight cases today, and it was mutation-checked on 2026-08-26. #1 to #4 and #6 stay open as the looks in `## What I need from you`. Per the board README rule "A look waits on the product", moved to `ai-review/`: the 2026-10-04 pass was a manager pass, not an adversarial review. Deployed: today's dry run shows the game folder matches source.
+
+### 2026-10-17 review (v20261017112304-5d63)
+
+**suite**
+
+No suite this job could find in WoWAddons:DjinnisDataTexts, so none ran. That is not a pass.
+
+**acceptance: sound**
+
+I tried to break the export code and could not. Every criterion leads to real code in `Modules/ItemLevel.lua`.
+
+- **#1:** `ItemLevel:CopySimCString` looks for the handler `SlashCmdList["ACECONSOLE_SIMC"]`. If it finds it, it calls it with empty input and returns. It copies nothing of its own. AceConsole builds that key from `/simc`, as the card's Direction section says.
+- **#2:** In the fallback, the `lines` table in `CopySimCString` starts with `#` comment lines. The first one holds the name, spec, date and region/realm.
+- **#3:** `CopySimCString` gets the active config from `C_ClassTalents.GetActiveConfigID` and passes it to `C_Traits.GenerateImportString`. The result goes on a `talents=` line. If the client has no talent data yet, it writes a comment line in its place. That is a fair best-effort behaviour, not a fault.
+- **#4:** `CopySimCString` writes `level=`, `race=`, `region=`, `server=`, `role=`, `professions=` and `spec=`. It leaves out `professions=` when the character has no primary profession, which is what SimC does too.
+- **#5:** `SimCItemLine` takes each piece of the item string by its position and writes `slot=,id=N` plus the keyed fields. It never writes a raw `item:` link. `docs/spec/test-simc-item-line.lua` already proves this.
+- **#6:** This one needs a paste into Raidbots in a browser. It is only open, and nothing in the code shows it cannot pass.
+
+Only manual criteria are still open, so I wrote no `UNMET:` lines.
+
+VERDICT: sound
+
+**scope: sound**
+
+I tried to find work that went outside this card, or work left half done. I found none.
+
+**What I checked**
+
+- I ran `git log -S` to find which commits added the `ItemLevel.lua` changes.
+- Commit `d09ee88` changed `ItemLevel:CopySimCString`. Now it calls the SimulationCraft addon through `ACECONSOLE_SIMC`.
+- Commit `ceef38c` changed the fallback export and added the parser block. It also added `SIMC_SLOT_NAMES`, `SIMC_SPELL_SPECS` and `SimCToken` above that function. These only support the export, so they are inside the card's purpose.
+- The `ns.Coalesce` change in `ItemLevel:Init` comes from commit `641916b`, which is a separate performance commit. It is not this card's work. The other changed files in the diff also belong to other cards.
+
+**The fence ("Not this card")**
+
+- The export does not add bag gear, bank gear, saved sets or the weekly reward section. It writes equipped gear only.
+- No settings and no new saved variable. `SCHEMA_VERSION` in `Core.lua` did not change.
+- The Auctionator and TSM shopping-list code did not change.
+
+**Half done?**
+
+- The gear lines also write `drop_level`, `content_tuning`, `gem_bonus_id` and `crafting_quality`. These are extra keys, but they copy what the real addon writes, so they are not scope growth.
+- The open criteria (#1 to #4 and #6) are all `proves: manual`. They wait for you in the game and on Raidbots. That is not a defect.
+- These known limits are in the source and on the card: healers get `role=attack`, names come out in the client language, and there is no `omnium_talents=` line.
+
+**What you do now:** the steps in the card's "What I need from you" section. Try the right-click with SimulationCraft on, then off. Then paste the second export into Raidbots.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I tried to break the SimC fix (the code that makes a gear export for Raidbots). I did not find a fault.
+
+What I checked:
+
+- **The hand-off to SimulationCraft.** `ItemLevel:CopySimCString` now reads `SlashCmdList["ACECONSOLE_SIMC"]`. If that is there, it calls it and stops. If it is not there, the code goes to the home-made export. It does not crash.
+- **The helper calls.** `SafeGetSlotInfo` (in `Modules/ItemLevel.lua`) always gives back a name and a number. So the `"# %s (%d)"` comment line above each gear line cannot crash on a missing value.
+- **The copy box.** `DDT:CopyToClipboard` in `Core.lua` still takes the same two inputs as before.
+- **The gear list.** `GEAR_SLOTS` lists the same 16 slots as `SIMC_SLOT_NAMES`, so no slot is dropped.
+- **Shared code.** The Auctionator and TSM code still uses `GEAR_SLOTS`. That list did not change, so that code is safe.
+- **Game API (the functions the game gives addons).** `C_Traits.GenerateImportString` and `GetCurrentRegionName` are both in the local Blizzard API docs.
+- **The test file.** `docs/spec/test-simc-item-line.lua` loads only the code between the `[simc-parser:begin]` and `[simc-parser:end]` markers in `ItemLevel.lua`. That code reads `C_TradeSkillUI` only behind a check that it exists, so the test runs outside the game. I did not run the test today. The card says all eight cases passed on 2026-10-11.
+
+The criteria still open (#1, #2, #3, #4, #6) all need a person in the game or on the Raidbots site. They are not faults. The code shows no reason that any of them cannot pass.
+
+What you do now: nothing for this review. Do the three steps on the card when you can.
+
+VERDICT: sound
+
