@@ -140,3 +140,54 @@ falls back to a fixed offset (checked). **Leaks:** nothing; no network, no other
 data, no chat output.
 
 **2026-10-11** Clear-down (attended, agent). Fixed the look text in step 2: south-east Australian summer time began 4 October 2026, so Sydney is UTC+11 now, not UTC+10, and the London and New York changes on 25 October and 1 November are named. Unticked #1, #6 and #7: they say `proves: manual`, and the 2026-09-29 review said they need a client, so the ticks were wrong and would have hidden the look from the product list. #2 to #5 stay ticked (`docs/build/check-timezones.lua`, 106 passed today under Lua 5.1). Per the board README rule "A look waits on the product", moved to `ai-review/`: the only review so far was by the building session, which the review rule does not count.
+
+### 2026-10-17 review (v20261017084104-dc76)
+
+**suite**
+
+No suite this job could find in WoWAddons:DjinnisDataTexts, so none ran. That is not a pass.
+
+**acceptance: sound**
+
+I checked each criterion against `Modules/TimeDate.lua`. Each one is in the code.
+
+- **#1**: In `BuildTooltipContent`, the loop over `GetExtraZoneRows` puts the zone rows right after the Local Time row. The label is the user's label. If the label is blank, the row shows `TZ.FormatOffset` instead.
+- **#2**: `TZ.RULES.us` starts at the 2nd Sunday of March, 02:00 standard time. It ends at the 1st Sunday of November, 02:00 daylight time, done as `std + HOUR`.
+- **#3**: `TZ.RULES.eu` changes on the last Sunday of March and the last Sunday of October, both at 01:00 UTC.
+- **#4**: `TZ.RULES.au` covers October to April. `TZ.IsSummer` handles the case where the start is later than the end, so summer time runs across the new year. The rule year comes from the UTC date. That is safe, because no change date is near 1 January.
+- **#5**: When the rule is `none`, `TZ.RULES[rule]` is nil, so `TZ.IsSummer` returns false. `TZ.ZoneTime` rounds `offset*3600`, so offsets like 5.5 and 5.75 work.
+- **#6**: `GetExtraZoneRows` works out `dayShift`. `BuildTooltipContent` then adds a grey `+Nd` or `-Nd`.
+- **#7**: `BuildSettingsPanel` has a section called "Extra Time Zones". It has 4 slots, and each slot has a checkbox, a label, a slider from -12 to 14 in steps of 0.25, and a rule dropdown (`DST_RULES`). The `zone(i)` helper makes a slot again if it is missing.
+
+I did not find a defect. Criteria #1, #6 and #7 still need a check in the game.
+
+VERDICT: sound
+
+**scope: sound**
+
+No scope problem found. The card's commit (`2694bf8`) only adds code.
+
+- It touches only these files: `Modules/TimeDate.lua`, `RELEASE_NOTES.md`, the card file and `docs/build/check-timezones.lua`.
+- In `Modules/TimeDate.lua` it adds 197 lines and removes none. So the server row, the local row, the resets and the calendar events did not change.
+- In `Modules/TimeDate.lua` there is no `<zone1>` tag in the label code. The new zones show only as tooltip rows, in `BuildTooltipContent` through `GetExtraZoneRows`.
+- In `TZ.ZoneTime` there are only the three rules (US, EU, south-east Australia) plus "none". It does not add a full time zone database.
+- Nothing is left half done. The defaults, the tooltip rows, the "Extra Time Zones" settings section and the check are all present. The in-game check is still open, but it is the owner's step (`proves: manual`).
+- The big diff also has toggles, Achievements, QuestLog and other changes. Those belong to other cards and other commits. They are not this card's growth.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I checked the time zone code. I did not find a fault in it.
+
+**What I checked:**
+- **The daylight saving maths** in `TZ.RULES` and `TZ.IsSummer` (`Modules/TimeDate.lua`). The US and Australia end times are in summer time, which is right. The Australian season crosses the new year, and the "start later than end" branch handles that.
+- **Half-hour offsets.** `TZ.ZoneTime` rounds the slider value to whole seconds. A slider value with a tiny rounding error, such as 5.4999, still gives 5:30.
+- **The settings panel.** `BuildSettingsPanel` calls `AddCheckbox`, `AddEditBox`, `AddSlider` and `AddDropdown`. All four exist in `Settings.lua` and take the arguments the panel gives them.
+- **Saved settings.** `MergeDefaults` (`Core.lua`) builds new tables for each zone slot. It only fills empty values, so a label you cleared stays clear. `ResetModuleDefaults` puts the three filled-in zones back, switched off.
+- **The tooltip rows.** `GetExtraZoneRows` and the tooltip code that uses it (`BuildTooltipContent`) put each zone below Local Time. They add `+1d` or `-1d` when the zone is on another day. No other code calls these functions, so nothing else needed a change.
+
+None of my checks failed. Criteria #1, #6 and #7 are still open, but only because they need a check in the game. That is not a fault.
+
+VERDICT: sound
+
