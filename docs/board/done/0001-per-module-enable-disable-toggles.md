@@ -180,3 +180,65 @@ rather than only this one. That raises the value of the three checks rather than
 ## Comments
 
 **2026-10-11** Clear-down (attended, agent). Ticked #2, #3, #4, #5 and #7: the 30-check harness recorded under Verification so far proved them offline, and a re-read of `Core.lua` today agrees (Init and the broker queue are gated on `ns:IsModuleEnabled`, the 1 s driver refreshes one due module, `GetModulePoll` returns nil for Events only). #1, #6 and #8 are the in-game looks in `## What I need from you`, now marked `proves: manual`. Per the board README rule "A look waits on the product", moved to `ai-review/` with those looks left open: the 2026-08-15 review was followed by three fixes nobody re-reviewed.
+
+### 2026-10-17 review (v20261017044019-3760)
+
+**suite**
+
+No suite this job could find in WoWAddons:DjinnisDataTexts, so none ran. That is not a pass.
+
+**acceptance: sound**
+
+**What I did:** I checked each acceptance criterion against the code. I tried to break each one. I could not.
+
+- **#1 and #6 (manual).** In `Core.lua`, `ns:NewBroker` holds each broker in a queue. The `ADDON_LOADED` handler then makes a broker only when `ns:IsModuleEnabled(key)` is true. Saved settings sit in each module's own table, and enable state is never written there. So a module that comes back has its old settings. Nothing in the code stops these two checks from passing.
+- **#2.** The `Init` loop and the first refresh loop in the `ADDON_LOADED` handler both check `IsModuleEnabled`. The 1-second ticker checks it too.
+- **#3.** `ns:GetModulePoll` gives back nil for "Events only", so the ticker skips that module. The module's event registrations and tooltip code are not changed.
+- **#4.** `IsModuleEnabled` defaults to true. `GetModulePoll` defaults to `ns.DEFAULT_POLL` (180 seconds).
+- **#5.** Enable and poll state live in `ns.db.modules`. That is outside every module's own settings table, so a reset does not touch it.
+- **#7.** The ticker in `ADDON_LOADED` picks only the module that is most overdue. It calls `UpdateData` once per tick.
+- **#8 (manual).** `ns:NotifyActivityChange` and `ns:RegisterActivityTracker` exist at file scope in `ActiveActivity.lua`. Both do their work only after `_initialized` is set. The calls in `Delve.lua` and `PreyTracker.lua` are guarded. The feeders never touch the aggregator's broker directly. So check 3 should pass.
+
+No criterion is disproved. Only the manual in-game checks are still open. Those are yours to do.
+
+**What you do now:** Nothing from this review. Do the three in-game checks on the card when you have a session in the game.
+
+VERDICT: sound
+
+**scope: sound**
+
+I checked what this change did that the card did not ask for. I found nothing over the fence and nothing half done.
+
+**Scope findings:**
+
+- **The diff is bigger than this card.** It also carries work from other cards: Achievements (0013), Quest Log (0014), TimeDate (0007), the Delve Lair change (0008), the club sort fix (0012) and the `ns.Coalesce` change. Each of those has its own card. So none of it is scope creep on this card.
+- **The Delve and Prey Tracker switches sit in Active Activity's panel.** The fence forbids a copy of a Modules-panel checkbox on a module's own page. This is a move, not a copy:
+  - In `Settings.lua`, the Modules panel list builder skips any key in `ns.subTrackerModules`. So each tracker has one switch only.
+  - `ActiveActivity:BuildSettingsPanel` uses the same `AddModuleRow` widget.
+  - The card's `## Direction` entry for 2026-08-15 records this choice.
+- **Enable All and Disable All also skip sub-trackers** (`Settings.lua`, the Modules panel button handlers). So the Modules panel cannot change a tracker behind Active Activity's back.
+- **Nothing is half done.**
+  - Every Tasks item is done, except the in-game check.
+  - The `[~]` item is the deliberate `.toc` / RELEASE_NOTES hold. Later releases (0.9.13 to 0.9.16) settled it.
+  - The open criteria #1, #6 and #8 are all `proves: manual`. Under the review rules, an open manual criterion is not a finding.
+
+I wrote no UNMET lines, because no criterion is disproved.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I tried to break this card's code. I could not.
+
+**What I checked:**
+
+- **Aggregator off, feeder on (acceptance #8).** `ns:NotifyActivityChange` and `ns:RegisterActivityTracker` sit at file level in `Modules/ActiveActivity.lua`. So they exist even when Active Activity is off. Both only update the label after `ActiveActivity:Init` sets `_initialized`. Delve and Prey Tracker check that each function exists before they call it. Result: no Lua error.
+- **Feeder switches.** `DDT:SetupOptions` in `Settings.lua` builds every module's panel, even for a disabled module. So the Delve and Prey switches stay in Active Activity's panel when Active Activity is off.
+- **Broker deferral.** `ns:NewBroker` in `Core.lua` gives back the same table. Every module keeps its `dataobj` and works as before.
+
+**One small cost, not a defect.** "Disable All" leaves Delve and Prey Tracker on. If Active Activity is off, those two still poll, but nobody sees their output. Nothing breaks, and no criterion fails. If you want to change it, tell me and I will add a card.
+
+**What you do now:** nothing for this review. The three in-game checks (#1, #6, #8) are still yours to try.
+
+VERDICT: sound
+
