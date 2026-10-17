@@ -167,3 +167,59 @@ Security: (1) Weakest point: nothing reachable by another party. The only input 
 The in-game surface was not looked at: no client. Ask: walk #2 to #7 per `## What I need from you`.
 
 **2026-10-11** Clear-down (attended, agent). Built the 0016 note: the event handler is now wrapped in `ns.Coalesce(0.5, ...)` (`Achievements:Init`, `2a1d025`), so a `CRITERIA_UPDATE` burst runs `UpdateData` once. All four `docs/build/` checks pass under Lua 5.1 (achievements 21, questlog 44, timezones 106, club sort 5). Deployed with `bin\deploy.ps1 -Only DjinnisDataTexts`: the `.toc`, `Achievements.lua` and `QuestLog.lua` went in, and the next dry run showed 57 unchanged. #2 to #7 stay open as the in-game looks. Per the board README rule "A look waits on the product", moved to `ai-review/` because the code changed after the 2026-10-04 review.
+
+### 2026-10-17 review (v20261017163437-8e42)
+
+**suite**
+
+No suite this job could find in WoWAddons:DjinnisDataTexts, so none ran. That is not a pass.
+
+**acceptance: sound**
+
+I checked each acceptance line against the code. All seven lead to real code.
+
+- **#1:** `AchH.ExpandLabel` and `AchH.SessionDelta` make the label. `Achievements:UpdateData` sets it. Both tags (`<points>` and `<session>`) work.
+- **#2:** `Achievements:BuildTooltipContent` makes the "Recently completed" list. Each row has the date from `FormatShortDate`. The list stops at `db.recentCount`. The default is 5, and the settings slider goes from 1 to 10. The list keeps the game's own order.
+- **#3:** The "Tracked" section uses `AchH.CriterionRow`. Counted criteria get a bar and "q / r". The other criteria show "Done" or "Not done".
+- **#4:** When nothing is tracked, the tooltip shows one grey line: "No achievements tracked."
+- **#5:** A left-click on the DataText goes through `ResolveClickAction` to `ToggleAchievementFrame`. A left-click on a row goes through the `OnClick` script in `GetRow` to `ShowAchievementFrameForAchievement`.
+- **#6:** A right-click on the DataText opens `OpenBrokerMenu` by default. A right-click on a row opens `OpenRowMenu`, which has Open, Untrack and Link in chat. Neither right-click does an action by itself.
+- **#7:** `Achievements:BuildSettingsPanel` gives the label template, scale, width, max height and click actions. `FinalizeLayout` in `Core.lua` uses the max height. The enable switch, the poll interval and Reset to Defaults come from the shared Modules panel and the poll loop in `Core.lua` (`ns:GetModulePoll`).
+
+I found nothing that stops a criterion from passing. Criteria #2 to #7 are still open only because they need an in-game test.
+
+VERDICT: sound
+
+**scope: sound**
+
+I tried to find scope creep and half-done work in the Achievements change. I found none that breaks this card.
+
+**What I checked**
+
+- **Fence ("Not this card").** `Modules/Achievements.lua` has no category tree, no search and no drill-down. It has no rows for each category. It does no Statistics or Feats of Strength work. The tooltip has only three parts: points, recently completed, and tracked.
+- **Other changes in the diff.** `QuestLog.lua`, `TimeDate.lua`, the `ns.Coalesce` edits in many modules, the secret-name fixes in `Communities.lua`, `LICENSE` and the Interface bump are in the diff. Each one belongs to its own card: `0014`, `0007`, `0016`, `0012` and the 12.1.5 chore. The diff covers several cards at once. None of these is extra work that slipped into card `0013`.
+- **One change after the review.** `Achievements:Init` now uses `ns.Coalesce`. That came from card `0016`, and the card's Comments record it. It does not add any feature.
+- **Half done.** All three build tasks are done. The only task still open is the in-game check, which a person must do. `OnClick` in the broker also handles a `pintooltip` action that `CLICK_ACTIONS` does not offer. That code never runs, so it does no harm.
+
+Criteria #2 to #7 are still open, but they are manual checks for Rob. They are not findings, and nothing I read shows that one of them cannot pass.
+
+**What you do now:** nothing for this review. The card can go to `done/`. The in-game walk for #2 to #7 waits on your list.
+
+VERDICT: sound
+
+**breakage: sound**
+
+I tried to break the Achievements module (card 0013). I found nothing that breaks.
+
+**Findings**
+
+1. **Settings calls match.** `Achievements:BuildSettingsPanel` uses `AddLabelEditBox`, `AddSliderPair`, `AddTooltipCopyFrom` and `ns.AddModuleClickActionsSection`. Each call matches its signature in `Settings.lua`. So criterion #7 can pass.
+2. **The poll interval still works.** The module has an `UpdateData` method. The ticker in `Core.lua` (inside `OnEnable`) only polls modules that have one. The Modules panel in `Settings.lua` only shows the interval dropdown for those same modules. So the log message "that update will wait for the poll" is true.
+3. **The event change is safe.** `ns.Coalesce` in `Core.lua` (it groups many fast events into one run) does not use the event name or its data. `Achievements:Init` ignores both, so nothing is lost.
+4. **The `ns.ExpandTag` change is safe.** When a tag is not in the template, it returns the template as it is. This is the same result as before. The `<session>` tag still expands to empty text when it is used.
+5. **The tooltip reads the session points safely.** `BuildTooltipContent` calls `AchH.SessionDelta` again. That call only sets the baseline (the first points value) when there is none yet, so it changes nothing.
+
+No criterion is disproved. Criteria #2 to #7 are still open, but they are manual checks. They wait for you to try them in the game.
+
+VERDICT: sound
+
